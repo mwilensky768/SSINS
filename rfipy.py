@@ -21,6 +21,7 @@ class RFI:
         self.obs = obs
         self.UV = UVData()
         self.outpath = outpath
+        self.flag_choice = flag_choice
         getattr(self.UV, 'read_%s' % (filetype))(inpath, **read_kwargs)
 
         # These ensure that every baseline reports at every time so that subtraction
@@ -67,7 +68,7 @@ class RFI:
         for meta in ['vis_units', 'freq_array']:
             np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta), getattr(self.UV, meta))
 
-        if flag_choice is not None:
+        if self.flag_choice is not None:
             self.apply_flags(choice=flag_choice, INS=INS, custom=custom)
 
     def apply_flags(self, choice=None, INS=None, custom=None):
@@ -90,7 +91,10 @@ class RFI:
 
     def VDH_prepare(self, bins='auto', MLE_axis=0, window=None, rev_ind_axis=None):
 
-        self.VDH = Hist(self.UV.data_array, bins=bins, MLE_axis=MLE_axis)
+        args = (self.UV.data_array, self.flag_choice, self.UV.freq_array,
+                self.pols, self.UV.vis_units, self.obs, self.outpath)
+        kwargs = {'bins': bins, 'MLE_axis': MLE_axis}
+        self.VDH = Hist(*args, **kwargs)
         if window is not None:
             self.VDH.rev_ind(self.UV.data_array, window=window, axis=rev_ind_axis)
 
