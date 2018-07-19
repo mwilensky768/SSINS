@@ -1,14 +1,12 @@
 import numpy as np
 from pyuvdata import UVData
 import os
-import scipy.linalg
-from scipy.special import erfinv
-import rfiutil
-import warnings
+import Util
 import scipy.stats
 from VDH import Hist
 from INS import Spectrum
 from MF import match_filter
+from BA import bl_avg
 
 
 class RFI:
@@ -109,9 +107,9 @@ class RFI:
             for test in tests:
                 getattr(self.MF, 'apply_%s_test' % (test))
 
-    def bl_flag(self, INS=None, sig_thresh=None, shape_dict={}, N_thresh=0,
-                alpha=None, tests=['match_filter'], choice=None, custom=None,
-                MC_iter=int(1e4)):
+    def BA_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
+                   N_thresh=0, alpha=None, tests=['match_filter'], choice=None,
+                   custom=None, MC_iter=int(1e4), grid_dim=[50, 50], R_thresh=10):
 
         # Make a match filtered noise spectrum if one is not already passed
         if INS is None:
@@ -123,57 +121,13 @@ class RFI:
         # Calculate MLE's with the INS flags in mind, and then apply choice of
         # non-INS flags to the data
         self.apply_flags(choice='INS', INS=self.INS)
-        self.VDH_prepare(self.UV.data_array)
+        self.VDH_prepare(self.UV.data_array, 'INS', self.freq_array, self.pols,
+                         self.UV.vis_units, self.obs, self.outpath)
         self.apply_flags(choice=choice, custom=custom)
 
-        # Make a temporary mask that all eventual changes will first be applied to
-        # The reason for this thing's existence is that we don't want to alter
-        # events later in the stack by dynamically altering the data's actual mask
-        temp_mask = np.zeros(self.UV.data_array.shape, dtype=bool)
-        temp_mask[self.UV.data_array.mask] = 1
+        self.BA = bl_avg(self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
+                         self.UV.uvw_array, self.UV.vis_units, self.obs,
+                         self.pols, self.outpath, MC_iter=MC_iter,
+                         grid_dim=grid_dim, grid_lim=grid_lim, R_thresh=R_thresh)
 
-        bl_hist = []
-        sim_hist = []
-        cutoffs = []
-
-        for event in self.INS.events:
-            bl_avg = self.UV.data_array[event[2], :, event[0], event[1]]
-            init_shape = bl_avg.shape
-            init_mask = bl_avg.mask
-            bl_avg = bl_avg.mean(axis=1)
-            counts, bins = np.histogram(bl_avg[np.logical_not(bl_avg.mask)], bins='auto')
-            sim_counts = np.zeros((MC_iter, len(counts)))
-            # Simulate some averaged rayleigh data and histogram - take averages/variances of histograms
-            for i in range(MC_iter):
-                sim_data = np.random.rayleigh(size=init_shape,
-                                              scale=np.sqrt(self.VDH.MLE[:, event[0], event[1]]))
-                sim_data = np.ma.masked_where(init_mask, sim_data)
-                sim_data = sim_data.mean(axis=1)
-                sim_counts[i, :], _ = np.histogram(sim_data, bins=bins)
-            exp_counts = sim_counts.mean(axis=0)
-            exp_error = np.sqrt(sim_counts.var(axis=0))
-            # Find where the expected counts are 0.1 * the observed counts
-            max_loc = bins[:-1][exp_counts.argmax()] + 0.5 * (bins[1] - bins[0])
-            R = counts.astype(float) / exp_counts
-            lcut_cond = np.logical_and(R > 10, bins[1:] < max_loc)
-            rcut_cond = np.logical_and(R > 10, bins[:-1] > max_loc)
-            if np.any(lcut_cond):
-                lcut = bins[1:][max(np.where(lcut_cond)[0])]
-            else:
-                lcut = bins[0]
-            if np.any(rcut_cond):
-                rcut = bins[:-1][min(np.where(rcut_cond)[0])]
-            else:
-                rcut = bins[-1]
-            cut_cond = np.logical_or(bl_avg > rcut, bl_avg < lcut)
-            cut_ind = np.where(cut_cond)
-            # Flag the temp_mask
-            if np.any(cut_cond):
-                temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
-
-            bl_hist.append([counts, bins])
-            sim_hist.append([exp_counts, exp_error])
-            cutoffs.append([lcut, rcut])
-        self.UV.data_array.mask = temp_mask
-
-        return(bl_hist, sim_hist, cutoffs)
+        self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.BA.mask)

@@ -1,17 +1,22 @@
 import numpy as np
 import scipy.stats
+import os
 
 
 class Hist:
 
     def __init__(self, data, flag_choice, freq_array, pols, vis_units, obs,
                  outpath, bins='auto'):
-        self.flag_choice = flag_choice
+
+        args = {'flag_choice': flag_choice, 'freq_array': freq_array, 'pols': pols,
+                'vis_units': vis_units, 'obs': obs, 'outpath': outpath}
+        for attr in args:
+            setattr(self, attr, args[attr])
         self.counts, self.bins = self.hist_make(data, bins=bins)
         self.MLEs, self.fits, self.errors = self.rayleigh_mixture_fit(data)
-        self.pols = pols
-        self.obs = obs
-        self.vis_units = vis_units
+        for string in ['arrs', 'figs']:
+            if not os.path.exists('%s/%s' % (self.outpath, string)):
+                os.makedirs('%s/%s' % (self.outpath, string))
 
     def hist_make(self, data, bins='auto'):
         counts = np.zeros([data.shape[2], 2], dtype=object)

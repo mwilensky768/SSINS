@@ -56,6 +56,7 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                             (outpath, INS.obs, event[0],
                              event[1].indices(INS.shape[2])[0],
                              event[1].indices(INS.shape[2])[1], string, k))
+                plt.close(fig)
 
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
@@ -106,3 +107,50 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
                                   title=VDH.pols[pol], freq_array=VDH.freq_array[spw],
                                   **im_kwargs)
             fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' % (VDH.outpath, obs, spw, fit_tags[i]))
+            plt.close(fig)
+
+
+def BA_plot(BA, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
+            zero_mask=False, mask_color='white', aspect=None):
+
+    im_kwargs = {'vmin': vmin,
+                 'vmax': vmax,
+                 'xlabel': '$\lambda u$ (m)',
+                 'ylabel': '$\lambda v$ (m)',
+                 'cbar_label': 'Amplitude (%s)' % (vis_units),
+                 'xticks': xticks,
+                 'yticks': yticks,
+                 'xticklabels': xticklabels,
+                 'yticklabels': yticklabels,
+                 'zero_mask': zero_mask,
+                 'mask_color': mask_color,
+                 'aspect': aspect}
+
+    hist_labels = ['Measurements', 'Fit']
+    fig_tags = ['hist', 'grid']
+
+    for i, event in enumerate(BA.events):
+        title_tup = (BA.obs,
+                     BA.freq_array[event[0], event[1].indices(BA.Nfreqs)[0]] * 10 ** (-6),
+                     BA.freq_array[event[0], event[1].indices(BA.Nfreqs)[1]] * 10 ** (-6),
+                     event[2])
+        yerr = [None, BA.errors[i]]
+        fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
+        fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(BA.pols))
+        fig_im.suptitle('%s Event-Averaged Grid, f%.2f Mhz - f%.2f Mhz, t%i' %
+                        title_tup)
+        x = BA.bins[i][:-1] + 0.5 * np.diff(BA.bins[i])
+        for k, string in enumerate(['', 'exp_']):
+            pl.error_plot(fig_hist, ax_hist, x, getattr(BA, '%scounts' % (string))[i],
+                          xlabel='Amplitude (%s)' % (BA.vis_units),
+                          label=hist_labels[k], yerr=yerr[k],
+                          title='%s Event-Averaged Histogram, f%.2f Mhz - f%.2f Mhz, t%i' %
+                          title_tup)
+        for cut in BA.cutoffs[i]:
+            ax_hist.axvline(x=cut, color='black')
+        for k in range(len(BA.pols)):
+            pl.image_plot(fig_im, ax_im, BA.uv_grid[k], title=BA.pols[k],
+                          **im_kwargs)
+
+        fig_hist.savefig('%s/figs/%s_hist_%i.png' % (BA.outpath, BA.obs, i))
+        fig_im.savefig('%s/figs/%s_grid_%i.png' % (BA.outpath, BA.obs, i))
