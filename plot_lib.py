@@ -32,7 +32,7 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
                xlabel='Frequency (Mhz)', ylabel='Time Pair',
                cbar_label=None, xticks=None, yticks=None,
                xticklabels=None, yticklabels=None, zero_mask=False,
-               mask_color='white', freq_array=None, aspect=None):
+               mask_color='white', freq_array=None, aspect=None, grid=None):
 
     if zero_mask:
         data = np.ma.masked_equal(data, 0)
@@ -62,8 +62,12 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
         ax.set_xticklabels(xticklabels)
     elif xlabel is 'Frequency (Mhz)':
         xticklabels = ['%.2f' % (freq_array[tick] * 10 ** (-6)) for tick in ax.get_xticks()]
+    elif xlabel is '$\lambda u$':
+        xticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_xticks()]
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
+    elif xlabel is '$\lambda v$':
+        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()]
     if aspect is not None:
         ax.set_aspect(aspect)
     else:

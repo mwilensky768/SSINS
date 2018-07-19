@@ -16,16 +16,16 @@ class Spectrum:
         kwds = ('data', 'Nbls', 'freq_array', 'pols', 'vis_units', 'obs', 'outpath')
         assert all([arg is not None for arg in args]), \
             'Insufficient input given. Supply an instance of the RFI class or read in appropriate data.'
-        kwargs = dict(zip(kwds, args))
+        arg_dict = dict(zip(kwds, args))
         for kwd in kwds:
-            setattr(self, kwd, kwarg[kwd])
+            setattr(self, kwd, arg_dict[kwd])
+        kwargs = {'match_events': match_events, 'match_hists': match_hists,
+                  'chisq_events': chisq_events, 'chisq_hists': chisq_hists}
+        for kwarg in kwargs:
+            setattr(self, kwarg, kwargs[kwarg])
 
         self.data_ms = self.mean_subtract()
         self.counts, self.bins, self.sig_thresh = self.hist_make()
-        self.match_events = match_events
-        self.match_hists = match_hists
-        self.chisq_events = chisq_events
-        self.chisq_hists = chisq_hists
         for string in ['arrs', 'figs']:
             if not os.path.exists('%s/%s' % ('arrs', 'figs')):
                 os.makedirs('%s/%s' % ('arrs', 'figs'))
