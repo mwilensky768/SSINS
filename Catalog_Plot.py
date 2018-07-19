@@ -70,11 +70,19 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
                  'vmax': vmax,
                  'xticklabels': xticklabels,
                  'yticklabels': yticklabels,
-                 'aspect': aspect}
+                 'aspect': aspect,
+                 'cbar_label': '# Baselines',
+                 'zero_mask': True,
+                 'mask_color': 'white'}
 
-    labels = ['All Measurements', 'Measurements with %s Flags' % (VDH.flag_choice)]
-    fit_labels = ['All Fit', 'Fit with %s Flags' % (VDH.flag_choice)]
+    hist_kwargs = {'counts': {},
+                   'fits': {}}
+
+    labels = {'counts': ['All Measurements', 'Measurements, %s Flags' % (VDH.flag_choice)],
+              'fits': ['All Fit', 'Fit, %s Flags' % (VDH.flag_choice)]}
+
     fit_tags = ['All', 'Flags']
+
     for spw in range(len(VDH.counts) / len(VDH.MLEs)):
         for i in range(1 + bool(VDH.flag_choice)):
             if hasattr(VDH, W_hist):
@@ -85,21 +93,16 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
             fig.suptitle('%s Visibility Difference Histogram, spw%i, %s' % (obs, spw, labels[i]))
             x = []
             for k in range(1 + bool(VDH.flag_choice)):
-                x[k] = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
-            pl.error_plot(fig, ax[0], x[0], VDH.counts[spw, 0],
-                          xlabel='Amplitude (%s)' % (VDH.vis_units),
-                          label=labels[0])
-            pl.error_plot(fig, ax[0], x[0], VDH.fits[spw, 0], yerr=VDH.errors[spw, 0],
-                          xlabel='Amplitude (%s)' % (VDH.vis_units), label=fit_labels[0])
-            pl.error_plot(fig, ax[0], x[1], VDH.counts[spw, 1],
-                          xlabel='Amplitude (%s)' % (VDH.vis_units),
-                          label=labels[1])
-            pl.error_plot(fig, ax[0], x[1], VDH.fits[spw, 1], yerr=VDH.errors[spw, 1],
-                          xlabel='Amplitude (%s)' % (VDH.vis_units), label=fit_labels[1])
+                x = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
+                for attr in ['counts', 'fits']:
+                    if attr is 'fits':
+                        hist_kwargs['fits']['yerr'] = VDH.errors[spw, k]
+                    pl.error_plot(fig, ax[0], x, getattr(VDH, attr)[spw, k],
+                                  xlabel='Amplitude (%s)' % (VDH.vis_units),
+                                  label=labels[attr][k], **hist_kwargs[attr])
             if hasattr(VDH, W_hist):
                 for pol in range(len(VDH.pols)):
                     pl.image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, spw, :, pol],
-                                  title=VDH.pols[pol], cbar_label='Counts',
-                                  zero_mask=True, mask_color='white',
-                                  freq_array=VDH.freq_array[spw], **im_kwargs)
+                                  title=VDH.pols[pol], freq_array=VDH.freq_array[spw],
+                                  **im_kwargs)
             fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' % (VDH.outpath, obs, spw, fit_tags[i]))
