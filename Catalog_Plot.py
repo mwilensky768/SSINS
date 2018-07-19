@@ -1,8 +1,8 @@
+import plot_lib as pl
+import Util
 from matplotlib import cm, use
 use('Agg')
 import matplotlib.pyplot as plt
-import plot_lib as pl
-import Util
 
 
 def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
@@ -39,7 +39,8 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
             for pol in range(4):
                 pl.image_plot(fig, ax[pol],
                               getattr(INS, 'data%s' % (string))[:, spw, :, pol],
-                              title=INS.pols[pol], **im_kwargs)
+                              title=INS.pols[pol], freq_array=INS.freq_array[spw],
+                              **im_kwargs)
             fig.savefig('%s/figs/%s_%s_INS%s.png' % (INS.outpath, INS.obs, string))
             plt.close(fig)
 
@@ -55,3 +56,50 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                             (outpath, INS.obs, event[0],
                              event[1].indices(INS.shape[2])[0],
                              event[1].indices(INS.shape[2])[1], string, k))
+
+
+def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
+             xticklabels=None, yticklabels=None, aspect=None):
+    """
+    Takes a visibility difference histogram and plots it.
+    """
+
+    im_kwargs = {'xticks': xticks,
+                 'yticks': yticks,
+                 'vmin': vmin,
+                 'vmax': vmax,
+                 'xticklabels': xticklabels,
+                 'yticklabels': yticklabels,
+                 'aspect': aspect}
+
+    labels = ['All Measurements', 'Measurements with %s Flags' % (VDH.flag_choice)]
+    fit_labels = ['All Fit', 'Fit with %s Flags' % (VDH.flag_choice)]
+    fit_tags = ['All', 'Flags']
+    for spw in range(len(VDH.counts) / len(VDH.MLEs)):
+        for i in range(1 + bool(VDH.flag_choice)):
+            if hasattr(VDH, W_hist):
+                fig, ax = plt.subplots(figsize=(14, 8), nrows=(1 + len(VDH.pols)))
+            else:
+                fig, ax = plt.subplots(figsize=(14, 8))
+                ax = [ax, ]
+            fig.suptitle('%s Visibility Difference Histogram, spw%i, %s' % (obs, spw, labels[i]))
+            x = []
+            for k in range(1 + bool(VDH.flag_choice)):
+                x[k] = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
+            pl.error_plot(fig, ax[0], x[0], VDH.counts[spw, 0],
+                          xlabel='Amplitude (%s)' % (VDH.vis_units),
+                          label=labels[0])
+            pl.error_plot(fig, ax[0], x[0], VDH.fits[spw, 0], yerr=VDH.errors[spw, 0],
+                          xlabel='Amplitude (%s)' % (VDH.vis_units), label=fit_labels[0])
+            pl.error_plot(fig, ax[0], x[1], VDH.counts[spw, 1],
+                          xlabel='Amplitude (%s)' % (VDH.vis_units),
+                          label=labels[1])
+            pl.error_plot(fig, ax[0], x[1], VDH.fits[spw, 1], yerr=VDH.errors[spw, 1],
+                          xlabel='Amplitude (%s)' % (VDH.vis_units), label=fit_labels[1])
+            if hasattr(VDH, W_hist):
+                for pol in range(len(VDH.pols)):
+                    pl.image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, spw, :, pol],
+                                  title=VDH.pols[pol], cbar_label='Counts',
+                                  zero_mask=True, mask_color='white',
+                                  freq_array=VDH.freq_array[spw], **im_kwargs)
+            fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' % (VDH.outpath, obs, spw, fit_tags[i]))

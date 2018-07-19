@@ -61,7 +61,7 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
     if xticklabels is not None:
         ax.set_xticklabels(xticklabels)
     elif xlabel is 'Frequency (Mhz)':
-        xticklabels = [freq_array[tick] for tick in ax.get_xticks()]
+        xticklabels = ['%.2f' % (freq_array[tick] * 10 ** (-6)) for tick in ax.get_xticks()]
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
     if aspect is not None:
