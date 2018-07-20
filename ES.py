@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class bl_avg:
+class event_stats:
 
     def __init__(self, data, events, MLE, uvw_array, vis_units, obs,
                  pols, outpath, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
