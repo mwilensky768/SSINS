@@ -6,7 +6,7 @@ import scipy.stats
 from VDH import Hist
 from INS import Spectrum
 from MF import match_filter
-from BA import bl_avg
+from ES import event_stats
 
 
 class RFI:
@@ -91,8 +91,7 @@ class RFI:
 
         args = (self.UV.data_array, self.flag_choice, self.UV.freq_array,
                 self.pols, self.UV.vis_units, self.obs, self.outpath)
-        kwargs = {'bins': bins, 'MLE_axis': MLE_axis}
-        self.VDH = Hist(*args, **kwargs)
+        self.VDH = Hist(*args, bins=bins, MLE_axis=MLE_axis)
         if window is not None:
             self.VDH.rev_ind(self.UV.data_array, window=window, axis=rev_ind_axis)
 
@@ -125,9 +124,11 @@ class RFI:
                          self.UV.vis_units, self.obs, self.outpath)
         self.apply_flags(choice=choice, custom=custom)
 
-        self.BA = bl_avg(self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
-                         self.UV.uvw_array, self.UV.vis_units, self.obs,
-                         self.pols, self.outpath, MC_iter=MC_iter,
-                         grid_dim=grid_dim, grid_lim=grid_lim, R_thresh=R_thresh)
+        BA_args = (self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
+                   self.UV.uvw_array, self.UV.vis_units, self.obs, self.pols,
+                   self.outpath)
+
+        self.BA = bl_avg(*BA_args, MC_iter=MC_iter, grid_dim=grid_dim,
+                         grid_lim=grid_lim, R_thresh=R_thresh)
 
         self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.BA.mask)

@@ -63,6 +63,7 @@ class Hist:
             if i:
                 dat = data
             else:
+                # Copying the array does not copy the mask
                 dat = np.copy(data)
             W[np.logical_and(min(window) < dat, dat < max(window))] = 1
         self.W_hist.append(W.sum(axis=1))
