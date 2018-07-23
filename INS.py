@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import erfcinv
 import os
+import warnings
 
 
 class Spectrum:
@@ -9,26 +10,44 @@ class Spectrum:
     Outputs a data array
     """
 
-    def __init__(self, data, Nbls, freq_array, pols, vis_units, obs, outpath,
-                 match_events=[], match_hists=[], chisq_events=[], chisq_hists=[]):
+    def __init__(self, data=None, Nbls_arr=None, freq_array=None, pols=None,
+                 vis_units=None, obs=None, outpath=None, match_events=[],
+                 match_hists=[], chisq_events=[], chisq_hists=[], read_paths={},
+                 samp_thresh_events=[]):
 
-        args = (data, Nbls, freq_array, pols, vis_units, obs, outpath)
-        kwds = ('data', 'Nbls', 'freq_array', 'pols', 'vis_units', 'obs', 'outpath')
-        assert all([arg is not None for arg in args]), \
-            'Insufficient input given. Supply an instance of the RFI class or read in appropriate data.'
-        arg_dict = dict(zip(kwds, args))
-        for kwd in kwds:
-            setattr(self, kwd, arg_dict[kwd])
-        kwargs = {'match_events': match_events, 'match_hists': match_hists,
-                  'chisq_events': chisq_events, 'chisq_hists': chisq_hists}
-        for kwarg in kwargs:
-            setattr(self, kwarg, kwargs[kwarg])
+        if not read_paths:
+            args = (data, Nbls_arr, freq_array)
+            assert all([arg is not None for arg in args]),\
+                'Insufficient data given. You must supply a data array,\
+                 a Nbls array of matching shape, and a freq_array of matching sub-shape'
+            self.data = data
+            self.Nbls = Nbls_arr
+            self.freq_array = freq_array
+
+            opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
+                        'outpath': outpath}
+            for attr in opt_args:
+                if opt_args[attr] is None:
+                    warnings.warn('In order to use Catalog_Plot.py, with \
+                                   appropriate labels please supply %s attribute' % (attr))
+                else:
+                    setattr(self, attr, opt_args[attr])
+            for attr in ['obs', 'outpath']:
+                if opt_args[attr] is None:
+                    warnings.warn('In order to save outputs,\
+                                   please supply %s attribute' % (attr))
+                else:
+                    setattr(self, attr, opt_args[attr])
+
+            kwargs = {'match_events': match_events, 'match_hists': match_hists,
+                      'chisq_events': chisq_events, 'chisq_hists': chisq_hists}
+            for kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
+        else:
+            self.read(read_paths)
 
         self.data_ms = self.mean_subtract()
         self.counts, self.bins, self.sig_thresh = self.hist_make()
-        for string in ['arrs', 'figs']:
-            if not os.path.exists('%s/%s' % ('arrs', 'figs')):
-                os.makedirs('%s/%s' % ('arrs', 'figs'))
 
     def mean_subtract(self):
 
@@ -55,3 +74,50 @@ class Spectrum:
                                  bins=bins)
 
         return(counts, bins, sig_thresh)
+
+    def save(self):
+        tags = ['match_filter', 'chisq', 'samp_thresh']
+        tag = ''
+        for subtag in tags:
+            if len(getattr(self, '%s_events' % (subtag))):
+                tag += '_%s' % subtag
+
+        for string in ['arrs', 'figs', 'metadata']:
+            if not os.path.exists('%s/%s' % (self.outpath, string)):
+                os.makedirs('%s/%s' % (self.outpath, string))
+
+        for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins']:
+            np.ma.dump(getattr(self, attr),
+                       '%s/arrs/%s_INS_%s%s.npym' % (self.outpath, self.obs, attr, tag))
+
+        for attr in ['match_events', 'match_hists', 'chisq_events', 'chisq_hists']:
+            if len(getattr(self, attr)):
+                np.save('%s/arrs/%s_%s.npy' % (self.outpath, self.obs, attr),
+                        getattr(self, attr))
+
+        for attr in ['freq_array', 'pols', 'vis_units', 'obs']:
+            if getattr(self, attr) is not None:
+                np.save('%s/metadata/%s_%s.npy', % (self.outpath, self.obs, self.attr))
+
+    def read(self, read_paths):
+
+        for arg in ['data', 'Nbls_arr', 'freq_array']:
+            assert arg in read_paths, 'You must supply a path to a numpy loadable %s file' % (arg)
+            setattr(self, arg, np.load(read_paths[arg]))
+        for attr in ['obs', 'pols', 'vis_units']:
+            if attr not in read_paths:
+                warnings.warn('In order to use Catalog_Plot.py, please supply\
+                               path to numpy loadable %s attribute' % (attr))
+            else:
+                setattr(self, attr, read_paths[attr])
+        for attr in ['obs', 'outpath']:
+            if attr not in read_paths:
+                warnings.warn('In order to save outputs, please supply path to\
+                               numpy loadable %s attribute' % (attr))
+            else:
+                setattr(self, attr, np.load(read_paths[attr]))
+        for attr in ['match_events', 'match_hists', 'chisq_events', 'chisq_hists']:
+            if attr in read_paths:
+                setattr(self, attr, np.load(read_paths[attr]))
+            else:
+                setattr(self, attr, [])

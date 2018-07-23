@@ -41,10 +41,6 @@ class event_stats:
                 getattr(self, attr).append(calc)
         self.mask = temp_mask
 
-        for string in ['arrs', 'figs']:
-            if not os.path.exists('%s/%s' % ('arrs', 'figs')):
-                os.makedirs('%s/%s' % ('arrs', 'figs'))
-
     def event_avg(self, data, event):
 
         avg = data[event[2], :, event[0], event[1]]
