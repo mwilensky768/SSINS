@@ -1,22 +1,47 @@
 import numpy as np
 import scipy.stats
 import os
+import warnings
 
 
 class Hist:
 
-    def __init__(self, data, flag_choice, freq_array, pols, vis_units, obs,
-                 outpath, bins='auto'):
+    def __init__(self, data, flag_choice, freq_array=None, pols=None,
+                 vis_units=None, obs=None, outpath=None, bins='auto'):
 
-        args = {'flag_choice': flag_choice, 'freq_array': freq_array, 'pols': pols,
-                'vis_units': vis_units, 'obs': obs, 'outpath': outpath}
-        for attr in args:
-            setattr(self, attr, args[attr])
+        self.flag_choice = flag_choice
+
+        opt_args = {'freq_array': freq_array, 'pols': pols,
+                    'vis_units': vis_units, 'obs': obs, 'outpath': outpath}
+        for attr in ['obs', 'outpath']:
+            if opt_args[attr] is None:
+                warnings.warn('In order to save outputs, please supply\
+                               a value other than None for %s keyword' % (attr))
+        for attr in ['freq_array', 'pols', 'vis_units', 'obs', 'outpath']:
+            if opt_args[attr] is None:
+                warnings.warn('In order to use Catalog_Plot.py, please supply\
+                               a value other than None for %s keyword' % (attr))
+            else:
+                setattr(self, args[attr])
+
         self.counts, self.bins = self.hist_make(data, bins=bins)
         self.MLEs, self.fits, self.errors = self.rayleigh_mixture_fit(data)
         for string in ['arrs', 'figs']:
             if not os.path.exists('%s/%s' % (self.outpath, string)):
                 os.makedirs('%s/%s' % (self.outpath, string))
+
+    def save(self):
+
+        for string in ['arrs', 'figs', 'metadata']:
+            if not os.path.exists('%s/%s' % (self.outpath, string)):
+                os.makedirs('%s/%s' % (self.outpath, string))
+
+        for attr in ['counts', 'bins', 'fits', 'errors']:
+            np.save('%s/%s_%s_%s.npy', % (self.outpath, self.obs, self.flag_choice, attr))
+
+        np.ma.dump(self.MLEs, '%s/%s_%s_MLEs.npym', % (self.outpath, self.obs, self.flag_choice))
+        if hasattr(self, 'W_hist'):
+            np.ma.dump(self.W_hist, '%s/%s_%s_W_hist.npym' % (self.outpath, self.obs, self.flag_choice))
 
     def hist_make(self, data, bins='auto'):
         counts = np.zeros([data.shape[2], 2], dtype=object)

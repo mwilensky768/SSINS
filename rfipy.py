@@ -7,36 +7,48 @@ from VDH import Hist
 from INS import Spectrum
 from MF import match_filter
 from ES import event_stats
+import warnings
 
 
 class RFI:
 
-    def __init__(self, obs, inpath, outpath, filetype, bad_time_indices=None,
-                 read_kwargs={}, flag_choice=None, INS=None, custom=None):
+    def __init__(self, obs=None, outpath=None, UV=None, inpath=None, bad_time_indices=None,
+                 read_kwargs={}, flag_choice=None, INS=None, custom=None, diff=True):
 
-        # These lines establish the most basic attributes of the class, namely
-        # its base UVData object and the obsid
         self.obs = obs
-        self.UV = UVData()
         self.outpath = outpath
-        self.flag_choice = flag_choice
-        getattr(self.UV, 'read_%s' % (filetype))(inpath, **read_kwargs)
+        for attr in ['obs', 'outpath']:
+            if getattr(self, attr) is None:
+                warnings.warn('In order to save outputs and use Catalog_Plot.py,\
+                               please supply %s keyword other than None' % (attr))
 
-        # These ensure that every baseline reports at every time so that subtraction
-        # can go off without a hitch
-        assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
-        cond = np.all([self.UV.baseline_array[:self.UV.Nbls] ==
-                       self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
-                       for k in range(1, self.UV.Ntimes - 1)])
-        assert cond, 'Baseline array slices do not match!'
+        if UV is None:
+            assert inpath is not None, 'Either supply a valid UVData object for\
+                                        the UV keyword, or supply a path to a \
+                                        valid UVData file for the inpath keyword'
 
-        if bad_time_indices is not None:
-            bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
-            bool_ind[bad_time_indices] = 0
-            times = np.unique(self.UV.Ntimes)[bool_ind]
-            self.UV.select(times=times)
+            self.UV = UVData()
 
-        # This generalizes polarization references during plotting
+            self.flag_choice = flag_choice
+            if INS is not None:
+                self.INS = INS
+            self.UV.read(inpath, **read_kwargs)
+
+            assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
+            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] ==
+                           self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
+                           for k in range(1, self.UV.Ntimes - 1)])
+            assert cond, 'Baseline array slices do not match!'
+
+            if bad_time_indices is not None:
+                bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
+                bool_ind[bad_time_indices] = 0
+                times = np.unique(self.UV.Ntimes)[bool_ind]
+                self.UV.select(times=times)
+
+        else:
+            self.UV = UV
+
         pol_keys = range(-8, 5)
         pol_keys.remove(0)
         pol_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'I', 'Q',
@@ -45,15 +57,32 @@ class RFI:
         self.pols = [pol_dict[self.UV.polarization_array[k]] for k in
                      range(self.UV.Npols)]
 
-        self.UV.data_array = np.ma.masked_array(np.absolute(np.diff(np.reshape(self.UV.data_array,
-                                                [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
-                                                 self.UV.Nfreqs, self.UV.Npols]), axis=0)))
+        if diff:
+            self.UV.data_array = np.ma.masked_array(np.absolute(np.diff(np.reshape(self.UV.data_array,
+                                                    [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
+                                                     self.UV.Nfreqs, self.UV.Npols]), axis=0)))
 
-        self.UV.flag_array = np.reshape((self.UV.flag_array[:-self.UV.Nbls] +
-                                         self.UV.flag_array[self.UV.Nbls:]) > 0,
-                                        [self.UV.Ntimes - 1, self.UV.Nbls,
-                                         self.UV.Nspws, self.UV.Nfreqs,
-                                         self.UV.Npols]).astype(bool)
+            self.UV.flag_array = np.reshape((self.UV.flag_array[:-self.UV.Nbls] +
+                                             self.UV.flag_array[self.UV.Nbls:]) > 0,
+                                            [self.UV.Ntimes - 1, self.UV.Nbls,
+                                             self.UV.Nspws, self.UV.Nfreqs,
+                                             self.UV.Npols]).astype(bool)
+
+        if self.flag_choice is not None:
+            self.apply_flags(choice=flag_choice, INS=self.INS, custom=custom)
+
+    def apply_flags(self, choice=None, INS=None, custom=None):
+        if choice is 'Original':
+            self.UV.data_array.mask = self.UV.flag_array
+        elif choice is 'INS':
+            ind = np.where(INS.data.mask)
+            self.UV.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
+        elif choice is 'custom':
+            self.UV.data_array[custom] = np.ma.masked
+        elif np.any(self.UV.data_array.mask):
+            self.UV.data_array.mask = False
+
+    def save_meta(self):
 
         for subdir in ['arrs', 'figs', 'metadata']:
             path = '%s/%s/' % (self.outpath, subdir)
@@ -66,19 +95,11 @@ class RFI:
         for meta in ['vis_units', 'freq_array']:
             np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta), getattr(self.UV, meta))
 
-        if self.flag_choice is not None:
-            self.apply_flags(choice=flag_choice, INS=INS, custom=custom)
+    def save_data(self):
 
-    def apply_flags(self, choice=None, INS=None, custom=None):
-        if choice is 'Original':
-            self.UV.data_array.mask = self.UV.flag_array
-        elif choice is 'INS':
-            ind = np.where(INS.data.mask)
-            self.UV.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
-        elif choice is 'custom':
-            self.UV.data_array[custom] = np.ma.masked
-        elif np.any(self.UV.data_array.mask):
-            self.UV.data_array.mask = False
+        for attr in ['INS', 'VDH']:
+            if hasattr(self, attr):
+                getattr(getattr(self, attr), save)
 
     def INS_prepare(self):
         data = self.UV.data_array.mean(axis=1)
@@ -106,7 +127,7 @@ class RFI:
             for test in tests:
                 getattr(self.MF, 'apply_%s_test' % (test))
 
-    def BA_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
+    def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
                    N_thresh=0, alpha=None, tests=['match_filter'], choice=None,
                    custom=None, MC_iter=int(1e4), grid_dim=[50, 50], R_thresh=10):
 
@@ -124,11 +145,11 @@ class RFI:
                          self.UV.vis_units, self.obs, self.outpath)
         self.apply_flags(choice=choice, custom=custom)
 
-        BA_args = (self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
+        ES_args = (self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
                    self.UV.uvw_array, self.UV.vis_units, self.obs, self.pols,
                    self.outpath)
 
-        self.BA = bl_avg(*BA_args, MC_iter=MC_iter, grid_dim=grid_dim,
+        self.ES = bl_avg(*ES_args, MC_iter=MC_iter, grid_dim=grid_dim,
                          grid_lim=grid_lim, R_thresh=R_thresh)
 
-        self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.BA.mask)
+        self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.ES.mask)

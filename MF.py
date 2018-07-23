@@ -106,5 +106,7 @@ class match_filter:
 
     def apply_samp_thresh_test(self):
 
-        self.INS.data[:, np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh] = np.ma.masked
+        ind = np.where(np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh)[:-1]
+        self.INS.samp_thresh_events = np.vstack(ind).Transpose()
+        self.INS.data[:, ind] = np.ma.masked
         self.INS.data_ms = self.mean_subtract()
