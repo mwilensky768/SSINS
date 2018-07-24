@@ -1,10 +1,12 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 import scipy.stats
 import os
 import warnings
 
 
-class Hist:
+class VDH:
 
     def __init__(self, data, flag_choice, freq_array=None, pols=None,
                  vis_units=None, obs=None, outpath=None, bins='auto'):
@@ -37,9 +39,10 @@ class Hist:
                 os.makedirs('%s/%s' % (self.outpath, string))
 
         for attr in ['counts', 'bins', 'fits', 'errors']:
-            np.save('%s/%s_%s_%s.npy', % (self.outpath, self.obs, self.flag_choice, attr))
+            np.save('%s/%s_%s_%s.npy' % (self.outpath, self.obs, self.flag_choice, attr),
+                    getattr(self, attr))
 
-        np.ma.dump(self.MLEs, '%s/%s_%s_MLEs.npym', % (self.outpath, self.obs, self.flag_choice))
+        np.ma.dump(self.MLEs, '%s/%s_%s_MLEs.npym' % (self.outpath, self.obs, self.flag_choice))
         if hasattr(self, 'W_hist'):
             np.ma.dump(self.W_hist, '%s/%s_%s_W_hist.npym' % (self.outpath, self.obs, self.flag_choice))
 

@@ -1,6 +1,10 @@
+from __future__ import absolute_import, division, print_function
+
+from matplotlib import cm, use
+use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.colors import colors
-from matplotlib import cm
+import matplotlib.colors as colors
+import numpy as np
 
 
 class MidpointNormalize(colors.Normalize):
@@ -53,6 +57,8 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
     cbar.set_label(cbar_label)
 
     ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
 
     if xticks is not None:
         ax.set_xticks(xticks)
@@ -60,15 +66,24 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
         ax.set_yticks(yticks)
     if xticklabels is not None:
         ax.set_xticklabels(xticklabels)
-    elif xlabel is 'Frequency (Mhz)':
-        xticklabels = ['%.2f' % (freq_array[tick] * 10 ** (-6)) for tick in ax.get_xticks()]
-    elif xlabel is '$\lambda u$':
-        xticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_xticks()]
+    elif xlabel == 'Frequency (Mhz)':
+        xticklabels = ['%.2f' % (freq_array[tick] * 10 ** (-6)) for tick in ax.get_xticks()[1:-1].astype(int)]
+        xticklabels.insert(0, '0')
+        xticklabels.append('0')
+        ax.set_xticklabels(xticklabels)
+    elif xlabel == '$\lambda u$':
+        xticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_xticks()[1:-1].astype(int)]
+        xticklabels.insert(0, '0')
+        xticklabels.append('0')
+        ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
-    elif xlabel is '$\lambda v$':
-        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()]
+    elif ylabel == '$\lambda v$':
+        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()[1:-1]]
+        yticklabels.insert(0, '0')
+        yticklabels.append('0')
+        ax.set_yticklabels(yticklabels)
     if aspect is not None:
         ax.set_aspect(aspect)
     else:
-        ax.set_aspect(data.shape[1] / (data.shape[0] * 2.5))
+        ax.set_aspect(data.shape[1] / (data.shape[0] * 5))
