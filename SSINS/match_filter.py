@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from SSINS import util
+from scipy.special import erfcinv
 
 
 class MF:
@@ -12,18 +13,21 @@ class MF:
         self.N_thresh = N_thresh
         if sig_thresh is None:
             self.sig_thresh = self.INS.sig_thresh
+        else:
+            self.sig_thresh = sig_thresh
         if alpha is None:
             self.alpha = erfcinv(self.sig_thresh / np.sqrt(2))
         self.slice_dict = self.shape_slicer()
+        print(self.sig_thresh)
 
     def shape_slicer(self):
         slice_dict = [{} for i in range(self.INS.data.shape[1])]
-        for spw in self.INS.data.shape[1]:
+        for spw in range(self.INS.data.shape[1]):
             for shape in self.shape_dict:
                 if min(self.INS.freq_array[spw, :]) < min(self.shape_dict[shape]) or \
                    max(self.INS.freq_array[spw, :]) > max(self.shape_dict[shape]):
-                        slice_dict[spw][shape] = [slice(np.argmin(np.abs(freq_array[spw, :] - min(shape_dict[shape]))),
-                                                        np.argmin(np.abs(freq_array[spw, :] - max(shape_dict[shape]))))]
+                        slice_dict[spw][shape] = slice(np.argmin(np.abs(self.INS.freq_array[spw, :] - min(self.shape_dict[shape]))),
+                                                       np.argmin(np.abs(self.INS.freq_array[spw, :] - max(self.shape_dict[shape]))))
             slice_dict[spw]['streak'] = slice(None)
             slice_dict[spw]['point'] = None
 
@@ -40,10 +44,10 @@ class MF:
                 R = np.absolute(self.INS.data_ms[t, spw, f, p] / self.sig_thresh)
                 f = slice(f, f + 1)
             else:
-                N = np.count_nonzero(np.logical_not(self.INS.data_ms[:, spw, slice_dict[spw][shape]].mask), axis=1)
-                sliced_arr = np.absolute(self.INS.data_ms[:, spw, slice_dict[spw][shape]].mean(axis=1)) * np.sqrt(N)
+                N = np.count_nonzero(np.logical_not(self.INS.data_ms[:, spw, self.slice_dict[spw][shape]].mask), axis=1)
+                sliced_arr = np.absolute(self.INS.data_ms[:, spw, self.slice_dict[spw][shape]].mean(axis=1)) * np.sqrt(N)
                 t, p = np.unravel_index((sliced_arr / self.sig_thresh).argmax(), sliced_arr.shape)
-                f = slice_dict[spw][shape]
+                f = self.slice_dict[spw][shape]
                 R = sliced_arr[t, p] / self.sig_thresh
             if R > 1:
                 if R > R_max:
@@ -59,14 +63,14 @@ class MF:
                 p = 1
                 f_point = None
                 for f in range(self.INS.data.shape[2]):
-                    stat, p_point = Util.chisq(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                    stat, p_point = util.chisq(self.INS.hist_make(sig_thresh=self.sig_thresh,
                                                                   event=[spw, slice(f, f + 1)]))
                     if p_point < p:
                         p = p_point
                         f_point = f
             else:
-                stat, p = Util.chisq(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                        event=[spw, slice_dict[spw][shape]]))
+                stat, p = util.chisq(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                        event=[spw, self.slice_dict[spw][shape]]))
             if p < p_min:
                 p_min = p
                 shape_min = shape
@@ -83,8 +87,8 @@ class MF:
                 if R_max > -np.inf:
                     count += 1
                     self.INS.data[t_max, spw, f_max] = np.ma.masked
-                    self.INS.events.append([spw, f_max])
-                    self.INS.event_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh, event=[spw, f_max]))
+                    self.INS.match_events.append([spw, f_max])
+                    self.INS.match_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh, event=[spw, f_max]))
             self.INS.data_ms = self.INS.mean_subtract()
 
     def apply_chisq_test(self):
@@ -100,9 +104,9 @@ class MF:
                         self.INS.chisq_events.append([spw, slice(f_point, f_point + 1)])
                     else:
                         self.INS.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                       event=[spw, slice_dict[spw][shape]]))
-                        self.INS.data[:, spw, slice_dict[spw][shape_min]] = np.ma.masked
-                        self.INS.chisq_events.append([spw, slice_dict[spw][shape]])
+                                                                       event=[spw, self.slice_dict[spw][shape]]))
+                        self.INS.data[:, spw, self.slice_dict[spw][shape_min]] = np.ma.masked
+                        self.INS.chisq_events.append([spw, self.slice_dict[spw][shape]])
 
             self.INS.data_ms = self.mean_subtract()
 

@@ -6,7 +6,7 @@ import numpy as np
 
 def hist_fit(counts, bins, dist='norm'):
     N = np.sum(counts)
-    p = getattr(scipy.stats, 'dist').cdf(bins[1:]) - getattr(scipy.stats, 'dist').cdf(bins[:-1])
+    p = getattr(scipy.stats, dist).cdf(bins[1:]) - getattr(scipy.stats, dist).cdf(bins[:-1])
     exp = N * p
     var = N * p * (1 - p)
 

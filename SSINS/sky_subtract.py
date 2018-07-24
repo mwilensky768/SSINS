@@ -45,7 +45,7 @@ class SS:
             if bad_time_indices is not None:
                 bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
                 bool_ind[bad_time_indices] = 0
-                times = np.unique(self.UV.Ntimes)[bool_ind]
+                times = np.unique(self.UV.time_array)[bool_ind]
                 self.UV.select(times=times)
 
         else:
@@ -101,7 +101,7 @@ class SS:
 
         for attr in ['INS', 'VDH']:
             if hasattr(self, attr):
-                getattr(getattr(self, attr), save)
+                getattr(getattr(self, attr), save)()
 
     def INS_prepare(self):
         data = self.UV.data_array.mean(axis=1)
@@ -126,11 +126,11 @@ class SS:
 
         if not hasattr(self, 'INS'):
             self.INS_prepare()
-        self.MF = MF(self.INS, sig_thresh=None, shape_dict={}, N_thresh=0,
-                     alpha=None)
+        self.MF = MF(self.INS, sig_thresh=sig_thresh, shape_dict=shape_dict,
+                     N_thresh=N_thresh, alpha=alpha)
         if tests is not None:
             for test in tests:
-                getattr(self.MF, 'apply_%s_test' % (test))
+                getattr(self.MF, 'apply_%s_test' % (test))()
 
     def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
                    N_thresh=0, alpha=None, tests=['match_filter'], choice=None,
