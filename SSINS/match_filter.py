@@ -1,8 +1,10 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
-import Util
+from SSINS import util
 
 
-class match_filter:
+class MF:
 
     def __init__(self, INS, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None):
         self.INS = INS

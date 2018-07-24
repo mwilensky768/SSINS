@@ -1,16 +1,18 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 from pyuvdata import UVData
 import os
-import Util
+from SSINS import util
+from SSINS import INS
+from SSINS import MF
+from SSINS import VDH
+from SSINS import ES
 import scipy.stats
-from VDH import Hist
-from INS import Spectrum
-from MF import match_filter
-from ES import event_stats
 import warnings
 
 
-class RFI:
+class SS:
 
     def __init__(self, obs=None, outpath=None, UV=None, inpath=None, bad_time_indices=None,
                  read_kwargs={}, flag_choice=None, INS=None, custom=None, diff=True):
@@ -103,16 +105,19 @@ class RFI:
 
     def INS_prepare(self):
         data = self.UV.data_array.mean(axis=1)
-        Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask(axis=1)))
+        if np.any(self.UV.data_array.mask):
+            Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask), axis=1)
+        else:
+            Nbls = self.UV.Nbls * np.ones(data.shape)
         args = (data, Nbls, self.UV.freq_array, self.pols, self.UV.vis_units,
                 self.obs, self.outpath)
-        self.INS = Spectrum(*args)
+        self.INS = INS(*args)
 
     def VDH_prepare(self, bins='auto', MLE_axis=0, window=None, rev_ind_axis=None):
 
         args = (self.UV.data_array, self.flag_choice, self.UV.freq_array,
                 self.pols, self.UV.vis_units, self.obs, self.outpath)
-        self.VDH = Hist(*args, bins=bins, MLE_axis=MLE_axis)
+        self.VDH = VDH(*args, bins=bins, MLE_axis=MLE_axis)
         if window is not None:
             self.VDH.rev_ind(self.UV.data_array, window=window, axis=rev_ind_axis)
 
@@ -121,8 +126,8 @@ class RFI:
 
         if not hasattr(self, 'INS'):
             self.INS_prepare()
-        self.MF = match_filter(self.INS, sig_thresh=None, shape_dict={},
-                               N_thresh=0, alpha=None)
+        self.MF = MF(self.INS, sig_thresh=None, shape_dict={}, N_thresh=0,
+                     alpha=None)
         if tests is not None:
             for test in tests:
                 getattr(self.MF, 'apply_%s_test' % (test))

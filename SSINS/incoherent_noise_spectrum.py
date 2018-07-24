@@ -1,10 +1,12 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 from scipy.special import erfcinv
 import os
 import warnings
 
 
-class Spectrum:
+class INS:
     """
     This incoherent noise spectrum class, formed from an RFI object as an input.
     Outputs a data array
@@ -59,8 +61,8 @@ class Spectrum:
 
         if sig_thresh is None:
             sig_thresh = np.sqrt(2) * erfcinv(1. / np.prod(self.data.shape))
-        bins = np.linspace(-self.sig_thresh, self.sig_thresh,
-                           num=int(2 * np.ceil(2 * self.sig_thresh)))
+        bins = np.linspace(-sig_thresh, sig_thresh,
+                           num=int(2 * np.ceil(2 * sig_thresh)))
         if event is None:
             dat = self.data_ms
         else:
@@ -97,7 +99,8 @@ class Spectrum:
 
         for attr in ['freq_array', 'pols', 'vis_units', 'obs']:
             if getattr(self, attr) is not None:
-                np.save('%s/metadata/%s_%s.npy', % (self.outpath, self.obs, self.attr))
+                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, self.attr),
+                        getattr(self, attr))
 
     def read(self, read_paths):
 
