@@ -1,11 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import numpy as np
 from SSINS import image_plot, error_plot
 from SSINS import util
 from matplotlib import cm, use
 use('Agg')
 import matplotlib.pyplot as plt
-import os
 
 
 def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
@@ -53,17 +54,24 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
 
     for i, string in enumerate(['match_', 'chisq_']):
         if len(getattr(INS, '%shists' % (string))):
-            for k, hist in enumerate(getattr(INS, '%shists')):
+            for k, hist in enumerate(getattr(INS, '%shists' % string)):
                 fig, ax = plt.subplots(figsize=(14, 8))
                 exp, var = util.hist_fit(hist[0], hist[1])
                 x = hist[1][:-1] + 0.5 * np.diff(hist[1])
                 error_plot(fig, ax, x, hist[0], xlabel='Deviation ($\hat{\sigma}$)')
                 error_plot(fig, ax, x, exp, yerr=np.sqrt(var), xlabel='Deviation ($\hat{\sigma}$)')
                 fig.savefig('%s/figs/%s_spw%i_f%i_f%i_%sevent_hist_%i.png' %
-                            (outpath, INS.obs, event[0],
-                             event[1].indices(INS.shape[2])[0],
-                             event[1].indices(INS.shape[2])[1], string, k))
+                            (INS.outpath, INS.obs, getattr(INS, '%sevents' % string)[k][0],
+                             getattr(INS, '%sevents' % string)[k][1].indices(INS.data.shape[2])[0],
+                             getattr(INS, '%sevents' % string)[k][1].indices(INS.data.shape[2])[1], string, k))
                 plt.close(fig)
+
+
+def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None,
+            xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
+
+    INS_plot(MF.INS, xticks=None, yticks=None, vmin=None, vmax=None,
+             xticklabels=None, yticklabels=None, zero_mask=False, aspect=None)
 
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
