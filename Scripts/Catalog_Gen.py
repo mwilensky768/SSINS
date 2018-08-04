@@ -7,8 +7,8 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('obs', action='store', help='How the observation will be referred to')
-parser.add_argument('outpath', action='store', help='The base directory for saving all outputs')
 parser.add_argument('inpath', action='store', help='The path to the data file, and the file_type')
+parser.add_argument('outpath', action='store', help='The base directory for saving all outputs')
 args = parser.parse_args()
 
 # Here is a dictionary for the RFI class keywords
