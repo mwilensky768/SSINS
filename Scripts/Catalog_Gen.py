@@ -21,7 +21,7 @@ data_kwargs = {'read_kwargs': {'file_type': 'uvfits', 'ant_str': 'cross'},
 
 # The type of catalog you would like made - options are 'INS', 'VDH', 'MF', and 'ES'
 catalog_types = ['INS', ]
-shape_dict = {'TV%i' % k: np.load('/Users/mike_e_dubs/python_stuff/MJW-MWA/Useful_Information/TV%i_freqs.npy' % k) for k in [6, 7, 8]}
+# shape_dict = {'TV%i' % k: np.load('/Users/mike_e_dubs/python_stuff/MJW-MWA/Useful_Information/TV%i_freqs.npy' % k) for k in [6, 7, 8]}
 
 catalog_data_kwargs = {'INS': {},
                        'VDH': {},
