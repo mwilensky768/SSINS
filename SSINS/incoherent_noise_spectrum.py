@@ -12,37 +12,45 @@ class INS:
     Outputs a data array
     """
 
-    def __init__(self, data=None, Nbls_arr=None, freq_array=None, pols=None,
-                 vis_units=None, obs=None, outpath=None, match_events=[],
-                 match_hists=[], chisq_events=[], chisq_hists=[], read_paths={},
-                 samp_thresh_events=[]):
+    def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
+                 flag_choice=None, vis_units=None, obs=None, outpath=None,
+                 match_events=[], match_hists=[], chisq_events=[],
+                 chisq_hists=[], read_paths={}, samp_thresh_events=[]):
+
+        opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
+                    'outpath': outpath, 'flag_choice': flag_choice}
+        for attr in ['obs', 'outpath']:
+            if opt_args[attr] is None:
+                warnings.warn('In order to save outputs and use Catalog.py, \
+                               please supply %s attribute' % (attr))
+            else:
+                setattr(self, attr, opt_args[attr])
+
+        if flag_choice is None:
+            warnings.warn('flag_choice is set to None. If this does not ' +
+                          'reflect the flag_choice of the original data, ' +
+                          'then saved arrays will be mislabled')
+        self.flag_choice = flag_choice
 
         if not read_paths:
-            args = (data, Nbls_arr, freq_array)
+            args = (data, Nbls, freq_array)
             assert all([arg is not None for arg in args]),\
                 'Insufficient data given. You must supply a data array,\
                  a Nbls array of matching shape, and a freq_array of matching sub-shape'
             self.data = data
-            self.Nbls = Nbls_arr
+            self.Nbls = Nbls
             self.freq_array = freq_array
 
-            opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
-                        'outpath': outpath}
-            for attr in opt_args:
+            for attr in ['pols', 'vis_units']:
                 if opt_args[attr] is None:
                     warnings.warn('In order to use Catalog_Plot.py, with \
                                    appropriate labels please supply %s attribute' % (attr))
                 else:
                     setattr(self, attr, opt_args[attr])
-            for attr in ['obs', 'outpath']:
-                if opt_args[attr] is None:
-                    warnings.warn('In order to save outputs,\
-                                   please supply %s attribute' % (attr))
-                else:
-                    setattr(self, attr, opt_args[attr])
 
             kwargs = {'match_events': match_events, 'match_hists': match_hists,
-                      'chisq_events': chisq_events, 'chisq_hists': chisq_hists}
+                      'chisq_events': chisq_events, 'chisq_hists': chisq_hists,
+                      'samp_thresh_events': samp_thresh_events}
             for kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])
         else:
@@ -78,49 +86,53 @@ class INS:
         return(counts, bins, sig_thresh)
 
     def save(self):
-        tags = ['match_filter', 'chisq', 'samp_thresh']
+        tags = ['match', 'chisq', 'samp_thresh']
         tag = ''
         for subtag in tags:
             if len(getattr(self, '%s_events' % (subtag))):
                 tag += '_%s' % subtag
 
-        for string in ['arrs', 'figs', 'metadata']:
+        for string in ['arrs', 'metadata']:
             if not os.path.exists('%s/%s' % (self.outpath, string)):
                 os.makedirs('%s/%s' % (self.outpath, string))
 
         for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins']:
             np.ma.dump(getattr(self, attr),
-                       '%s/arrs/%s_INS_%s%s.npym' % (self.outpath, self.obs, attr, tag))
+                       '%s/arrs/%s_%s_INS_%s%s.npym' %
+                       (self.outpath, self.obs, self.flag_choice, attr, tag))
 
-        for attr in ['match_events', 'match_hists', 'chisq_events', 'chisq_hists']:
+        for attr in ['match_events', 'match_hists', 'chisq_events',
+                     'chisq_hists', 'samp_thresh_events']:
             if len(getattr(self, attr)):
-                np.save('%s/arrs/%s_%s.npy' % (self.outpath, self.obs, attr),
+                np.save('%s/arrs/%s_%s_INS_%s.npy' %
+                        (self.outpath, self.obs, self.flag_choice, attr),
                         getattr(self, attr))
 
-        for attr in ['freq_array', 'pols', 'vis_units', 'obs']:
-            if getattr(self, attr) is not None:
-                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, self.attr),
+        for attr in ['freq_array', 'pols', 'vis_units']:
+            if hasattr(self, attr):
+                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
                         getattr(self, attr))
 
     def read(self, read_paths):
 
-        for arg in ['data', 'Nbls_arr', 'freq_array']:
-            assert arg in read_paths, 'You must supply a path to a numpy loadable %s file' % (arg)
+        for arg in ['data', 'Nbls', 'freq_array']:
+            assert arg in read_paths,\
+                'You must supply a path to a numpy loadable %s file for read_paths entry' % (arg)
             setattr(self, arg, np.load(read_paths[arg]))
-        for attr in ['obs', 'pols', 'vis_units']:
+        for attr in ['pols', 'vis_units']:
             if attr not in read_paths:
                 warnings.warn('In order to use Catalog_Plot.py, please supply\
-                               path to numpy loadable %s attribute' % (attr))
-            else:
-                setattr(self, attr, read_paths[attr])
-        for attr in ['obs', 'outpath']:
-            if attr not in read_paths:
-                warnings.warn('In order to save outputs, please supply path to\
-                               numpy loadable %s attribute' % (attr))
+                               path to numpy loadable %s attribute for read_paths entry' % (attr))
             else:
                 setattr(self, attr, np.load(read_paths[attr]))
-        for attr in ['match_events', 'match_hists', 'chisq_events', 'chisq_hists']:
-            if attr in read_paths:
-                setattr(self, attr, np.load(read_paths[attr]))
-            else:
-                setattr(self, attr, [])
+        for attr in ['match', 'chisq']:
+            for subattr in ['events', 'hists']:
+                attribute = '%s_%s' % (attr, subattr)
+                if attribute in read_paths:
+                    setattr(self, attribute, np.load(read_paths[attribute]).tolist())
+                else:
+                    setattr(self, attribute, [])
+        if 'samp_thresh_events' in read_paths:
+            self.samp_thresh_events = np.load(read_paths['samp_thresh_events'])
+        else:
+            self.samp_thresh_events = []

@@ -14,13 +14,13 @@ args = parser.parse_args()
 # Here is a dictionary for the RFI class keywords
 
 data_kwargs = {'read_kwargs': {'file_type': 'uvfits', 'ant_str': 'cross'},
-               'bad_time_indices': [0, -1, -2, -3],
                'obs': args.obs,
                'inpath': args.inpath,
-               'outpath': args.outpath}
+               'outpath': args.outpath,
+               'bad_time_indices': [0, -1, -2, -3]}
 
 # The type of catalog you would like made - options are 'INS', 'VDH', 'MF', and 'ES'
-catalog_types = ['MF', ]
+catalog_types = ['INS', ]
 shape_dict = {'TV%i' % k: np.load('/Users/mike_e_dubs/python_stuff/MJW-MWA/Useful_Information/TV%i_freqs.npy' % k) for k in [6, 7, 8]}
 
 catalog_data_kwargs = {'INS': {},
@@ -43,3 +43,5 @@ sky_sub = SS(**data_kwargs)
 for cat in catalog_types:
     getattr(sky_sub, '%s_prepare' % (cat))(**catalog_data_kwargs[cat])
     getattr(cp, '%s_plot' % (cat))(getattr(sky_sub, cat), **catalog_plot_kwargs[cat])
+sky_sub.save_data()
+sky_sub.save_meta()

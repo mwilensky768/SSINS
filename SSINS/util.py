@@ -49,3 +49,26 @@ def chisq(counts, bins, weight='var', thresh=1, dist='norm'):
         p = scipy.stats.chi2.isf(stat, len(var) - 3)
 
     return(stat, p)
+
+
+def slc_len(slc, shape):
+    return(slc.indices(shape)[1] - slc.indices(shape)[0])
+
+
+def event_fraction(match_events, Ntimes):
+
+    shapes, counts = np.unique(np.array(match_events)[:, :-1], return_counts=True)
+    match_event_frac = {shape: count / Ntimes
+                        for shape, count in zip(shapes, counts)
+                        if type(shape) is slice}
+
+    return(match_event_frac)
+
+
+def make_obslist(obsfile):
+    with open(obsfile) as f:
+        obslist = f.read().split("\n")
+    while '' in obslist:
+        obslist.remove('')
+    obslist.sort()
+    return(obslist)

@@ -50,14 +50,15 @@ class SS:
 
         else:
             self.UV = UV
+            self.flag_choice = flag_choice
 
         pol_keys = range(-8, 5)
         pol_keys.remove(0)
         pol_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'I', 'Q',
                       'U', 'V']
         pol_dict = dict(zip(pol_keys, pol_values))
-        self.pols = [pol_dict[self.UV.polarization_array[k]] for k in
-                     range(self.UV.Npols)]
+        self.pols = np.array([pol_dict[self.UV.polarization_array[k]] for k in
+                              range(self.UV.Npols)])
 
         if diff:
             self.UV.data_array = np.ma.masked_array(np.absolute(np.diff(np.reshape(self.UV.data_array,
@@ -71,7 +72,7 @@ class SS:
                                              self.UV.Npols]).astype(bool)
 
         if self.flag_choice is not None:
-            self.apply_flags(choice=flag_choice, INS=self.INS, custom=custom)
+            self.apply_flags(choice=self.flag_choice, INS=self.INS, custom=custom)
 
     def apply_flags(self, choice=None, INS=None, custom=None):
         if choice is 'Original':
@@ -86,22 +87,24 @@ class SS:
 
     def save_meta(self):
 
-        for subdir in ['arrs', 'figs', 'metadata']:
-            path = '%s/%s/' % (self.outpath, subdir)
-            if not os.path.exists(path):
-                os.makedirs(path)
-            assert os.path.exists(path), 'Output directories could not be created. Check permissions.'
-
-        for meta in ['pols', 'obs']:
-            np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta), getattr(self, meta))
+        path = '%s/metadata'
+        if not os.path.exists(path):
+            os.makedirs(path)
+        assert os.path.exists(path), 'Output directory, %s, could not be created.\
+                                      Check permissions.' % (path)
+        np.save('%s/%s_pols.npy' % (path, self.obs), self.pols)
         for meta in ['vis_units', 'freq_array']:
-            np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta), getattr(self.UV, meta))
+            np.save('%s/metadata/%s_%s.npy' %
+                    (self.outpath, self.obs, meta), getattr(self.UV, meta))
+        for meta in ['time_array', 'lst_array']:
+            np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta),
+                    np.unique(getattr(self.UV, meta)))
 
     def save_data(self):
 
-        for attr in ['INS', 'VDH']:
+        for attr in ['INS', 'VDH', 'ES']:
             if hasattr(self, attr):
-                getattr(getattr(self, attr), save)()
+                getattr(getattr(self, attr), 'save')()
 
     def INS_prepare(self):
         data = self.UV.data_array.mean(axis=1)
@@ -109,20 +112,33 @@ class SS:
             Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask), axis=1)
         else:
             Nbls = self.UV.Nbls * np.ones(data.shape)
-        args = (data, Nbls, self.UV.freq_array, self.pols, self.UV.vis_units,
-                self.obs, self.outpath)
-        self.INS = INS(*args)
+        kwargs = {'data': data,
+                  'Nbls': Nbls,
+                  'freq_array': self.UV.freq_array,
+                  'pols': self.pols,
+                  'vis_units': self.UV.vis_units,
+                  'obs': self.obs,
+                  'outpath': self.outpath,
+                  'flag_choice': self.flag_choice}
+        self.INS = INS(**kwargs)
 
-    def VDH_prepare(self, bins='auto', MLE_axis=0, window=None, rev_ind_axis=None):
+    def VDH_prepare(self, bins='auto', fit=True, window=None, rev_ind_axis=None):
 
-        args = (self.UV.data_array, self.flag_choice, self.UV.freq_array,
-                self.pols, self.UV.vis_units, self.obs, self.outpath)
-        self.VDH = VDH(*args, bins=bins, MLE_axis=MLE_axis)
+        kwargs = {'data': self.UV.data_array,
+                  'flag_choice': self.flag_choice,
+                  'freq_array': self.UV.freq_array,
+                  'pols': self.pols,
+                  'vis_units': self.UV.vis_units,
+                  'obs': self.obs,
+                  'outpath': self.outpath,
+                  'bins': bins,
+                  'fit': fit}
+        self.VDH = VDH(**kwargs)
         if window is not None:
-            self.VDH.rev_ind(self.UV.data_array, window=window, axis=rev_ind_axis)
+            self.VDH.rev_ind(self.UV.data_array, window=window)
 
     def MF_prepare(self, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
-                   tests=['match_filter']):
+                   tests=['match']):
 
         if not hasattr(self, 'INS'):
             self.INS_prepare()
@@ -133,28 +149,43 @@ class SS:
                 getattr(self.MF, 'apply_%s_test' % (test))()
 
     def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
-                   N_thresh=0, alpha=None, tests=['match_filter'], choice=None,
-                   custom=None, MC_iter=int(1e4), grid_dim=[50, 50], R_thresh=10):
+                   N_thresh=0, alpha=None, tests=['match'], choice=None, fit=True,
+                   bins='auto', custom=None, MC_iter=int(1e4), grid_dim=50,
+                   R_thresh=10):
 
         # Make a match filtered noise spectrum if one is not already passed
         if INS is None:
-            self.MF_prepare(sig_thresh=sig_thresh, shape_dict=shape_dict,
-                            N_thresh=N_thresh, alpha=alpha, tests=tests)
+            MF_kwargs = {'sig_thresh': sig_thresh,
+                         'shape_dict': shape_dict,
+                         'N_thresh': N_thresh,
+                         'alpha': alpha,
+                         'tests': tests}
+            self.MF_prepare(**MF_kwargs)
         else:
             self.INS = INS
 
         # Calculate MLE's with the INS flags in mind, and then apply choice of
         # non-INS flags to the data
         self.apply_flags(choice='INS', INS=self.INS)
-        self.VDH_prepare(self.UV.data_array, 'INS', self.freq_array, self.pols,
-                         self.UV.vis_units, self.obs, self.outpath)
+        VDH_kwargs = {'bins': bins,
+                      'fit': fit}
+        self.VDH_prepare(**VDH_kwargs)
         self.apply_flags(choice=choice, custom=custom)
 
-        ES_args = (self.UV.data_array, self.INS.events, self.VDH.MLEs[-1],
-                   self.UV.uvw_array, self.UV.vis_units, self.obs, self.pols,
-                   self.outpath)
+        ES_kwargs = {'data': self.UV.data_array,
+                     'flag_choice': choice,
+                     'events': self.INS.match_events,
+                     'MLE': self.VDH.MLEs[-1],
+                     'uvw_array': self.UV.uvw_array,
+                     'vis_units': self.UV.vis_units,
+                     'obs': self.obs,
+                     'pols': self.pols,
+                     'outpath': self.outpath,
+                     'MC_iter': MC_iter,
+                     'grid_dim': grid_dim,
+                     'grid_lim': grid_lim,
+                     'R_thresh': R_thresh}
 
-        self.ES = bl_avg(*ES_args, MC_iter=MC_iter, grid_dim=grid_dim,
-                         grid_lim=grid_lim, R_thresh=R_thresh)
+        self.ES = ES(**ES_kwargs)
 
         self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.ES.mask)

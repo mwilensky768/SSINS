@@ -38,6 +38,12 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                     'mask_color': 'black',
                     'cmap': cm.coolwarm}]
 
+    tags = ['match', 'chisq', 'samp_thresh']
+    tag = ''
+    for subtag in tags:
+        if len(getattr(INS, '%s_events' % (subtag))):
+            tag += '_%s' % subtag
+
     for i, string in enumerate(['', '_ms']):
         for spw in range(INS.data.shape[1]):
             fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3])
@@ -49,7 +55,7 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                            title=INS.pols[pol], freq_array=INS.freq_array[spw],
                            **im_kwargs)
             plt.tight_layout()
-            fig.savefig('%s/figs/%s_spw%i_INS%s.png' % (INS.outpath, INS.obs, spw, string))
+            fig.savefig('%s/figs/%s_spw%i_INS%s%s.png' % (INS.outpath, INS.obs, spw, string, tag))
             plt.close(fig)
 
     for i, string in enumerate(['match_', 'chisq_']):
@@ -111,11 +117,12 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
             for k in range(1 + bool(VDH.flag_choice)):
                 x = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
                 for attr in ['counts', 'fits']:
-                    if attr is 'fits':
-                        hist_kwargs['fits']['yerr'] = VDH.errors[spw, k]
-                    error_plot(fig, ax[0], x, getattr(VDH, attr)[spw, k],
-                               xlabel='Amplitude (%s)' % (VDH.vis_units),
-                               label=labels[attr][k], **hist_kwargs[attr])
+                    if hasattr(VDH, attr):
+                        if attr is 'fits':
+                            hist_kwargs['fits']['yerr'] = VDH.errors[spw, k]
+                        error_plot(fig, ax[0], x, getattr(VDH, attr)[spw, k],
+                                   xlabel='Amplitude (%s)' % (VDH.vis_units),
+                                   label=labels[attr][k], **hist_kwargs[attr])
             if hasattr(VDH, W_hist):
                 for pol in range(len(VDH.pols)):
                     image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, spw, :, pol],

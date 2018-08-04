@@ -18,7 +18,6 @@ class MF:
         if alpha is None:
             self.alpha = erfcinv(self.sig_thresh / np.sqrt(2))
         self.slice_dict = self.shape_slicer()
-        print(self.sig_thresh)
 
     def shape_slicer(self):
         slice_dict = [{} for i in range(self.INS.data.shape[1])]
@@ -75,9 +74,9 @@ class MF:
                 p_min = p
                 shape_min = shape
 
-        return(p_min, shape_min)
+        return(p_min, shape_min, f_point)
 
-    def apply_match_filter_test(self):
+    def apply_match_test(self):
 
         count = 1
         while count:
@@ -87,32 +86,36 @@ class MF:
                 if R_max > -np.inf:
                     count += 1
                     self.INS.data[t_max, spw, f_max] = np.ma.masked
-                    self.INS.match_events.append([spw, f_max])
-                    self.INS.match_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh, event=[spw, f_max]))
+                    self.INS.match_events.append([spw, f_max, t_max])
+                    self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                                        event=[spw, f_max])))
             self.INS.data_ms = self.INS.mean_subtract()
+        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
 
     def apply_chisq_test(self):
         p_min = 0
-        while p_min < 1:
+        while p_min < self.alpha:
             for spw in range(self.INS.data.shape[1]):
-                p_min, shape_min = chisq_test(self, spw)
+                p_min, shape_min, f_point = chisq_test(self, spw)
                 if p_min < self.alpha:
                     if shape_min is 'point':
-                        self.INS.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                       event=[spw, slice(f, f + 1)]))
+                        self.INS.chisq_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                                            event=[spw, slice(f_point, f_point + 1)])))
                         self.INS.data[:, spw, slice(f_point, f_point + 1)] = np.ma.masked
                         self.INS.chisq_events.append([spw, slice(f_point, f_point + 1)])
                     else:
-                        self.INS.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                       event=[spw, self.slice_dict[spw][shape]]))
+                        self.INS.chisq_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                                            event=[spw, self.slice_dict[spw][shape]])))
                         self.INS.data[:, spw, self.slice_dict[spw][shape_min]] = np.ma.masked
                         self.INS.chisq_events.append([spw, self.slice_dict[spw][shape]])
 
             self.INS.data_ms = self.mean_subtract()
+        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
 
     def apply_samp_thresh_test(self):
 
         ind = np.where(np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh)[:-1]
-        self.INS.samp_thresh_events = np.vstack(ind).Transpose()
-        self.INS.data[:, ind] = np.ma.masked
-        self.INS.data_ms = self.mean_subtract()
+        self.INS.samp_thresh_events = np.vstack(ind).T
+        self.INS.data[:, ind[0], ind[1]] = np.ma.masked
+        self.INS.data_ms = self.INS.mean_subtract()
+        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
