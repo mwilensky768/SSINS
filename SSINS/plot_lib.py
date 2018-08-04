@@ -87,3 +87,23 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
         ax.set_aspect(aspect)
     else:
         ax.set_aspect(data.shape[1] / (data.shape[0] * 5))
+
+
+def scatter_plot_2d(fig, ax, x, y, title='', xlabel='', ylabel='', c=None,
+                    ylim=None, cmap=None, vmin=None, vmax=None, norm=None,
+                    cbar_label=None, s=None, xticks=None, yticks=None):
+
+    cax = ax.scatter(x, y, c=c, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm, s=s)
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if xticks is not None:
+        ax.set_xticks(xticks)
+    if yticks is not None:
+        ax.set_yticks(yticks)
+    if cmap is not None:
+        cbar = fig.colorbar(cax, ax=ax)
+        cbar.set_label(cbar_label)
+    if ylim:
+        ax.set_ylim(ylim)

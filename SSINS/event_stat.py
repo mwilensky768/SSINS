@@ -1,55 +1,98 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+import warnings
+import os
 
 
 class ES:
 
-    def __init__(self, data, events, MLE, uvw_array, vis_units, obs,
-                 pols, outpath, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
-                 R_thresh=10):
+    def __init__(self, data=None, flag_choice=None, events=None, MLE=None,
+                 uvw_array=None, vis_units=None, obs=None, pols=None,
+                 outpath=None, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
+                 R_thresh=10, read_paths={}):
 
-        args = {'events': events, 'MLE': MLE, 'uvw_array': uvw_array,
-                'vis_units': vis_units, 'obs': obs, 'pols': pols, 'outpath': outpath}
-        kwargs = {'MC_iter': MC_iter, 'grid_dim': grid_dim, 'R_thresh': R_thresh}
+        if not read_paths:
 
-        for attr in args:
-            setattr(self, attr, args[attr])
-        for attr in kwargs:
-            setattr(self, attr, kwargs[attr])
+            kwargs = {'events': events, 'MLE': MLE, 'uvw_array': uvw_array,
+                      'vis_units': vis_units, 'obs': obs, 'pols': pols,
+                      'outpath': outpath, 'flag_choice': flag_choice,
+                      'MC_iter': MC_iter, 'grid_dim': grid_dim,
+                      'R_thresh': R_thresh}
 
-        if grid_lim is None:
-            self.grid_lim = [self.uvw_array[:, :-1].min(), self.uvw_array[:, :-1].max()]
+            for attr in kwargs:
+                setattr(self, attr, kwargs[attr])
+
+            if grid_lim is None:
+                self.grid_lim = [self.uvw_array[:, :-1].min(),
+                                 self.uvw_array[:, :-1].max()]
+            else:
+                self.grid_lim = grid_lim
+
+            self.grid = np.linspace(min(self.grid_lim), max(self.grid_lim),
+                                    num=grid_dim + 1)
+            self.Nbls = data.shape[1]
+            self.Nfreqs = data.shape[3]
+            temp_mask = np.zeros(data.shape, dtype=bool)
+
+            attr_list = ['avgs', 'counts', 'exp_counts', 'exp_error', 'bins',
+                         'uv_grid', 'cutoffs']
+            for attr in attr_list:
+                setattr(self, attr, np.array([]))
+
+            for event in events:
+                avg, counts, exp_counts, exp_error, bins = self.event_avg(data, event)
+                lcut, rcut = self.cutoff(counts, bins, exp_counts, event, R_thresh)
+                cut_cond = np.logical_or(avg > rcut, avg < lcut)
+                cut_ind = np.where(cut_cond)
+                temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
+                uv_grid = self.bl_grid(avg, event)
+                for attr, calc in zip(attr_list, (avg, counts, exp_counts, exp_error, bins, uv_grid, [lcut, rcut])):
+                    np.append(getattr(self, attr), calc)
+            self.mask = temp_mask
         else:
-            self.grid_lim = grid_lim
+            self.read(read_paths)
 
-        self.grid = np.linspace(min(grid_lim), max(grid_lim), num=grid_dim + 1)
-        self.Nbls = data.shape[1]
-        self.Nfreqs = data.shape[3]
-        temp_mask = np.zeros(data.shape)
+    def save(self):
+        for subdir in ['arrs', 'metadata']:
+            path = '%s/%s' % (self.outpath, subdir)
+            if not os.path.exists(path):
+                os.makedirs(path)
 
-        attr_list = ['avgs', 'counts', 'exp_counts', 'exp_error', 'bins', 'uv_grid', 'cutoffs']
-        for attr in attr_list:
-            setattr(self, attr, [])
+        for attr in ['vis_units', 'pols', 'grid', 'Nfreqs']:
+            if hasattr(self, attr):
+                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
+                        getattr(self, attr))
 
-        for event in events:
-            avg, counts, exp_counts, exp_error, bins = self.event_avg(data, event)
-            lcut, rcut = self.cutoff(counts, bins, exp_counts, event, R_thresh)
-            cut_cond = np.logical_or(avg > rcut, avg < lcut)
-            cut_ind = np.where(cut_cond)
-            temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
-            uv_grid = self.bl_grid(avg, event)
-            for attr, calc in zip(attr_list, (avg, counts, exp_counts, exp_error, bins, uv_grid, [lcut, rcut])):
-                getattr(self, attr).append(calc)
-        self.mask = temp_mask
+        for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs']:
+            np.save('%s/arrs/%s_%s_%s.npy' %
+                    (self.outpath, self.obs, self.flag_choice, attr),
+                    getattr(self, attr))
+        for attr in ['avgs', 'uv_grid']:
+            np.ma.dump(getattr(self, attr), '%s/arrs/%s_%s_%s.npym' %
+                       (self.outpath, self.obs, self.flag_choice, attr))
+
+    def read(self, read_paths):
+        for attr in ['vis_units', 'pols', 'grid', 'Nfreqs']:
+            if attr not in read_paths or read_paths[attr] is None:
+                warnings.warn('In order to use SSINS.Catalog_Plot, please supply\
+                               numpy loadable path for %s read_paths entry' % attr)
+            else:
+                setattr(self, attr, np.load(read_paths[attr]))
+        for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs',
+                     'avgs', 'uv_grid']:
+            assert attr in read_paths and read_paths[attr] is not None, \
+                'Insufficient data. You must supply numpy loadable path for %s \
+                 read_paths entry'
+            setattr(self, attr, np.load(read_paths[attr]))
 
     def event_avg(self, data, event):
 
         avg = data[event[2], :, event[0], event[1]]
-        init_shape = bl_avg.shape
-        init_mask = bl_avg.mask
-        avg = bl_avg.mean(axis=1)
-        counts, bins = np.histogram(bl_avg[np.logical_not(bl_avg.mask)], bins='auto')
+        init_shape = avg.shape
+        init_mask = avg.mask
+        avg = avg.mean(axis=1)
+        counts, bins = np.histogram(avg[np.logical_not(avg.mask)], bins='auto')
         sim_counts = np.zeros((self.MC_iter, len(counts)))
         # Simulate some averaged rayleigh data and histogram - take averages/variances of histograms
         for i in range(self.MC_iter):
@@ -78,13 +121,13 @@ class ES:
         else:
             rcut = bins[-1]
 
-        return(l_cut, r_cut)
+        return(lcut, rcut)
 
     def bl_grid(self, avg, event):
 
         u = self.uvw_array[event[2] * self.Nbls:(event[2] + 1) * self.Nbls, 0]
         v = self.uvw_array[event[2] * self.Nbls:(event[2] + 1) * self.Nbls, 1]
-        uv_grid = np.zeros(len(self.pols), self.grid_dim, self.grid_dim)
+        uv_grid = np.zeros((len(self.pols), self.grid_dim, self.grid_dim))
         for i in range(self.grid_dim):
             for k in range(self.grid_dim):
                 uv_grid[:, -k, i] = avg[np.logical_and(np.logical_and(u < self.grid[i + 1], self.grid[i] < u),
