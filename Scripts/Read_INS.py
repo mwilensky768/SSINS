@@ -32,7 +32,7 @@ shape_dict = {}
 for label, min, max in zip(args.labels, args.mins, args.maxs):
     shape_dict[label] = np.array([min, max])
 
-data_arrs = glob.glob('%s/arrs/*data*' % args.inpath)
+data_arrs = glob.glob('%s/arrs/*data.npym' % args.inpath)
 mf_kwargs = {}
 for attr in ['sig_thresh', 'N_thresh']:
     if hasattr(args, attr):

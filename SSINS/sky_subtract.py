@@ -14,8 +14,9 @@ import warnings
 
 class SS:
 
-    def __init__(self, obs=None, outpath=None, UV=None, inpath=None, bad_time_indices=None,
-                 read_kwargs={}, flag_choice=None, INS=None, custom=None, diff=True):
+    def __init__(self, obs=None, outpath=None, UV=None, inpath=None,
+                 bad_time_indices=None, read_kwargs={}, flag_choice=None,
+                 INS=None, custom=None, diff=True):
 
         self.obs = obs
         self.outpath = outpath
@@ -32,8 +33,6 @@ class SS:
             self.UV = UVData()
 
             self.flag_choice = flag_choice
-            if INS is not None:
-                self.INS = INS
             self.UV.read(inpath, **read_kwargs)
 
             assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
@@ -72,10 +71,10 @@ class SS:
                                              self.UV.Npols]).astype(bool)
 
         if self.flag_choice is not None:
-            self.apply_flags(choice=self.flag_choice, INS=self.INS, custom=custom)
+            self.apply_flags(choice=self.flag_choice, INS=INS, custom=custom)
 
     def apply_flags(self, choice=None, INS=None, custom=None):
-        if choice is 'Original':
+        if choice is 'original':
             self.UV.data_array.mask = self.UV.flag_array
         elif choice is 'INS':
             ind = np.where(INS.data.mask)
@@ -122,7 +121,7 @@ class SS:
                   'flag_choice': self.flag_choice}
         self.INS = INS(**kwargs)
 
-    def VDH_prepare(self, bins='auto', fit=True, window=None, rev_ind_axis=None):
+    def VDH_prepare(self, bins='auto', fit=True, window=None):
 
         kwargs = {'data': self.UV.data_array,
                   'flag_choice': self.flag_choice,
@@ -135,7 +134,7 @@ class SS:
                   'fit': fit}
         self.VDH = VDH(**kwargs)
         if window is not None:
-            self.VDH.rev_ind(self.UV.data_array, window=window)
+            self.VDH.rev_ind(self.UV.data_array, window)
 
     def MF_prepare(self, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
                    tests=['match']):
@@ -184,7 +183,8 @@ class SS:
                      'MC_iter': MC_iter,
                      'grid_dim': grid_dim,
                      'grid_lim': grid_lim,
-                     'R_thresh': R_thresh}
+                     'R_thresh': R_thresh,
+                     'freq_array': self.UV.freq_array}
 
         self.ES = ES(**ES_kwargs)
 

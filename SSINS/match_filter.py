@@ -114,6 +114,7 @@ class MF:
 
     def apply_samp_thresh_test(self):
 
+        assert self.N_thresh < self.INS.data.shape[0], 'N_thresh is greater than the number of times. This would result in flagging the entire observation regardless of content.'
         ind = np.where(np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh)[:-1]
         self.INS.samp_thresh_events = np.vstack(ind).T
         self.INS.data[:, ind[0], ind[1]] = np.ma.masked

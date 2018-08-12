@@ -47,15 +47,18 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
     for i, string in enumerate(['', '_ms']):
         for spw in range(INS.data.shape[1]):
             fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3])
+            if type(ax) is not np.ndarray:
+                ax = np.array([ax])
             fig.suptitle('%s, spw%i' % (suptitles[i], spw))
             im_kwargs.update(data_kwargs[i])
-            for pol in range(4):
+            for pol in range(INS.data.shape[3]):
                 image_plot(fig, ax[pol],
                            getattr(INS, 'data%s' % (string))[:, spw, :, pol],
                            title=INS.pols[pol], freq_array=INS.freq_array[spw],
                            **im_kwargs)
             plt.tight_layout()
-            fig.savefig('%s/figs/%s_spw%i_INS%s%s.png' % (INS.outpath, INS.obs, spw, string, tag))
+            fig.savefig('%s/figs/%s_spw%i_%s_INS%s%s.png' %
+                        (INS.outpath, INS.obs, spw, INS.flag_choice, string, tag))
             plt.close(fig)
 
     for i, string in enumerate(['match_', 'chisq_']):
@@ -112,7 +115,8 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
             else:
                 fig, ax = plt.subplots(figsize=(14, 8))
                 ax = [ax, ]
-            fig.suptitle('%s Visibility Difference Histogram, spw%i, %s' % (obs, spw, labels[i]))
+            fig.suptitle('%s Visibility Difference Histogram, spw%i, %s' %
+                         (obs, spw, labels['counts'][i]))
             x = []
             for k in range(1 + bool(VDH.flag_choice)):
                 x = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
@@ -128,18 +132,19 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
                     image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, spw, :, pol],
                                title=VDH.pols[pol], freq_array=VDH.freq_array[spw],
                                **im_kwargs)
-            fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' % (VDH.outpath, obs, spw, fit_tags[i]))
+            fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' %
+                        (VDH.outpath, obs, spw, fit_tags[i]))
             plt.close(fig)
 
 
 def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
-            zero_mask=False, mask_color='white', aspect=None):
+            zero_mask=False, mask_color='white', aspect=None, vmin=None, vmax=None):
 
     im_kwargs = {'vmin': vmin,
                  'vmax': vmax,
                  'xlabel': '$\lambda u$ (m)',
                  'ylabel': '$\lambda v$ (m)',
-                 'cbar_label': 'Amplitude (%s)' % (vis_units),
+                 'cbar_label': 'Amplitude (%s)' % (ES.vis_units),
                  'xticks': xticks,
                  'yticks': yticks,
                  'xticklabels': xticklabels,
@@ -151,28 +156,35 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
     hist_labels = ['Measurements', 'Fit']
     fig_tags = ['hist', 'grid']
 
-    for i, event in enumerate(ES.events):
-        title_tup = (ES.obs,
-                     ES.freq_array[event[0], event[1].indices(ES.Nfreqs)[0]] * 10 ** (-6),
-                     ES.freq_array[event[0], event[1].indices(ES.Nfreqs)[1]] * 10 ** (-6),
-                     event[2])
-        yerr = [None, ES.errors[i]]
-        fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
-        fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols))
-        fig_im.suptitle('%s Event-Averaged Grid, f%.2f Mhz - f%.2f Mhz, t%i' %
-                        title_tup)
-        x = ES.bins[i][:-1] + 0.5 * np.diff(ES.bins[i])
-        for k, string in enumerate(['', 'exp_']):
-            error_plot(fig_hist, ax_hist, x, getattr(ES, '%scounts' % (string))[i],
-                       xlabel='Amplitude (%s)' % (ES.vis_units),
-                       label=hist_labels[k], yerr=yerr[k],
-                       title='%s Event-Averaged Histogram, f%.2f Mhz - f%.2f Mhz, t%i' %
-                       title_tup)
-        for cut in ES.cutoffs[i]:
-            ax_hist.axvline(x=cut, color='black')
-        for k in range(len(ES.pols)):
-            image_plot(fig_im, ax_im, ES.uv_grid[k], title=ES.pols[k],
-                       **im_kwargs)
+    if ES.events is not None and len(ES.events):
+        for i, event in enumerate(ES.events):
+            title_tup = (ES.obs,
+                         ES.freq_array[event[0], event[1].indices(len(ES.freq_array[0]))[0]] * 10 ** (-6),
+                         ES.freq_array[event[0], event[1].indices(len(ES.freq_array[0]))[1] - 1] * 10 ** (-6),
+                         event[2])
+            yerr = [None, ES.exp_error[i]]
+            fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
+            fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols))
+            if type(ax_im) is not np.ndarray:
+                ax_im = np.array([ax_im])
+            fig_im.suptitle('%s Event-Averaged Grid, f%.2f Mhz - f%.2f Mhz, t%i' %
+                            title_tup)
+            x = ES.bins[i][:-1] + 0.5 * np.diff(ES.bins[i])
+            for k, string in enumerate(['', 'exp_']):
+                error_plot(fig_hist, ax_hist, x, getattr(ES, '%scounts' % (string))[i],
+                           xlabel='Amplitude (%s)' % (ES.vis_units),
+                           label=hist_labels[k], yerr=yerr[k],
+                           title='%s Event-Averaged Histogram, f%.2f Mhz - f%.2f Mhz, t%i' %
+                           title_tup)
+            for cut in ES.cutoffs[i]:
+                ax_hist.axvline(x=cut, color='black')
+            for k in range(len(ES.pols)):
+                image_plot(fig_im, ax_im[k], ES.uv_grid[i][k], title=ES.pols[k],
+                           **im_kwargs)
 
-        fig_hist.savefig('%s/figs/%s_hist_%i.png' % (ES.outpath, ES.obs, i))
-        fig_im.savefig('%s/figs/%s_grid_%i.png' % (ES.outpath, ES.obs, i))
+            fig_hist.savefig('%s/figs/%s_hist_%i.png' % (ES.outpath, ES.obs, i))
+            fig_im.savefig('%s/figs/%s_grid_%i.png' % (ES.outpath, ES.obs, i))
+            plt.close(fig_hist)
+            plt.close(fig_im)
+    else:
+        print('No events in ES class. Not making plots.')

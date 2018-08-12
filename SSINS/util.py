@@ -55,12 +55,16 @@ def slc_len(slc, shape):
     return(slc.indices(shape)[1] - slc.indices(shape)[0])
 
 
-def event_fraction(match_events, Ntimes):
+def event_fraction(match_events, Nfreqs, Ntimes):
 
     shapes, counts = np.unique(np.array(match_events)[:, :-1], return_counts=True)
-    match_event_frac = {shape: count / Ntimes
-                        for shape, count in zip(shapes, counts)
-                        if type(shape) is slice}
+    # Explicit for loop since problem with dict comp involving unhashable types
+    keys, values = [], []
+    for i, shape in enumerate(shapes):
+        if type(shape) is slice:
+            keys.append(tuple([shape.indices(Nfreqs)[k] for k in range(2)]))
+            values.append(counts[i] / Ntimes)
+    match_event_frac = dict(zip(keys, values))
 
     return(match_event_frac)
 
