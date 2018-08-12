@@ -51,7 +51,7 @@ class SS:
             self.UV = UV
             self.flag_choice = flag_choice
 
-        pol_keys = range(-8, 5)
+        pol_keys = list(range(-8, 5))
         pol_keys.remove(0)
         pol_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'I', 'Q',
                       'U', 'V']

@@ -31,9 +31,7 @@ install:
   - conda install -c conda-forge healpy python-casacore pycodestyle coveralls pyuvdata
   - conda list
 script:
-  - nosetests SSINS --with-coverage --cover-package=SSINS
-  - python -m doctest docs/tutorial.rst
-  - pycodestyle --ignore=E501,W503
+  - nosetests SSINS --with-coverage --cover-package=SSINS --nolog
 
 after_success:
     - coveralls
