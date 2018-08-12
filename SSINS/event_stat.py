@@ -10,7 +10,7 @@ class ES:
     def __init__(self, data=None, flag_choice=None, events=None, MLE=None,
                  uvw_array=None, vis_units=None, obs=None, pols=None,
                  outpath=None, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
-                 R_thresh=10, read_paths={}):
+                 R_thresh=10, read_paths={}, freq_array=None):
 
         if not read_paths:
 
@@ -18,7 +18,7 @@ class ES:
                       'vis_units': vis_units, 'obs': obs, 'pols': pols,
                       'outpath': outpath, 'flag_choice': flag_choice,
                       'MC_iter': MC_iter, 'grid_dim': grid_dim,
-                      'R_thresh': R_thresh}
+                      'R_thresh': R_thresh, 'freq_array': freq_array}
 
             for attr in kwargs:
                 setattr(self, attr, kwargs[attr])
@@ -32,24 +32,30 @@ class ES:
             self.grid = np.linspace(min(self.grid_lim), max(self.grid_lim),
                                     num=grid_dim + 1)
             self.Nbls = data.shape[1]
-            self.Nfreqs = data.shape[3]
             temp_mask = np.zeros(data.shape, dtype=bool)
 
             attr_list = ['avgs', 'counts', 'exp_counts', 'exp_error', 'bins',
                          'uv_grid', 'cutoffs']
             for attr in attr_list:
-                setattr(self, attr, np.array([]))
+                setattr(self, attr, [])
 
-            for event in events:
-                avg, counts, exp_counts, exp_error, bins = self.event_avg(data, event)
-                lcut, rcut = self.cutoff(counts, bins, exp_counts, event, R_thresh)
-                cut_cond = np.logical_or(avg > rcut, avg < lcut)
-                cut_ind = np.where(cut_cond)
-                temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
-                uv_grid = self.bl_grid(avg, event)
-                for attr, calc in zip(attr_list, (avg, counts, exp_counts, exp_error, bins, uv_grid, [lcut, rcut])):
-                    np.append(getattr(self, attr), calc)
-            self.mask = temp_mask
+            if events is not None and len(events):
+                for event in events:
+                    avg, counts, exp_counts, exp_error, bins = self.event_avg(data, event)
+                    lcut, rcut = self.cutoff(counts, bins, exp_counts, event, R_thresh)
+                    cut_cond = np.logical_or(avg > rcut, avg < lcut)
+                    cut_ind = np.where(cut_cond)
+                    temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
+                    uv_grid = self.bl_grid(avg, event)
+                    for attr, calc in zip(attr_list, (avg, counts, exp_counts,
+                                                      exp_error, bins, uv_grid,
+                                                      np.array([lcut, rcut]))):
+                        getattr(self, attr).append(calc)
+                for attr in attr_list:
+                    setattr(self, attr, np.array(getattr(self, attr)))
+                self.mask = temp_mask
+            else:
+                print('No events given to ES class. Not computing flags.')
         else:
             self.read(read_paths)
 
@@ -59,7 +65,7 @@ class ES:
             if not os.path.exists(path):
                 os.makedirs(path)
 
-        for attr in ['vis_units', 'pols', 'grid', 'Nfreqs']:
+        for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
             if hasattr(self, attr):
                 np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
                         getattr(self, attr))
@@ -73,7 +79,7 @@ class ES:
                        (self.outpath, self.obs, self.flag_choice, attr))
 
     def read(self, read_paths):
-        for attr in ['vis_units', 'pols', 'grid', 'Nfreqs']:
+        for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
             if attr not in read_paths or read_paths[attr] is None:
                 warnings.warn('In order to use SSINS.Catalog_Plot, please supply\
                                numpy loadable path for %s read_paths entry' % attr)
@@ -98,7 +104,6 @@ class ES:
         for i in range(self.MC_iter):
             sim_data = np.random.rayleigh(size=init_shape,
                                           scale=np.sqrt(self.MLE[:, event[0], event[1]]))
-            sim_data = np.ma.masked_where(init_mask, sim_data)
             sim_data = sim_data.mean(axis=1)
             sim_counts[i, :], _ = np.histogram(sim_data, bins=bins)
         exp_counts = sim_counts.mean(axis=0)

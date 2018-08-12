@@ -120,7 +120,7 @@ class VDH:
         MLEs = np.array(MLEs)
         return(MLEs, fits, errors)
 
-    def rev_ind(data, window):
+    def rev_ind(self, data, window):
         self.W_hist = []
         for i in range(1 + bool(self.flag_choice)):
             W = np.zeros(data.shape)

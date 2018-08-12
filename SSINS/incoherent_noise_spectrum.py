@@ -61,6 +61,8 @@ class INS:
 
     def mean_subtract(self):
 
+        # This constant is determined by the Rayleigh distribution, which
+        # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
         MS = (self.data / self.data.mean(axis=0) - 1) * np.sqrt(self.Nbls / C)
         return(MS)

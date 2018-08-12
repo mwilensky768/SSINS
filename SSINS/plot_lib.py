@@ -91,9 +91,11 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
 
 def scatter_plot_2d(fig, ax, x, y, title='', xlabel='', ylabel='', c=None,
                     ylim=None, cmap=None, vmin=None, vmax=None, norm=None,
-                    cbar_label=None, s=None, xticks=None, yticks=None):
+                    cbar_label=None, s=None, xticks=None, yticks=None,
+                    edgecolors='face'):
 
-    cax = ax.scatter(x, y, c=c, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm, s=s)
+    cax = ax.scatter(x, y, c=c, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm, s=s,
+                     edgecolors=edgecolors)
 
     ax.set_title(title)
     ax.set_xlabel(xlabel)
