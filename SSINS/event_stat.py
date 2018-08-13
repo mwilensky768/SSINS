@@ -76,9 +76,9 @@ class ES:
                     (self.outpath, self.obs, self.flag_choice, attr),
                     getattr(self, attr))
         for attr in ['avgs', 'uv_grid']:
-            pickle.dump(getattr(self, attr),
-                        open('%s/arrs/%s_%s_%s.npym' %
-                             (self.outpath, self.obs, self.flag_choice, attr), 'wb'))
+            with open('%s/arrs/%s_%s_%s.npym' %
+                      (self.outpath, self.obs, self.flag_choice, attr), 'wb') as f:
+                pickle.dump(getattr(self, attr), f)
 
     def read(self, read_paths):
         for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
