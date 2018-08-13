@@ -58,7 +58,7 @@ class VDH:
             if hasattr(self, attr):
                 pickle.dump(getattr(self, attr),
                             open('%s/arrs/%s_%s_VDH_%s.npym' %
-                                 (self.outpath, self.obs, self.flag_choice, attr), 'w'))
+                                 (self.outpath, self.obs, self.flag_choice, attr), 'wb'))
 
         for attr in ['freq_array', 'pols', 'vis_units']:
             if hasattr(self, attr):
