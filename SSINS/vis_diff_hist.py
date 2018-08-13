@@ -4,6 +4,7 @@ import numpy as np
 import scipy.stats
 import os
 import warnings
+import pickle
 
 
 class VDH:
@@ -55,8 +56,9 @@ class VDH:
 
         for attr in ['MLEs', 'W_hist']:
             if hasattr(self, attr):
-                np.ma.dump(getattr(self, attr), '%s/arrs/%s_%s_VDH_%s.npym' %
-                           (self.outpath, self.obs, self.flag_choice, attr))
+                pickle.dump(getattr(self, attr),
+                            open('%s/arrs/%s_%s_VDH_%s.npym' %
+                                 (self.outpath, self.obs, self.flag_choice, attr), 'w'))
 
         for attr in ['freq_array', 'pols', 'vis_units']:
             if hasattr(self, attr):

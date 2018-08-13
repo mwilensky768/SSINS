@@ -4,6 +4,7 @@ import numpy as np
 from scipy.special import erfcinv
 import os
 import warnings
+import pickle
 
 
 class INS:
@@ -98,11 +99,14 @@ class INS:
             if not os.path.exists('%s/%s' % (self.outpath, string)):
                 os.makedirs('%s/%s' % (self.outpath, string))
 
-        for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins']:
-            np.ma.dump(getattr(self, attr),
-                       '%s/arrs/%s_%s_INS_%s%s.npym' %
-                       (self.outpath, self.obs, self.flag_choice, attr, tag))
-
+        for attr in ['data', 'data_ms', 'Nbls']:
+            pickle.dump(getattr(self, attr).data,
+                        open('%s/arrs/%s_%s_INS_%s%s.npym' %
+                        (self.outpath, self.obs, self.flag_choice, attr, tag), 'w'))
+        for attr in ['counts', 'bins']:
+            np.save('%s/arrs/%s_%s_INS_%s%s.npy' %
+                    (self.outpath, self.obs, self.flag_choice, attr, tag),
+                    getattr(self, attr))
         for attr in ['match_events', 'match_hists', 'chisq_events',
                      'chisq_hists', 'samp_thresh_events']:
             if len(getattr(self, attr)):

@@ -3,3 +3,4 @@ omit = */tests/*
 
 [report]
 omit = */tests/*
+show_missing = True

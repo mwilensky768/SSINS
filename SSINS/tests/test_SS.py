@@ -133,11 +133,15 @@ def test_ES_construct_write():
                           (outpath, obs, ss.INS.flag_choice, subtag)
                 nt.ok_(os.path.exists(rw_path))
                 read_paths['%s_hists' % subtag] = rw_path
-    for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins']:
+    for attr in ['data', 'data_ms', 'Nbls']:
         rw_path = '%s/arrs/%s_%s_INS_%s%s.npym' % \
                   (outpath, obs, ss.INS.flag_choice, attr, tag)
         nt.ok_(os.path.exists(rw_path))
         read_paths[attr] = rw_path
+    for attr in ['counts', 'bins']:
+        rw_path = '%s/arrs/%s_%s_INS_%s%s.npy' % \
+            (outpath, obs, ss.INS.flag_choice, attr, tag)
+        nt.ok_(os.path.exists(rw_path))
     for attr in ['freq_array', 'pols', 'vis_units']:
         rw_path = '%s/metadata/%s_%s.npy' % (outpath, obs, attr)
         nt.ok_(os.path.exists(rw_path))
