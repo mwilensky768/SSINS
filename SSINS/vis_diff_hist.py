@@ -56,9 +56,9 @@ class VDH:
 
         for attr in ['MLEs', 'W_hist']:
             if hasattr(self, attr):
-                pickle.dump(getattr(self, attr),
-                            open('%s/arrs/%s_%s_VDH_%s.npym' %
-                                 (self.outpath, self.obs, self.flag_choice, attr), 'wb'))
+                with open('%s/arrs/%s_%s_VDH_%s.npym' %
+                          (self.outpath, self.obs, self.flag_choice, attr), 'wb') as f:
+                    pickle.dump(getattr(self, attr), f)
 
         for attr in ['freq_array', 'pols', 'vis_units']:
             if hasattr(self, attr):
