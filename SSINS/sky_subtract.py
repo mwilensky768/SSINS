@@ -26,27 +26,10 @@ class SS:
                                please supply %s keyword other than None' % (attr))
 
         if UV is None:
-            assert inpath is not None, 'Either supply a valid UVData object for\
-                                        the UV keyword, or supply a path to a \
-                                        valid UVData file for the inpath keyword'
-
-            self.UV = UVData()
+            self.UV = self.read(inpath, read_kwargs=read_kwargs,
+                                bad_time_indices=bad_time_indices)
 
             self.flag_choice = flag_choice
-            self.UV.read(inpath, **read_kwargs)
-
-            assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
-            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] ==
-                           self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
-                           for k in range(1, self.UV.Ntimes - 1)])
-            assert cond, 'Baseline array slices do not match!'
-
-            if bad_time_indices is not None:
-                bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
-                bool_ind[bad_time_indices] = 0
-                times = np.unique(self.UV.time_array)[bool_ind]
-                self.UV.select(times=times)
-
         else:
             self.UV = UV
             self.flag_choice = flag_choice
@@ -60,6 +43,12 @@ class SS:
                               range(self.UV.Npols)])
 
         if diff:
+            assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
+            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] ==
+                           self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
+                           for k in range(1, self.UV.Ntimes - 1)])
+            assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+
             self.UV.data_array = np.ma.masked_array(np.absolute(np.diff(np.reshape(self.UV.data_array,
                                                     [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
                                                      self.UV.Nfreqs, self.UV.Npols]), axis=0)))
@@ -188,4 +177,27 @@ class SS:
 
         self.ES = ES(**ES_kwargs)
 
-        self.UV.data_array.mask = np.logical_and(self.UV.data_array.mask, self.ES.mask)
+    def read(self, inpath, read_kwargs={}, bad_time_indices=None):
+        assert inpath is not None, 'Supply a path to a valid UVData file for the inpath keyword'
+
+        UV = UVData()
+        UV.read(inpath, **read_kwargs)
+
+        if bad_time_indices is not None:
+            bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
+            bool_ind[bad_time_indices] = 0
+            times = np.unique(self.UV.time_array)[bool_ind]
+            UV.select(times=times)
+
+        return(UV)
+
+    def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
+              bad_time_indices=None):
+
+        if UV is None:
+            UV = self.read(inpath, read_kwargs=read_kwargs,
+                           bad_time_indices=bad_time_indices)
+        for i in range(UV.Ntimes - 1):
+            UV.flag_array[i * UV.Nbls:(i + 1) * Nbls] = self.UV.data_array.mask[i]
+            UV.flag_array[(i + 1) * UV.Nbls:(i + 2) * UV.Nbls]
+        getattr(UV, 'write_%s' % file_type_out)(outpath)

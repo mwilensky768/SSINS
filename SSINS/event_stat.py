@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import warnings
 import os
+import pickle
 
 
 class ES:
@@ -75,8 +76,9 @@ class ES:
                     (self.outpath, self.obs, self.flag_choice, attr),
                     getattr(self, attr))
         for attr in ['avgs', 'uv_grid']:
-            np.ma.dump(getattr(self, attr), '%s/arrs/%s_%s_%s.npym' %
-                       (self.outpath, self.obs, self.flag_choice, attr))
+            pickle.dump(getattr(self, attr),
+                        open('%s/arrs/%s_%s_%s.npym' %
+                             (self.outpath, self.obs, self.flag_choice, attr), 'w'))
 
     def read(self, read_paths):
         for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
