@@ -102,7 +102,7 @@ class INS:
         for attr in ['data', 'data_ms', 'Nbls']:
             with open('%s/arrs/%s_%s_INS_%s%s.npym' %
                       (self.outpath, self.obs, self.flag_choice, attr, tag), 'wb') as f:
-                pickle.dump(getattr(self, attr).data, f)
+                pickle.dump(getattr(self, attr), f)
         for attr in ['counts', 'bins']:
             np.save('%s/arrs/%s_%s_INS_%s%s.npy' %
                     (self.outpath, self.obs, self.flag_choice, attr, tag),
