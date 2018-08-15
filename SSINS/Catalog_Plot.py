@@ -43,23 +43,21 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
     for subtag in tags:
         if len(getattr(INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
-
-    for i, string in enumerate(['', '_ms']):
-        for spw in range(INS.data.shape[1]):
-            fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3])
-            if type(ax) is not np.ndarray:
-                ax = np.array([ax])
-            fig.suptitle('%s, spw%i' % (suptitles[i], spw))
+    for spw in range(INS.data.shape[1]):
+        fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3],
+                               ncols=2, squeeze=False)
+        fig.suptitle('%s Incoherent Noise Spectrum, spw%i' % (INS.obs, spw))
+        for i, string in enumerate(['', '_ms']):
             im_kwargs.update(data_kwargs[i])
             for pol in range(INS.data.shape[3]):
-                image_plot(fig, ax[pol],
+                image_plot(fig, ax[pol, i],
                            getattr(INS, 'data%s' % (string))[:, spw, :, pol],
                            title=INS.pols[pol], freq_array=INS.freq_array[spw],
                            **im_kwargs)
-            plt.tight_layout()
-            fig.savefig('%s/figs/%s_spw%i_%s_INS%s%s.png' %
-                        (INS.outpath, INS.obs, spw, INS.flag_choice, string, tag))
-            plt.close(fig)
+        plt.tight_layout()
+        fig.savefig('%s/figs/%s_spw%i_%s_INS_data%s.png' %
+                    (INS.outpath, INS.obs, spw, INS.flag_choice, tag))
+        plt.close(fig)
 
     for i, string in enumerate(['match_', 'chisq_']):
         if len(getattr(INS, '%shists' % (string))):
@@ -164,9 +162,8 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
                          event[2])
             yerr = [None, ES.exp_error[i]]
             fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
-            fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols))
-            if type(ax_im) is not np.ndarray:
-                ax_im = np.array([ax_im])
+            fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols),
+                                         squeeze=False)
             fig_im.suptitle('%s Event-Averaged Grid, f%.2f Mhz - f%.2f Mhz, t%i' %
                             title_tup)
             x = ES.bins[i][:-1] + 0.5 * np.diff(ES.bins[i])
@@ -179,7 +176,7 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
             for cut in ES.cutoffs[i]:
                 ax_hist.axvline(x=cut, color='black')
             for k in range(len(ES.pols)):
-                image_plot(fig_im, ax_im[k], ES.uv_grid[i][k], title=ES.pols[k],
+                image_plot(fig_im, ax_im[k, 0], ES.uv_grid[i][k], title=ES.pols[k],
                            **im_kwargs)
 
             fig_hist.savefig('%s/figs/%s_hist_%i.png' % (ES.outpath, ES.obs, i))
