@@ -37,15 +37,14 @@ def test_INS_construct_plot():
     for subtag in tags:
         if len(getattr(ss.INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
-    for i, string in enumerate(['', '_ms']):
-        for spw in range(ss.INS.data.shape[1]):
-            nt.ok_(os.path.exists('%s/figs/%s_spw%i_%s_INS%s%s.png' %
-                                  (ss.INS.outpath, ss.INS.obs,
-                                   spw, ss.INS.flag_choice, string, tag)))
-            # Copy it for inspection
-            shutil.copy('%s/figs/%s_spw%i_%s_INS%s%s.png' %
-                        (ss.INS.outpath, ss.INS.obs,
-                         spw, ss.INS.flag_choice, string, tag), '%s' % figpath)
+    for spw in range(ss.INS.data.shape[1]):
+        nt.ok_(os.path.exists('%s/figs/%s_spw%i_%s_INS_data%s.png' %
+                              (ss.INS.outpath, ss.INS.obs,
+                               spw, ss.INS.flag_choice, tag)))
+        # Copy it for inspection
+        shutil.copy('%s/figs/%s_spw%i_%s_INS_data%s.png' %
+                    (ss.INS.outpath, ss.INS.obs, spw, ss.INS.flag_choice, tag),
+                    '%s' % figpath)
 
     ss.MF_prepare(tests=('match', 'chisq', 'samp_thresh'), N_thresh=N_thresh)
     cp.INS_plot(ss.INS)
@@ -55,15 +54,14 @@ def test_INS_construct_plot():
     for subtag in tags:
         if len(getattr(ss.INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
-    for i, string in enumerate(['', '_ms']):
-        for spw in range(ss.INS.data.shape[1]):
-            nt.ok_(os.path.exists('%s/figs/%s_spw%i_%s_INS%s%s.png' %
-                                  (ss.INS.outpath, ss.INS.obs,
-                                   spw, ss.INS.flag_choice, string, tag)))
-            # Copy it for inspection
-            shutil.copy('%s/figs/%s_spw%i_%s_INS%s%s.png' %
-                        (ss.INS.outpath, ss.INS.obs,
-                         spw, ss.INS.flag_choice, string, tag), '%s' % figpath)
+    for spw in range(ss.INS.data.shape[1]):
+        nt.ok_(os.path.exists('%s/figs/%s_spw%i_%s_INS_data%s.png' %
+                              (ss.INS.outpath, ss.INS.obs,
+                               spw, ss.INS.flag_choice, tag)))
+        # Copy it for inspection
+        shutil.copy('%s/figs/%s_spw%i_%s_INS_data%s.png' %
+                    (ss.INS.outpath, ss.INS.obs,
+                     spw, ss.INS.flag_choice, tag), '%s' % figpath)
 
     shutil.rmtree(outpath)
 
