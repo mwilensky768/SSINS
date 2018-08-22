@@ -184,7 +184,10 @@ def test_VDH_construct_plot():
     test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
-            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
+            nt.ok_(np.allclose(getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i], atol=1),
+                   '%s, %s, %s' %
+                   (getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i],
+                    getattr(test_VDH, attr)[i] - getattr(ss.VDH, attr)[i]))
     for attr in ['MLEs', 'W_hist']:
         for i in range(len(test_VDH.MLEs)):
             nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
