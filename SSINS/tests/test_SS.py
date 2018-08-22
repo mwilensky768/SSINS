@@ -167,6 +167,8 @@ def test_VDH_construct_plot():
 
     ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
     ss.VDH_prepare(fit_hist=True)
+    ss.VDH.rev_ind(ss.UV.data_array, window)
+    ss.VDH.save()
 
     read_paths = {}
     for attr in ['counts', 'bins', 'fits', 'errors']:
@@ -177,18 +179,18 @@ def test_VDH_construct_plot():
         read_paths[attr] = rw_path
     for attr in ['W_hist', 'MLEs']:
         rw_path = '%s/arrs/%s_%s_VDH_%s.npym' % (DATA_PATH, obs, ss.VDH.flag_choice, attr)
-    read_paths['MLEs'] = rw_path
+        read_paths[attr] = rw_path
 
     test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
             nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
-    nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs))
-    nt.ok_(np.all(test_VDH.freq_array == ss.VDH.freq_array))
-    for attr in ['pols', 'vis_units']:
+    for attr in ['MLEs', 'W_hist']:
+        for i in range(len(test_VDH.MLEs)):
+            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
+    for attr in ['pols', 'vis_units', 'freq_array']:
         nt.ok_(np.all(getattr(test_VDH, attr) == getattr(ss.VDH, attr)))
 
-    ss.VDH.rev_ind(ss.UV.data_array, window)
     cp.VDH_plot(ss.VDH)
     for i in range(1 + bool(ss.VDH.flag_choice)):
         nt.ok_(os.path.exists('%s/figs/%s_%s_VDH.png' %
@@ -320,7 +322,7 @@ def test_ES_construct_write():
     for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs', 'avgs', 'uv_grid']:
         for i in range(len(test_ES.counts)):
             nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1),
-                   '%s, %s' % (getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i]))
+                   '%s, %s attr is %s' % (getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], attr))
 
     shutil.rmtree(outpath)
 
