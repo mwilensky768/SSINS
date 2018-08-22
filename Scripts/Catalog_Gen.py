@@ -20,12 +20,14 @@ data_kwargs = {'read_kwargs': {'file_type': 'uvfits', 'ant_str': 'cross'},
                'bad_time_indices': [0, -1, -2, -3]}
 
 # The type of catalog you would like made - options are 'INS', 'VDH', 'MF', and 'ES'
-catalog_types = ['INS', ]
+catalog_types = ['INS', 'MF', 'ES']
 
 
 catalog_data_kwargs = {'INS': {},
                        'VDH': {},
-                       'MF': {'sig_thresh': 4},
+                       'MF': {'sig_thresh': 4.5,
+                              'shape_dict': {'TV%i' % (k + 6): [(1.74 + 0.07 * k) * 10 ** 8,
+                                                                (1.81 + 0.07 * k) * 10 ** 8] for k in range(3)}},
                        'ES': {}}
 
 catalog_plot_kwargs = {'INS': {},
