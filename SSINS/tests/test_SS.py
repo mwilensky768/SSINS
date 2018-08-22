@@ -293,7 +293,8 @@ def test_ES_construct_write():
     test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
-            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
+            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]),
+                   'attr is %s, i is %i' % (attr, i))
     nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs))
     nt.ok_(np.all(test_VDH.freq_array == ss.VDH.freq_array))
     for attr in ['pols', 'vis_units']:
