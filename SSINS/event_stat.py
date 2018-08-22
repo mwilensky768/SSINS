@@ -11,7 +11,7 @@ class ES:
 
     def __init__(self, data=None, flag_choice=None, events=None, MLE=None,
                  uvw_array=None, vis_units=None, obs=None, pols=None,
-                 outpath=None, MC_iter=int(1e2), grid_dim=50, grid_lim=None,
+                 outpath=None, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
                  R_thresh=10, read_paths={}, freq_array=None):
 
         if not read_paths:
@@ -75,11 +75,11 @@ class ES:
                         getattr(self, attr))
 
         for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs']:
-            np.save('%s/arrs/%s_%s_%s.npy' %
+            np.save('%s/arrs/%s_%s_ES_%s.npy' %
                     (self.outpath, self.obs, self.flag_choice, attr),
                     getattr(self, attr))
         for attr in ['avgs', 'uv_grid']:
-            with open('%s/arrs/%s_%s_%s.npym' %
+            with open('%s/arrs/%s_%s_ES_%s.npym' %
                       (self.outpath, self.obs, self.flag_choice, attr), 'wb') as f:
                 pickle.dump(getattr(self, attr), f)
 
