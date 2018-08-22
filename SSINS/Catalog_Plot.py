@@ -43,21 +43,20 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
     for subtag in tags:
         if len(getattr(INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
-    for spw in range(INS.data.shape[1]):
-        fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3],
-                               ncols=2, squeeze=False)
-        fig.suptitle('%s Incoherent Noise Spectrum, spw%i' % (INS.obs, spw))
-        for i, string in enumerate(['', '_ms']):
-            im_kwargs.update(data_kwargs[i])
-            for pol in range(INS.data.shape[3]):
-                image_plot(fig, ax[pol, i],
-                           getattr(INS, 'data%s' % (string))[:, spw, :, pol],
-                           title=INS.pols[pol], freq_array=INS.freq_array[spw],
-                           **im_kwargs)
-        plt.tight_layout()
-        fig.savefig('%s/figs/%s_spw%i_%s_INS_data%s.png' %
-                    (INS.outpath, INS.obs, spw, INS.flag_choice, tag))
-        plt.close(fig)
+    fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3],
+                           ncols=2, squeeze=False)
+    fig.suptitle('%s Incoherent Noise Spectrum' % INS.obs)
+    for i, string in enumerate(['', '_ms']):
+        im_kwargs.update(data_kwargs[i])
+        for pol in range(INS.data.shape[3]):
+            image_plot(fig, ax[pol, i],
+                       getattr(INS, 'data%s' % (string))[:, 0, :, pol],
+                       title=INS.pols[pol], freq_array=INS.freq_array[0],
+                       **im_kwargs)
+    plt.tight_layout()
+    fig.savefig('%s/figs/%s_%s_INS_data%s.png' %
+                (INS.outpath, INS.obs, INS.flag_choice, tag))
+    plt.close(fig)
 
     for i, string in enumerate(['match_', 'chisq_']):
         if len(getattr(INS, '%shists' % (string))):
@@ -65,12 +64,15 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                 fig, ax = plt.subplots(figsize=(14, 8))
                 exp, var = util.hist_fit(hist[0], hist[1])
                 x = hist[1][:-1] + 0.5 * np.diff(hist[1])
-                error_plot(fig, ax, x, hist[0], xlabel='Deviation ($\hat{\sigma}$)')
-                error_plot(fig, ax, x, exp, yerr=np.sqrt(var), xlabel='Deviation ($\hat{\sigma}$)')
-                fig.savefig('%s/figs/%s_spw%i_f%i_f%i_%sevent_hist_%i.png' %
-                            (INS.outpath, INS.obs, getattr(INS, '%sevents' % string)[k][0],
-                             getattr(INS, '%sevents' % string)[k][1].indices(INS.data.shape[2])[0],
-                             getattr(INS, '%sevents' % string)[k][1].indices(INS.data.shape[2])[1], string, k))
+                error_plot(fig, ax, x, hist[0],
+                           xlabel='Deviation ($\hat{\sigma}$)')
+                error_plot(fig, ax, x, exp, yerr=np.sqrt(var),
+                           xlabel='Deviation ($\hat{\sigma}$)')
+                fig.savefig('%s/figs/%s_f%i_f%i_%sevent_hist_%i.png' %
+                            (INS.outpath, INS.obs,
+                             getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[0],
+                             getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[1],
+                             string, k))
                 plt.close(fig)
 
 
@@ -82,7 +84,8 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None,
 
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
-             xticklabels=None, yticklabels=None, aspect=None):
+             xticklabels=None, yticklabels=None, aspect=None, xscale='log',
+             yscale='log'):
     """
     Takes a visibility difference histogram and plots it.
     """
@@ -101,42 +104,47 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
     hist_kwargs = {'counts': {},
                    'fits': {}}
 
-    labels = {'counts': ['All Measurements', 'Measurements, %s Flags' % (VDH.flag_choice)],
+    labels = {'counts': ['All Measurements', 'Measurements, %s Flags' %
+                         (VDH.flag_choice)],
               'fits': ['All Fit', 'Fit, %s Flags' % (VDH.flag_choice)]}
 
     fit_tags = ['All', 'Flags']
 
-    for spw in range(len(VDH.counts) // len(VDH.MLEs)):
-        for i in range(1 + bool(VDH.flag_choice)):
-            if hasattr(VDH, W_hist):
-                fig, ax = plt.subplots(figsize=(14, 8), nrows=(1 + len(VDH.pols)))
-            else:
-                fig, ax = plt.subplots(figsize=(14, 8))
-                ax = [ax, ]
-            fig.suptitle('%s Visibility Difference Histogram, spw%i, %s' %
-                         (obs, spw, labels['counts'][i]))
-            x = []
-            for k in range(1 + bool(VDH.flag_choice)):
-                x = VDH.bins[spw, k][:-1] + 0.5 * np.diff(VDH.bins[spw, k])
-                for attr in ['counts', 'fits']:
-                    if hasattr(VDH, attr):
-                        if attr is 'fits':
-                            hist_kwargs['fits']['yerr'] = VDH.errors[spw, k]
-                        error_plot(fig, ax[0], x, getattr(VDH, attr)[spw, k],
-                                   xlabel='Amplitude (%s)' % (VDH.vis_units),
-                                   label=labels[attr][k], **hist_kwargs[attr])
-            if hasattr(VDH, W_hist):
-                for pol in range(len(VDH.pols)):
-                    image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, spw, :, pol],
-                               title=VDH.pols[pol], freq_array=VDH.freq_array[spw],
-                               **im_kwargs)
-            fig.savefig('%s/figs/%s_spw%i_%s_VDH.png' %
-                        (VDH.outpath, obs, spw, fit_tags[i]))
-            plt.close(fig)
+    for i in range(1 + bool(VDH.flag_choice)):
+        if hasattr(VDH, 'W_hist'):
+            fig, ax = plt.subplots(figsize=(14, 8), nrows=(1 + len(VDH.pols)))
+        else:
+            fig, ax = plt.subplots(figsize=(14, 8))
+            ax = [ax, ]
+        fig.suptitle('%s Visibility Difference Histogram, %s' %
+                     (VDH.obs, labels['counts'][i]))
+        x = []
+        for k in range(1 + bool(VDH.flag_choice)):
+            x = VDH.bins[k][:-1] + 0.5 * np.diff(VDH.bins[k])
+            for attr in ['counts', 'fits']:
+                if hasattr(VDH, attr) and getattr(VDH, attr)[k] is not None:
+                    if attr is 'fits':
+                        hist_kwargs['fits']['yerr'] = VDH.errors[k]
+                    error_plot(fig, ax[0], x, getattr(VDH, attr)[k],
+                               xscale=xscale, yscale=yscale,
+                               label=labels[attr][k],
+                               xlabel='Amplitude (%s)' % (VDH.vis_units),
+                               **hist_kwargs[attr])
+        if hasattr(VDH, 'W_hist'):
+            for m in range(2):
+                ax[0].axvline(x=VDH.window[m], color='black')
+            for pol in range(len(VDH.pols)):
+                image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, 0, :, pol],
+                           title=VDH.pols[pol], freq_array=VDH.freq_array[0],
+                           **im_kwargs)
+        fig.savefig('%s/figs/%s_%s_VDH.png' %
+                    (VDH.outpath, VDH.obs, fit_tags[i]))
+        plt.close(fig)
 
 
 def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
-            zero_mask=False, mask_color='white', aspect=None, vmin=None, vmax=None):
+            zero_mask=False, mask_color='white', aspect=None, vmin=None,
+            vmax=None, xscale='linear', yscale='log'):
 
     im_kwargs = {'vmin': vmin,
                  'vmax': vmax,
@@ -149,7 +157,8 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
                  'yticklabels': yticklabels,
                  'zero_mask': zero_mask,
                  'mask_color': mask_color,
-                 'aspect': aspect}
+                 'aspect': aspect,
+                 'grid': ES.grid}
 
     hist_labels = ['Measurements', 'Fit']
     fig_tags = ['hist', 'grid']
@@ -157,9 +166,9 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
     if ES.events is not None and len(ES.events):
         for i, event in enumerate(ES.events):
             title_tup = (ES.obs,
-                         ES.freq_array[event[0], event[1].indices(len(ES.freq_array[0]))[0]] * 10 ** (-6),
-                         ES.freq_array[event[0], event[1].indices(len(ES.freq_array[0]))[1] - 1] * 10 ** (-6),
-                         event[2])
+                         ES.freq_array[0, event[2].indices(len(ES.freq_array[0]))[0]] * 10 ** (-6),
+                         ES.freq_array[0, event[2].indices(len(ES.freq_array[0]))[1] - 1] * 10 ** (-6),
+                         event[0])
             yerr = [None, ES.exp_error[i]]
             fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
             fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols),
@@ -170,7 +179,8 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
             for k, string in enumerate(['', 'exp_']):
                 error_plot(fig_hist, ax_hist, x, getattr(ES, '%scounts' % (string))[i],
                            xlabel='Amplitude (%s)' % (ES.vis_units),
-                           label=hist_labels[k], yerr=yerr[k],
+                           label=hist_labels[k], yerr=yerr[k], xscale=xscale,
+                           yscale=yscale,
                            title='%s Event-Averaged Histogram, f%.2f Mhz - f%.2f Mhz, t%i' %
                            title_tup)
             for cut in ES.cutoffs[i]:

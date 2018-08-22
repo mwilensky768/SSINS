@@ -77,8 +77,8 @@ class INS:
         if event is None:
             dat = self.data_ms
         else:
-            N = np.count_nonzero(np.logical_not(self.data_ms.mask[:, event[0], event[1]]), axis=1)
-            dat = self.data_ms[:, event[0], event[1]].mean(axis=1) * np.sqrt(N)
+            N = np.count_nonzero(np.logical_not(self.data_ms.mask[:, 0, event[2]]), axis=1)
+            dat = self.data_ms[:, 0, event[2]].mean(axis=1) * np.sqrt(N)
         if dat.min() < -sig_thresh:
             bins = np.insert(bins, 0, dat.min())
         if dat.max() > sig_thresh:
@@ -135,7 +135,7 @@ class INS:
             for subattr in ['events', 'hists']:
                 attribute = '%s_%s' % (attr, subattr)
                 if attribute in read_paths:
-                    setattr(self, attribute, np.load(read_paths[attribute]).tolist())
+                    setattr(self, attribute, list(np.load(read_paths[attribute])))
                 else:
                     setattr(self, attribute, [])
         if 'samp_thresh_events' in read_paths:

@@ -4,13 +4,14 @@ import numpy as np
 import warnings
 import os
 import pickle
+import time
 
 
 class ES:
 
     def __init__(self, data=None, flag_choice=None, events=None, MLE=None,
                  uvw_array=None, vis_units=None, obs=None, pols=None,
-                 outpath=None, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
+                 outpath=None, MC_iter=int(1e2), grid_dim=50, grid_lim=None,
                  R_thresh=10, read_paths={}, freq_array=None):
 
         if not read_paths:
@@ -41,12 +42,13 @@ class ES:
                 setattr(self, attr, [])
 
             if events is not None and len(events):
+                print('Beginning bl_avg flagging at %s' % time.strftime("%H:%M:%S"))
                 for event in events:
                     avg, counts, exp_counts, exp_error, bins = self.event_avg(data, event)
-                    lcut, rcut = self.cutoff(counts, bins, exp_counts, event, R_thresh)
+                    lcut, rcut = self.cutoff(counts, bins, exp_counts, R_thresh)
                     cut_cond = np.logical_or(avg > rcut, avg < lcut)
                     cut_ind = np.where(cut_cond)
-                    temp_mask[event[2], cut_ind[0], event[0], event[1]] = 1
+                    temp_mask[event[0], cut_ind[0], 0, event[2]] = 1
                     uv_grid = self.bl_grid(avg, event)
                     for attr, calc in zip(attr_list, (avg, counts, exp_counts,
                                                       exp_error, bins, uv_grid,
@@ -55,6 +57,7 @@ class ES:
                 for attr in attr_list:
                     setattr(self, attr, np.array(getattr(self, attr)))
                 self.mask = temp_mask
+                print('Done with bl_avg flagging at %s' % time.strftime("%H:%M:%S"))
             else:
                 print('No events given to ES class. Not computing flags.')
         else:
@@ -96,7 +99,7 @@ class ES:
 
     def event_avg(self, data, event):
 
-        avg = data[event[2], :, event[0], event[1]]
+        avg = data[event[0], :, 0, event[2]]
         init_shape = avg.shape
         init_mask = avg.mask
         avg = avg.mean(axis=1)
@@ -105,7 +108,7 @@ class ES:
         # Simulate some averaged rayleigh data and histogram - take averages/variances of histograms
         for i in range(self.MC_iter):
             sim_data = np.random.rayleigh(size=init_shape,
-                                          scale=np.sqrt(self.MLE[:, event[0], event[1]]))
+                                          scale=np.sqrt(self.MLE[:, 0, event[2]]))
             sim_data = sim_data.mean(axis=1)
             sim_counts[i, :], _ = np.histogram(sim_data, bins=bins)
         exp_counts = sim_counts.mean(axis=0)
@@ -113,7 +116,7 @@ class ES:
 
         return(avg, counts, exp_counts, exp_error, bins)
 
-    def cutoff(self, counts, bins, exp_counts, event, R_thresh):
+    def cutoff(self, counts, bins, exp_counts, R_thresh):
 
         max_loc = bins[:-1][exp_counts.argmax()] + 0.5 * (bins[1] - bins[0])
         R = counts.astype(float) / exp_counts
@@ -132,8 +135,8 @@ class ES:
 
     def bl_grid(self, avg, event):
 
-        u = self.uvw_array[event[2] * self.Nbls:(event[2] + 1) * self.Nbls, 0]
-        v = self.uvw_array[event[2] * self.Nbls:(event[2] + 1) * self.Nbls, 1]
+        u = self.uvw_array[event[0] * self.Nbls:(event[0] + 1) * self.Nbls, 0]
+        v = self.uvw_array[event[0] * self.Nbls:(event[0] + 1) * self.Nbls, 1]
         uv_grid = np.zeros((len(self.pols), self.grid_dim, self.grid_dim))
         for i in range(self.grid_dim):
             for k in range(self.grid_dim):

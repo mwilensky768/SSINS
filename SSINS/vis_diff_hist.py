@@ -5,13 +5,14 @@ import scipy.stats
 import os
 import warnings
 import pickle
+import time
 
 
 class VDH:
 
     def __init__(self, data=None, flag_choice=None, freq_array=None, pols=None,
-                 vis_units=None, obs=None, outpath=None, bins='auto', fit=True,
-                 read_paths={}):
+                 vis_units=None, obs=None, outpath=None, bins=None, fit_hist=False,
+                 MLE=True, read_paths={}):
 
         self.flag_choice = flag_choice
 
@@ -33,8 +34,8 @@ class VDH:
                 else:
                     setattr(self, attr, opt_args[attr])
             self.counts, self.bins = self.hist_make(data, bins=bins)
-            if fit:
-                self.MLEs, self.fits, self.errors = self.rayleigh_mixture_fit(data)
+            if MLE:
+                self.MLEs, self.fits, self.errors = self.rayleigh_mixture_fit(data, fit_hist=fit_hist)
         else:
             self.read(read_paths)
 
@@ -82,22 +83,27 @@ class VDH:
             if attr in read_paths and read_paths[attr] is not None:
                 setattr(self, attr, np.load(read_paths[attr]))
 
-    def hist_make(self, data, bins='auto'):
-        counts = np.zeros([data.shape[2], 1 + bool(self.flag_choice)], dtype=object)
+    def hist_make(self, data, bins=None):
+        if bins is None:
+            bins = np.logspace(np.floor(np.log10(np.amin(data.data))),
+                               np.ceil(np.log10(np.amax(data.data))),
+                               num=1001)
+        counts = np.zeros(1 + bool(self.flag_choice), dtype=object)
         bins_arr = np.copy(counts)
-        for spw in range(data.shape[2]):
-            for i in range(1 + bool(self.flag_choice)):
-                if i:
-                    temp_counts, temp_bins = np.histogram(data[:, :, spw][np.logical_not(data[:, :, spw].mask)], bins=bins)
-                else:
-                    temp_counts, temp_bins = np.histogram(data[:, :, spw], bins=bins)
-                counts[spw, i] = temp_counts
-                bins_arr[spw, i] = temp_bins
+        for i in range(1 + bool(self.flag_choice)):
+            if i:
+                temp_counts, temp_bins = np.histogram(data[:, :, 0][np.logical_not(data[:, :, 0].mask)],
+                                                      bins=bins)
+            else:
+                temp_counts, temp_bins = np.histogram(data[:, :, 0], bins=bins)
+            counts[i] = temp_counts
+            bins_arr[i] = temp_bins
         return(counts, bins_arr)
 
-    def rayleigh_mixture_fit(self, data):
+    def rayleigh_mixture_fit(self, data, fit_hist=False):
+        print('Beginning fit at %s' % time.strftime("%H:%M:%S"))
         MLEs = []
-        fits = np.zeros([data.shape[2], 1 + bool(self.flag_choice)], dtype=object)
+        fits = np.zeros(1 + bool(self.flag_choice), dtype=object)
         errors = np.copy(fits)
         for i in range(1 + bool(self.flag_choice)):
             if i:
@@ -109,21 +115,26 @@ class VDH:
                 MLE = 0.5 * np.mean(dat**2, axis=0)
                 N = np.count_nonzero(dat, axis=0)
             MLEs.append(MLE)
-            for spw in range(data.shape[2]):
-                P = np.zeros(len(self.bins[spw, i]) - 1)
-                Ntot = np.sum(N[:, spw])
-                for mle, n in zip(MLE[:, spw].flatten(), N[:, spw].flatten()):
-                    P += n / Ntot * (scipy.stats.rayleigh.cdf(self.bins[spw, i][1:], scale=np.sqrt(mle)) -
-                                     scipy.stats.rayleigh.cdf(self.bins[spw, i][:-1], scale=np.sqrt(mle)))
+            P = np.zeros(len(self.bins[i]) - 1)
+            Ntot = np.sum(N)
+            if fit_hist:
+                for mle, n in zip(MLE.flatten(), N.flatten()):
+                    P += n / Ntot * (np.exp(-self.bins[i][:-1]**2 / (2 * mle)) -
+                                     np.exp(-self.bins[i][1:]**2 / (2 * mle)))
                 fit = Ntot * P
                 error = np.sqrt(Ntot * P * (1 - P))
-                fits[spw, i] = fit
-                errors[spw, i] = error
+            else:
+                fit = None
+                error = None
+            fits[i] = fit
+            errors[i] = error
         MLEs = np.array(MLEs)
+        print('Done with fit at %s' % time.strftime("%H:%M:%S"))
         return(MLEs, fits, errors)
 
     def rev_ind(self, data, window):
         self.W_hist = []
+        self.window = window
         for i in range(1 + bool(self.flag_choice)):
             W = np.zeros(data.shape)
             if i:

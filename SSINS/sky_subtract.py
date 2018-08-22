@@ -10,6 +10,7 @@ from SSINS import VDH
 from SSINS import ES
 import scipy.stats
 import warnings
+import time
 
 
 class SS:
@@ -110,7 +111,7 @@ class SS:
                   'flag_choice': self.flag_choice}
         self.INS = INS(**kwargs)
 
-    def VDH_prepare(self, bins='auto', fit=True, window=None):
+    def VDH_prepare(self, bins='auto', fit_hist=False, MLE=True, window=None):
 
         kwargs = {'data': self.UV.data_array,
                   'flag_choice': self.flag_choice,
@@ -120,7 +121,8 @@ class SS:
                   'obs': self.obs,
                   'outpath': self.outpath,
                   'bins': bins,
-                  'fit': fit}
+                  'fit_hist': fit_hist,
+                  'MLE': MLE}
         self.VDH = VDH(**kwargs)
         if window is not None:
             self.VDH.rev_ind(self.UV.data_array, window)
@@ -134,21 +136,23 @@ class SS:
                      N_thresh=N_thresh, alpha=alpha)
         if tests is not None:
             for test in tests:
-                getattr(self.MF, 'apply_%s_test' % (test))()
+                getattr(self.MF, 'apply_%s_test' % test)()
 
     def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
-                   N_thresh=0, alpha=None, tests=['match'], choice=None, fit=True,
-                   bins='auto', custom=None, MC_iter=int(1e4), grid_dim=50,
-                   R_thresh=10):
+                   N_thresh=0, alpha=None, tests=['match'], choice=None,
+                   fit_hist=False, bins=None, custom=None,
+                   MC_iter=int(1e4), grid_dim=50, R_thresh=10):
 
-        # Make a match filtered noise spectrum if one is not already passed
+        # Make a match filtered noise spectrum if one is not already passed and
+        # one is not already made.
         if INS is None:
-            MF_kwargs = {'sig_thresh': sig_thresh,
-                         'shape_dict': shape_dict,
-                         'N_thresh': N_thresh,
-                         'alpha': alpha,
-                         'tests': tests}
-            self.MF_prepare(**MF_kwargs)
+            if not hasattr(self, 'MF'):
+                MF_kwargs = {'sig_thresh': sig_thresh,
+                             'shape_dict': shape_dict,
+                             'N_thresh': N_thresh,
+                             'alpha': alpha,
+                             'tests': tests}
+                self.MF_prepare(**MF_kwargs)
         else:
             self.INS = INS
 
@@ -156,8 +160,10 @@ class SS:
         # non-INS flags to the data
         self.apply_flags(choice='INS', INS=self.INS)
         VDH_kwargs = {'bins': bins,
-                      'fit': fit}
+                      'fit_hist': fit_hist}
+        print('Preparing VDH at %s' % time.strftime("%H:%M:%S"))
         self.VDH_prepare(**VDH_kwargs)
+        print('Done preparing VDH at %s ' % time.strftime("%H:%M:%S"))
         self.apply_flags(choice=choice, custom=custom)
 
         ES_kwargs = {'data': self.UV.data_array,
@@ -184,9 +190,9 @@ class SS:
         UV.read(inpath, **read_kwargs)
 
         if bad_time_indices is not None:
-            bool_ind = np.ones(self.UV.Ntimes, dtype=bool)
+            bool_ind = np.ones(UV.Ntimes, dtype=bool)
             bool_ind[bad_time_indices] = 0
-            times = np.unique(self.UV.time_array)[bool_ind]
+            times = np.unique(UV.time_array)[bool_ind]
             UV.select(times=times)
 
         return(UV)

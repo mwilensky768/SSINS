@@ -22,12 +22,15 @@ class MidpointNormalize(colors.Normalize):
 
 
 def error_plot(fig, ax, x, y, xerr=None, yerr=None, title='', xlabel='',
-               ylabel='Counts', legend=True, label='', drawstyle='steps-mid'):
+               ylabel='Counts', legend=True, label='', drawstyle='steps-mid',
+               xscale='linear', yscale='linear'):
 
     ax.errorbar(x, y, xerr=xerr, yerr=yerr, label=label, drawstyle=drawstyle)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    ax.set_xscale(xscale, nonposx='clip')
+    ax.set_yscale(yscale, nonposy='clip')
     if legend:
         ax.legend()
 
@@ -71,15 +74,15 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
         xticklabels.insert(0, '0')
         xticklabels.append('0')
         ax.set_xticklabels(xticklabels)
-    elif xlabel == '$\lambda u$':
+    elif xlabel == '$\lambda u$ (m)':
         xticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_xticks()[1:-1].astype(int)]
         xticklabels.insert(0, '0')
         xticklabels.append('0')
         ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
-    elif ylabel == '$\lambda v$':
-        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()[1:-1]]
+    elif ylabel == '$\lambda v$ (m)':
+        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()[1:-1].astype(int)]
         yticklabels.insert(0, '0')
         yticklabels.append('0')
         ax.set_yticklabels(yticklabels)
