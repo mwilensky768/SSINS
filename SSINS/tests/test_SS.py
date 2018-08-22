@@ -213,6 +213,7 @@ def test_ES_construct_write():
                   'TV6': np.array([1.74e+08, 1.81e+08]),
                   'TV8': np.array([1.88e+08, 1.95e+08])}
     MC_iter = int(1e3)
+    np.random.seed(seed=1)
 
     ss = SS(obs=obs, outpath=outpath, inpath=testfile)
     ss.ES_prepare(MC_iter=MC_iter, shape_dict=shape_dict)
@@ -294,7 +295,7 @@ def test_ES_construct_write():
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
             nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]),
-                   'attr is %s, i is %i' % (attr, i))
+                   'attr is %s, i is %i, %s, %s' % (attr, i, getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i]))
     nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs))
     nt.ok_(np.all(test_VDH.freq_array == ss.VDH.freq_array))
     for attr in ['pols', 'vis_units']:
