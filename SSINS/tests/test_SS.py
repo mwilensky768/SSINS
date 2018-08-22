@@ -150,7 +150,7 @@ def test_INS_construct_plot():
                 (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice, tag),
                 '%s' % figpath)
 
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_VDH_construct_plot():
@@ -198,7 +198,7 @@ def test_VDH_construct_plot():
                               (ss.VDH.outpath, obs, fit_tags[i])))
         shutil.copy('%s/figs/%s_%s_VDH.png' %
                     (ss.VDH.outpath, obs, fit_tags[i]), '%s' % figpath)
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_ES_construct_write():
@@ -311,7 +311,7 @@ def test_ES_construct_write():
         for i in range(len(test_ES.counts)):
             nt.ok_(np.all(getattr(test_ES, attr)[i] == getattr(ss.ES, attr)[i]))
 
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_scatter():
