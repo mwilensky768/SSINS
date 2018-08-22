@@ -79,9 +79,13 @@ class VDH:
             assert attr in read_paths and read_paths[attr] is not None, \
                 'You must supply a path to a numpy loadable file for %s read_paths entry' % attr
             setattr(self, attr, np.load(read_paths[attr]))
-        for attr in ['fits', 'errors', 'MLEs']:
+        for attr in ['fits', 'errors']:
             if attr in read_paths and read_paths[attr] is not None:
                 setattr(self, attr, np.load(read_paths[attr]))
+        for attr in ['MLEs', 'W_hist']:
+            if attr in read_paths and attr is not None:
+                with open(read_paths[attr], 'rb') as f:
+                    setattr(self, attr, pickle.load(f))
 
     def hist_make(self, data, bins=None):
         if bins is None:
@@ -140,8 +144,8 @@ class VDH:
             if i:
                 dat = data
             else:
-                # Copying the array does not copy the mask
-                dat = np.copy(data)
+                # Used the masked array's data without its mask
+                dat = data.data
             W[np.logical_and(min(window) < dat, dat < max(window))] = 1
             self.W_hist.append(W.sum(axis=1))
         self.W_hist = np.array(self.W_hist)
