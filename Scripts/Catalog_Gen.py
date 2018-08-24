@@ -13,14 +13,13 @@ args = parser.parse_args()
 
 # Here is a dictionary for the RFI class keywords
 
-data_kwargs = {'read_kwargs': {'file_type': 'uvfits', 'ant_str': 'cross'},
+data_kwargs = {'read_kwargs': {'file_type': 'miriad', 'ant_str': 'cross'},
                'obs': args.obs,
                'inpath': args.inpath,
-               'outpath': args.outpath,
-               'bad_time_indices': [0, -1, -2, -3]}
+               'outpath': args.outpath}
 
 # The type of catalog you would like made - options are 'INS', 'VDH', 'MF', and 'ES'
-catalog_types = ['INS', 'MF', 'ES']
+catalog_types = ['INS', ]
 
 
 catalog_data_kwargs = {'INS': {},

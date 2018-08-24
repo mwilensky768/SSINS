@@ -329,6 +329,10 @@ def test_ES_construct_write():
             nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1),
                    '%s, %s attr is %s' % (getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], attr))
 
+    ss.apply_flags(choice='custom', custom=ss.ES.temp_mask)
+    ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type)
+    nt.ok_(os.path.exists('%s/%s_ES_flag.uvfits' % (outpath, obs)))
+
     shutil.rmtree(outpath)
 
 
