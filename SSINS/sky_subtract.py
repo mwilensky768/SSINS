@@ -45,8 +45,7 @@ class SS:
 
         if diff:
             assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
-            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] ==
-                           self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
+            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] == self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
                            for k in range(1, self.UV.Ntimes - 1)])
             assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
 
@@ -54,8 +53,7 @@ class SS:
                                                     [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
                                                      self.UV.Nfreqs, self.UV.Npols]), axis=0)))
 
-            self.UV.flag_array = np.reshape((self.UV.flag_array[:-self.UV.Nbls] +
-                                             self.UV.flag_array[self.UV.Nbls:]) > 0,
+            self.UV.flag_array = np.reshape((self.UV.flag_array[:-self.UV.Nbls] + self.UV.flag_array[self.UV.Nbls:]) > 0,
                                             [self.UV.Ntimes - 1, self.UV.Nbls,
                                              self.UV.Nspws, self.UV.Nfreqs,
                                              self.UV.Npols]).astype(bool)
@@ -204,6 +202,6 @@ class SS:
             UV = self.read(inpath, read_kwargs=read_kwargs,
                            bad_time_indices=bad_time_indices)
         for i in range(UV.Ntimes - 1):
-            UV.flag_array[i * UV.Nbls:(i + 1) * Nbls] = self.UV.data_array.mask[i]
+            UV.flag_array[i * UV.Nbls:(i + 1) * UV.Nbls] = self.UV.data_array.mask[i]
             UV.flag_array[(i + 1) * UV.Nbls:(i + 2) * UV.Nbls]
         getattr(UV, 'write_%s' % file_type_out)(outpath)
