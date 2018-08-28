@@ -62,6 +62,7 @@ class SS:
             self.apply_flags(choice=self.flag_choice, INS=INS, custom=custom)
 
     def apply_flags(self, choice=None, INS=None, custom=None):
+        self.flag_choice = choice
         if choice is 'original':
             self.UV.data_array.mask = self.UV.flag_array
         elif choice is 'INS':
