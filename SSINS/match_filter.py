@@ -28,7 +28,6 @@ class MF:
                                                            min(self.shape_dict[shape]))),
                                           np.argmin(np.abs(self.INS.freq_array[0, :] -
                                                            max(self.shape_dict[shape]))))
-        slice_dict['streak'] = slice(None)
         slice_dict['point'] = None
 
         return(slice_dict)
