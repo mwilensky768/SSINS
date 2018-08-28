@@ -68,13 +68,16 @@ class SS:
             ind = np.where(INS.data.mask)
             self.UV.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
         elif choice is 'custom':
-            self.UV.data_array[custom] = np.ma.masked
+            if custom is not None:
+                self.UV.data_array[custom] = np.ma.masked
+            else:
+                warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
         elif np.any(self.UV.data_array.mask):
             self.UV.data_array.mask = False
 
     def save_meta(self):
 
-        path = '%s/metadata'
+        path = '%s/metadata' % self.outpath
         if not os.path.exists(path):
             os.makedirs(path)
         assert os.path.exists(path), 'Output directory, %s, could not be created.\
@@ -109,7 +112,7 @@ class SS:
                   'flag_choice': self.flag_choice}
         self.INS = INS(**kwargs)
 
-    def VDH_prepare(self, bins='auto', fit_hist=False, MLE=True, window=None):
+    def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
 
         kwargs = {'data': self.UV.data_array,
                   'flag_choice': self.flag_choice,

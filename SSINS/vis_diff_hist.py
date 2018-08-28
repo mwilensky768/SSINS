@@ -89,17 +89,17 @@ class VDH:
 
     def hist_make(self, data, bins=None):
         if bins is None:
-            bins = np.logspace(np.floor(np.log10(np.amin(data.data))),
+            bins = np.logspace(np.floor(np.log10(np.amin(data.data[data.data > 0]))),
                                np.ceil(np.log10(np.amax(data.data))),
                                num=1001)
         counts = np.zeros(1 + bool(self.flag_choice), dtype=object)
         bins_arr = np.copy(counts)
         for i in range(1 + bool(self.flag_choice)):
             if i:
-                temp_counts, temp_bins = np.histogram(data[:, :, 0][np.logical_not(data[:, :, 0].mask)],
+                temp_counts, temp_bins = np.histogram(data[np.logical_not(data.mask)],
                                                       bins=bins)
             else:
-                temp_counts, temp_bins = np.histogram(data[:, :, 0], bins=bins)
+                temp_counts, temp_bins = np.histogram(data, bins=bins)
             counts[i] = temp_counts
             bins_arr[i] = temp_bins
         return(counts, bins_arr)
@@ -114,10 +114,9 @@ class VDH:
                 MLE = 0.5 * np.mean(data**2, axis=0)
                 N = np.count_nonzero(np.logical_not(data.mask), axis=0)
             else:
-                # copy does not copy the mask
-                dat = np.copy(data)
-                MLE = 0.5 * np.mean(dat**2, axis=0)
-                N = np.count_nonzero(dat, axis=0)
+                # Just use the data without the mask
+                MLE = 0.5 * np.mean(data.data**2, axis=0)
+                N = np.count_nonzero(data.data, axis=0)
             MLEs.append(MLE)
             P = np.zeros(len(self.bins[i]) - 1)
             Ntot = np.sum(N)

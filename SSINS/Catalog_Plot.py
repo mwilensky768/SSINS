@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
+             events=False, ms_vmin=None, ms_vmax=None,
              xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
     """
     Takes a noise spectrum and plots its relevant data products.
@@ -22,8 +23,6 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
 
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
-                 'vmin': vmin,
-                 'vmax': vmax,
                  'xticklabels': xticklabels,
                  'yticklabels': yticklabels,
                  'zero_mask': zero_mask,
@@ -33,16 +32,21 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                  '%s Mean-Subtracted Incoherent Noise Spectrum' % (INS.obs)]
 
     data_kwargs = [{'cbar_label': 'Amplitude (%s)' % (INS.vis_units),
-                    'mask_color': 'white'},
+                    'mask_color': 'white',
+                    'vmin': vmin,
+                    'vmax': vmax},
                    {'cbar_label': 'Deviation ($\hat{\sigma}$)',
                     'mask_color': 'black',
-                    'cmap': cm.coolwarm}]
+                    'cmap': cm.coolwarm,
+                    'vmin': ms_vmin,
+                    'vmax': ms_vmax}]
 
     tags = ['match', 'chisq', 'samp_thresh']
     tag = ''
     for subtag in tags:
         if len(getattr(INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
+
     fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3],
                            ncols=2, squeeze=False)
     fig.suptitle('%s Incoherent Noise Spectrum' % INS.obs)
@@ -58,34 +62,45 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
                 (INS.outpath, INS.obs, INS.flag_choice, tag))
     plt.close(fig)
 
-    for i, string in enumerate(['match_', 'chisq_']):
-        if len(getattr(INS, '%shists' % (string))):
-            for k, hist in enumerate(getattr(INS, '%shists' % string)):
-                fig, ax = plt.subplots(figsize=(14, 8))
-                exp, var = util.hist_fit(hist[0], hist[1])
-                x = hist[1][:-1] + 0.5 * np.diff(hist[1])
-                error_plot(fig, ax, x, hist[0],
-                           xlabel='Deviation ($\hat{\sigma}$)')
-                error_plot(fig, ax, x, exp, yerr=np.sqrt(var),
-                           xlabel='Deviation ($\hat{\sigma}$)')
-                fig.savefig('%s/figs/%s_f%i_f%i_%sevent_hist_%i.png' %
-                            (INS.outpath, INS.obs,
-                             getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[0],
-                             getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[1],
-                             string, k))
-                plt.close(fig)
+    fig, ax = plt.subplots(figsize=(14, 8))
+    x = INS.bins[:-1] + 0.5 * np.diff(INS.bins)
+    error_plot(fig, ax, x, INS.counts, xlabel='Deviation ($\hat{\sigma}$)',
+               title='%s Incoherent Noise Spectrum Histogram' % (INS.obs),
+               legend=False)
+    fig.savefig('%s/figs/%s_%s_INS_hist%s.png' % (INS.outpath, INS.obs, INS.flag_choice, tag))
+    plt.close(fig)
+
+    if events:
+        for i, string in enumerate(['match_', 'chisq_']):
+            if len(getattr(INS, '%shists' % (string))):
+                for k, hist in enumerate(getattr(INS, '%shists' % string)):
+                    fig, ax = plt.subplots(figsize=(14, 8))
+                    exp, var = util.hist_fit(hist[0], hist[1])
+                    x = hist[1][:-1] + 0.5 * np.diff(hist[1])
+                    error_plot(fig, ax, x, hist[0],
+                               xlabel='Deviation ($\hat{\sigma}$)')
+                    error_plot(fig, ax, x, exp, yerr=np.sqrt(var),
+                               xlabel='Deviation ($\hat{\sigma}$)')
+                    fig.savefig('%s/figs/%s_f%i_f%i_%sevent_hist_%i.png' %
+                                (INS.outpath, INS.obs,
+                                 getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[0],
+                                 getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[1],
+                                 string, k))
+                    plt.close(fig)
 
 
-def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None,
-            xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
+def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
+            ms_vmax=None, xticklabels=None, yticklabels=None, zero_mask=False,
+            aspect=None):
 
-    INS_plot(MF.INS, xticks=None, yticks=None, vmin=None, vmax=None,
-             xticklabels=None, yticklabels=None, zero_mask=False, aspect=None)
+    INS_plot(MF.INS, xticks=xticks, yticks=yticks, vmin=vmin, vmax=vmax,
+             ms_vmin=ms_vmin, ms_vmax=ms_vmax, xticklabels=xticklabels,
+             yticklabels=yticklabels, zero_mask=zero_mask, aspect=aspect)
 
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
              xticklabels=None, yticklabels=None, aspect=None, xscale='log',
-             yscale='log'):
+             yscale='log', ylim=None):
     """
     Takes a visibility difference histogram and plots it.
     """
@@ -129,6 +144,7 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
                                xscale=xscale, yscale=yscale,
                                label=labels[attr][k],
                                xlabel='Amplitude (%s)' % (VDH.vis_units),
+                               ylim=ylim,
                                **hist_kwargs[attr])
         if hasattr(VDH, 'W_hist'):
             for m in range(2):
