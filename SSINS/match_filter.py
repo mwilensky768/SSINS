@@ -7,7 +7,8 @@ from scipy.special import erfc
 
 class MF:
 
-    def __init__(self, INS, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None):
+    def __init__(self, INS, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
+                 point=True, streak=True):
         self.INS = INS
         self.shape_dict = shape_dict
         self.N_thresh = N_thresh
@@ -17,18 +18,19 @@ class MF:
             self.sig_thresh = sig_thresh
         if alpha is None:
             self.alpha = erfc(self.sig_thresh / np.sqrt(2))
-        self.slice_dict = self.shape_slicer()
+        self.slice_dict = self.shape_slicer(point, streak)
 
-    def shape_slicer(self):
+    def shape_slicer(self, point, streak):
         slice_dict = {}
         for shape in self.shape_dict:
             if min(self.INS.freq_array[0, :]) < min(self.shape_dict[shape]) or \
                max(self.INS.freq_array[0, :]) > max(self.shape_dict[shape]):
-                slice_dict[shape] = slice(np.argmin(np.abs(self.INS.freq_array[0, :] -
-                                                           min(self.shape_dict[shape]))),
-                                          np.argmin(np.abs(self.INS.freq_array[0, :] -
-                                                           max(self.shape_dict[shape]))))
-        slice_dict['point'] = None
+                slice_dict[shape] = slice(np.argmin(np.abs(self.INS.freq_array[0, :] - min(self.shape_dict[shape]))),
+                                          np.argmin(np.abs(self.INS.freq_array[0, :] - max(self.shape_dict[shape]))))
+        if point:
+            slice_dict['point'] = None
+        if streak:
+            slice_dict['streak'] = slice(None)
 
         return(slice_dict)
 
