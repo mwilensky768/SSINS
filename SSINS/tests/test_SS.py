@@ -334,7 +334,7 @@ def test_ES_construct_write():
     ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type, inpath=testfile)
     nt.ok_(os.path.exists('%s/%s_ES_flag.uvfits' % (outpath, obs)))
 
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_scatter():
