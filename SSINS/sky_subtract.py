@@ -49,14 +49,16 @@ class SS:
                            for k in range(1, self.UV.Ntimes - 1)])
             assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
 
-            self.UV.data_array = np.ma.masked_array(np.absolute(np.diff(np.reshape(self.UV.data_array,
-                                                    [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
-                                                     self.UV.Nfreqs, self.UV.Npols]), axis=0)))
+            reshape = [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
+                       self.UV.Nfreqs, self.UV.Npols]
 
-            self.UV.flag_array = np.reshape((self.UV.flag_array[:-self.UV.Nbls] + self.UV.flag_array[self.UV.Nbls:]) > 0,
-                                            [self.UV.Ntimes - 1, self.UV.Nbls,
-                                             self.UV.Nspws, self.UV.Nfreqs,
-                                             self.UV.Npols]).astype(bool)
+            self.UV.data_array = np.reshape(self.UV.data_array, reshape)
+            self.UV.data_array = np.diff(self.UV.data_array, axis=0)
+            self.UV.data_array = np.ma.masked_array(np.absolute(self.UV.data_array))
+
+            self.UV.flag_array = np.reshape(self.UV.flag_array, reshape)
+            self.UV.flag_array = np.logical_or(self.UV.flag_array[:-1],
+                                               self.UV.flag_array[1:])
 
         if self.flag_choice is not None:
             self.apply_flags(choice=self.flag_choice, INS=INS, custom=custom)
@@ -130,12 +132,12 @@ class SS:
             self.VDH.rev_ind(self.UV.data_array, window)
 
     def MF_prepare(self, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
-                   tests=['match']):
+                   tests=['match'], point=True, streak=True):
 
         if not hasattr(self, 'INS'):
             self.INS_prepare()
         self.MF = MF(self.INS, sig_thresh=sig_thresh, shape_dict=shape_dict,
-                     N_thresh=N_thresh, alpha=alpha)
+                     N_thresh=N_thresh, alpha=alpha, point=point, streak=streak)
         if tests is not None:
             for test in tests:
                 getattr(self.MF, 'apply_%s_test' % test)()
