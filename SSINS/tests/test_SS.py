@@ -168,7 +168,6 @@ def test_VDH_construct_plot():
     ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
     ss.VDH_prepare(fit_hist=True)
     ss.VDH.rev_ind(ss.UV.data_array, window)
-    ss.VDH.save()
 
     read_paths = {}
     for attr in ['counts', 'bins', 'fits', 'errors']:
@@ -184,6 +183,7 @@ def test_VDH_construct_plot():
     test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
+            print('attr is %s i is %i' % (attr, i))
             nt.ok_(np.allclose(getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i], atol=1),
                    '%s, %s, %s' %
                    (getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i],
@@ -299,7 +299,8 @@ def test_ES_construct_write():
         for i in range(len(test_VDH.counts)):
             nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]),
                    'attr is %s, i is %i, %s, %s' % (attr, i, getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i]))
-    nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs))
+    nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs),
+           '%s' % (test_VDH.MLEs - ss.VDH.MLEs))
     nt.ok_(np.all(test_VDH.freq_array == ss.VDH.freq_array))
     for attr in ['pols', 'vis_units']:
         nt.ok_(np.all(getattr(test_VDH, attr) == getattr(ss.VDH, attr)))
@@ -324,7 +325,7 @@ def test_ES_construct_write():
     test_ES = ES(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
         nt.ok_(np.all(getattr(test_ES, attr) == getattr(ss.ES, attr)))
-    for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs', 'avgs', 'uv_grid']:
+    for attr in ['counts', 'bins', 'exp_counts', 'exp_error', 'cutoffs', 'avgs', 'uv_grid']:
         for i in range(len(test_ES.counts)):
             nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1),
                    '%s, %s attr is %s' % (getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], attr))
@@ -333,7 +334,7 @@ def test_ES_construct_write():
     ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type, inpath=testfile)
     nt.ok_(os.path.exists('%s/%s_ES_flag.uvfits' % (outpath, obs)))
 
-    shutil.rmtree(outpath)
+    # shutil.rmtree(outpath)
 
 
 def test_scatter():

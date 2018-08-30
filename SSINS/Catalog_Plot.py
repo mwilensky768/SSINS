@@ -1,3 +1,8 @@
+"""
+A library of wrappers which call plotting functions in the SSINS.plot_lib
+library. Each function is named according to the class that they plot.
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -13,9 +18,9 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None,
              xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
     """
-    Takes a noise spectrum and plots its relevant data products.
+    Takes an INS and plots its relevant data products.
     Image Plots: Data/Mean-Subtracted Data
-    Histograms: Mean-Subtracted Data/Events
+    Histograms: Mean-Subtracted Data, Events optional using events keyword.
     """
 
     if not os.path.exists('%s/figs' % (INS.outpath)):
@@ -93,6 +98,12 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
             ms_vmax=None, xticklabels=None, yticklabels=None, zero_mask=False,
             aspect=None):
 
+    """
+    A very thin wrapper around INS_plot that lets one pass an MF class instead
+    of an INS class. Made for the express purpose of convenient simultaneous
+    looping through different libraries using getattr().
+    """
+
     INS_plot(MF.INS, xticks=xticks, yticks=yticks, vmin=vmin, vmax=vmax,
              ms_vmin=ms_vmin, ms_vmax=ms_vmax, xticklabels=xticklabels,
              yticklabels=yticklabels, zero_mask=zero_mask, aspect=aspect)
@@ -102,7 +113,7 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
              xticklabels=None, yticklabels=None, aspect=None, xscale='log',
              yscale='log', ylim=None):
     """
-    Takes a visibility difference histogram and plots it.
+    Takes a VDH and plots its relevant data products.
     """
 
     im_kwargs = {'xticks': xticks,
@@ -161,6 +172,12 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
 def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
             zero_mask=False, mask_color='white', aspect=None, vmin=None,
             vmax=None, xscale='linear', yscale='log'):
+
+    """
+    Takes an event_stat class an plots some relevant data products, including
+    some uv-grids of averaged events, as well as histograms of those averaged
+    events.
+    """
 
     im_kwargs = {'vmin': vmin,
                  'vmax': vmax,
