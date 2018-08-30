@@ -1,3 +1,7 @@
+"""
+Class for more deeply examining events which were identified in INS.
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -9,10 +13,31 @@ import time
 
 class ES:
 
+    """
+    ES stands for Event Statistics. While the INS averages over baselines to
+    locate RFI events in time-frequency, this class takes those events and
+    averages across time-frequency for those baselines to see if particular
+    baselines are more contaminated than others. This is often used more like a
+    function than an interactive class.
+    """
+
     def __init__(self, data=None, flag_choice=None, events=None, MLE=None,
                  uvw_array=None, vis_units=None, obs=None, pols=None,
                  outpath=None, MC_iter=int(1e4), grid_dim=50, grid_lim=None,
                  R_thresh=10, read_paths={}, freq_array=None):
+
+        """
+        init function for ES class. Attributes can be read in from numpy loadable
+        files using the read_paths dictionary keyword, otherwise they can be set
+        manually. Optional kwargs which are only used for plotting and/or writing
+        data out are 'vis_units', 'pols', 'grid', 'freq_array', 'outpath'. All other
+        kwargs are used to set attributes in this class and are necessary upon
+        instantiation if they are not read in. The flags are generated upon
+        instantiation. This process uses Monte-Carlo (MC_iter keyword determines
+        how many iterations) to approximate the thermal distribution and draw
+        a cutoff between the baselines exhibiting thermal noise and those exhibiting
+        RFI contamination. This is a very slow algorithm at present.
+        """
 
         if not read_paths:
 
@@ -64,6 +89,9 @@ class ES:
             self.read(read_paths)
 
     def save(self):
+        """
+        Writes out the attributes of this class.
+        """
         for subdir in ['arrs', 'metadata']:
             path = '%s/%s' % (self.outpath, subdir)
             if not os.path.exists(path):
@@ -84,6 +112,10 @@ class ES:
                 pickle.dump(getattr(self, attr), f)
 
     def read(self, read_paths):
+        """
+        Reads in the attributes which are present in the read_paths dictionary.
+        See init docstring for details on which attributes are optional.
+        """
         for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
             if attr not in read_paths or read_paths[attr] is None:
                 warnings.warn('In order to use SSINS.Catalog_Plot, please supply\
@@ -98,6 +130,17 @@ class ES:
             setattr(self, attr, np.load(read_paths[attr]))
 
     def event_avg(self, data, event):
+
+        """
+        This takes an event (time-frequency) and averages the visibility
+        difference amplitudes across that event for each baseline. Then,
+        simulated noise is averaged across that same event, where the noise
+        is estimated using the maximum-likelihood estimator (calculated in a VDH
+        instance) for the noise in each baseline/frequency/polarization. This
+        simulated averaged noise is histogrammed, and this process is repeated
+        MC_iter times. The histograms are averaged together to draw an
+        empirical thermal distribution.
+        """
 
         avg = data[event[0], :, 0, event[2]]
         init_shape = avg.shape
@@ -118,6 +161,12 @@ class ES:
 
     def cutoff(self, counts, bins, exp_counts, R_thresh):
 
+        """
+        This function takes the histogrammed, averaged data, and compares it to
+        the empirical distribution drawn from event_avg(). Cutoffs are drawn
+        based on R_thresh, which is a ratio of counts.
+        """
+
         max_loc = bins[:-1][exp_counts.argmax()] + 0.5 * (bins[1] - bins[0])
         R = counts.astype(float) / exp_counts
         lcut_cond = np.logical_and(R > self.R_thresh, bins[1:] < max_loc)
@@ -134,6 +183,12 @@ class ES:
         return(lcut, rcut)
 
     def bl_grid(self, avg, event):
+
+        """
+        This takes time-frequency averaged data from event_avg() and coarsely
+        grids it in the UV-plane at the time of the event. Each pixel is
+        averaged across the baselines whose centers lie within the pixel.
+        """
 
         u = self.uvw_array[event[0] * self.Nbls:(event[0] + 1) * self.Nbls, 0]
         v = self.uvw_array[event[0] * self.Nbls:(event[0] + 1) * self.Nbls, 1]
