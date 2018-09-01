@@ -1,5 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+"""
+The incoherent noise spectrum class.
+"""
+
 import numpy as np
 from scipy.special import erfcinv
 import os
@@ -9,14 +13,25 @@ import pickle
 
 class INS:
     """
-    This incoherent noise spectrum class, formed from an RFI object as an input.
-    Outputs a data array
+    Defines the incoherent noise spectrum (INS) class.
     """
 
     def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
                  flag_choice=None, vis_units=None, obs=None, outpath=None,
                  match_events=[], match_hists=[], chisq_events=[],
                  chisq_hists=[], read_paths={}, samp_thresh_events=[]):
+
+        """
+        init function for the INS class. Optional args are the obs, pols,
+        vis_units, outpath, and flag_choice, which are just used for writing out
+        data as well as plotting. Required arguments, if not using the read_paths
+        dictionary, are data, Nbls, and freq_array. The data are the averaged
+        visibility difference amplitudes from the sky_subtract class, while
+        Nbls is the number of baselines which contributed to each averaged point
+        in time/frequency/polarization. This function calculates the
+        mean-subtracted spectrum as well as a histogram of the mean-subtracted
+        spectrum.
+        """
 
         opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
                     'outpath': outpath, 'flag_choice': flag_choice}
@@ -28,24 +43,27 @@ class INS:
                 setattr(self, attr, opt_args[attr])
 
         if flag_choice is None:
-            warnings.warn('flag_choice is set to None. If this does not ' +
-                          'reflect the flag_choice of the original data, ' +
-                          'then saved arrays will be mislabled')
+            warnings.warn('%s%s%s%s' % ('flag_choice is set to None. If this ',
+                                        'does not reflect the flag_choice of ',
+                                        'the original data, then saved arrays ',
+                                        'will be mislabled'))
         self.flag_choice = flag_choice
 
         if not read_paths:
             args = (data, Nbls, freq_array)
             assert all([arg is not None for arg in args]),\
-                'Insufficient data given. You must supply a data array,\
-                 a Nbls array of matching shape, and a freq_array of matching sub-shape'
+                '%s%s%s' % ('Insufficient data given. You must supply a data',
+                            ' array, a Nbls array of matching shape, and a freq',
+                            '_array of matching sub-shape')
             self.data = data
             self.Nbls = Nbls
             self.freq_array = freq_array
 
             for attr in ['pols', 'vis_units']:
                 if opt_args[attr] is None:
-                    warnings.warn('In order to use Catalog_Plot.py, with \
-                                   appropriate labels please supply %s attribute' % (attr))
+                    warnings.warn('%s%s%s' % ('In order to use Catalog_Plot.py',
+                                              ' with appropriate labels, please',
+                                              ' supply %s attribute' % (attr)))
                 else:
                     setattr(self, attr, opt_args[attr])
 
@@ -62,6 +80,12 @@ class INS:
 
     def mean_subtract(self):
 
+        """
+        A function which calculated the mean-subtracted spectrum from the
+        regular spectrum. A spectrum made from a perfectly clean observation
+        will be standardized (written as a z-score) by this operation.
+        """
+
         # This constant is determined by the Rayleigh distribution, which
         # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
@@ -69,6 +93,16 @@ class INS:
         return(MS)
 
     def hist_make(self, sig_thresh=None, event=None):
+
+        """
+        A function which will make histograms. Bins can me modulated using the
+        sig_thresh parameter, which is related to the sig_thresh paramter of the
+        match filter (MF) class. A reasonable sig_thresh can be determined
+        from the size of the data set by looking for the z-score beyond which
+        less than 1 count of noise is expected. If an event is given, then
+        data is averaged over the frequencies of the event before construction
+        of the histogram.
+        """
 
         if sig_thresh is None:
             sig_thresh = np.sqrt(2) * erfcinv(1. / np.prod(self.data.shape))
@@ -89,6 +123,9 @@ class INS:
         return(counts, bins, sig_thresh)
 
     def save(self):
+        """
+        Writes out relevant data products.
+        """
         tags = ['match', 'chisq', 'samp_thresh']
         tag = ''
         for subtag in tags:
@@ -120,6 +157,11 @@ class INS:
                         getattr(self, attr))
 
     def read(self, read_paths):
+        """
+        Reads in attributes from numpy loadable (or unpicklable) files whose
+        paths are specified in a read_paths dictionary, where the keys are the
+        attributes and the values are the paths.
+        """
 
         for arg in ['data', 'Nbls', 'freq_array']:
             assert arg in read_paths,\
