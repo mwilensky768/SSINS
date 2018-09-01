@@ -208,6 +208,9 @@ class SS:
             UV = self.read(inpath, read_kwargs=read_kwargs,
                            bad_time_indices=bad_time_indices)
         for i in range(UV.Ntimes - 1):
-            UV.flag_array[i * UV.Nbls:(i + 1) * UV.Nbls] = self.UV.data_array.mask[i]
-            UV.flag_array[(i + 1) * UV.Nbls:(i + 2) * UV.Nbls]
+            UV.flag_array = np.zeros([UV.Ntimes, UV.Nbls, UV.Nspws, UV.Nfreqs,
+                                      UV.Npols], dtype=bool)
+            # This actually does not invert properly but I think it's the best way
+            UV.flag_array[i][self.UV.data_arra.mask[i]] = 1
+            UV.flag_array[i + 1][self.UV.data_array.mask[i]] = 1
         getattr(UV, 'write_%s' % file_type_out)(outpath)
