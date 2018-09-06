@@ -1,3 +1,8 @@
+"""
+Some utility functions. Some are utilized within the main code and some are just
+nice to have around given this set of code.
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import scipy.stats
@@ -5,6 +10,10 @@ import numpy as np
 
 
 def hist_fit(counts, bins, dist='norm'):
+    """
+    Given a histogram, draws the expected counts and variance for the specified
+    distribution. Must be a scipy distribution.
+    """
     N = np.sum(counts)
     p = getattr(scipy.stats, dist).cdf(bins[1:]) - getattr(scipy.stats, dist).cdf(bins[:-1])
     exp = N * p
@@ -14,6 +23,26 @@ def hist_fit(counts, bins, dist='norm'):
 
 
 def bin_combine(counts, bins, weight='var', thresh=1, dist='norm'):
+
+    """
+    Combines bins from the outside in until all bins have a weight which exceeds
+    thresh. Used for making a reasonable chisquare calculation.
+
+    Arguments: counts: The counts in the histogram bins
+
+               bins: The bin edges for the histogram
+
+               weight: Choices are 'var' or 'exp'
+
+                       'var': The expected variance in each bin must exceed
+                              thresh
+
+                       'exp': The expected counts AND the counts must exceed
+                              thresh in each bin
+
+               dist: The scipy distribution to calculate expected counts/bins
+                      with
+    """
 
     exp, var = hist_fit(counts, bins, dist=dist)
     c_com, b_com = (np.copy(counts), np.copy(bins))
@@ -43,6 +72,11 @@ def bin_combine(counts, bins, weight='var', thresh=1, dist='norm'):
 
 def chisq(counts, bins, weight='var', thresh=1, dist='norm'):
 
+    """
+    Calculates a chisq statistic given a distribution and a chosen weight
+    scheme.
+    """
+
     counts, bins = bin_combine(counts, bins, weight=weight, thresh=thresh, dist=dist)
     print(counts, bins)
     exp, var = hist_fit(counts, bins, dist=dist)
@@ -60,10 +94,17 @@ def chisq(counts, bins, weight='var', thresh=1, dist='norm'):
 
 
 def slc_len(slc, shape):
+    """
+    Returns the length of a list of indices that describe a slice object.
+    """
     return(slc.indices(shape)[1] - slc.indices(shape)[0])
 
 
 def event_fraction(match_events, Nfreqs, Ntimes):
+    """
+    Calculates the fraction of times an event was caught by the flagger for
+    each type of event.
+    """
 
     shapes, counts = np.unique(np.array(match_events)[:, 2], return_counts=True)
     # Explicit for loop since problem with dict comp involving unhashable types
@@ -78,6 +119,9 @@ def event_fraction(match_events, Nfreqs, Ntimes):
 
 
 def make_obslist(obsfile):
+    """
+    Makes a python list from a text file whose lines are separated by "\n"
+    """
     with open(obsfile) as f:
         obslist = f.read().split("\n")
     while '' in obslist:

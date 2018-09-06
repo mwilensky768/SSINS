@@ -29,14 +29,52 @@ class ES:
         """
         init function for ES class. Attributes can be read in from numpy loadable
         files using the read_paths dictionary keyword, otherwise they can be set
-        manually. Optional kwargs which are only used for plotting and/or writing
-        data out are 'vis_units', 'pols', 'grid', 'freq_array', 'outpath'. All other
-        kwargs are used to set attributes in this class and are necessary upon
-        instantiation if they are not read in. The flags are generated upon
-        instantiation. This process uses Monte-Carlo (MC_iter keyword determines
-        how many iterations) to approximate the thermal distribution and draw
-        a cutoff between the baselines exhibiting thermal noise and those exhibiting
-        RFI contamination. This is a very slow algorithm at present.
+        manually.
+
+        Required Parameters: data: The sky-subtracted visibility amplitudes to
+                                   be examined.
+
+                             events: The events found by some of the filter
+                                     tests in the MF class.
+
+                             MLE: The maximimum likelihood estimator for the
+                                  Rayleigh width as calculated in the VDH class.
+
+                             uvw_array: The uvw_array as found in a pyuvdata
+                                        object
+
+                             MC_iter: The number of simulated histograms to
+                                      average together when flagging averaged
+                                      events. Event just 100 iterations can be
+                                      extremely time-intensive.
+
+                             grid_dim: The number of pixels to have in each
+                                       dimension of the uv-grid.
+
+                             grid_lim: The u and v bounds for the uv-grid.
+
+                             R_thresh: Describes the sensitivity of the flagger.
+                                       Should be greater than 2.
+
+        Optional Parameters: flag_choice: The flag choice used for the
+                                          sky-subtracted data.
+
+                             vis_units: The units for the sky-subtracted
+                                        visibility amplitudes.
+
+                             obs: The OBSID for the observation in question.
+
+                             pols: The polarizations present in the data.
+
+                             outpath: A base directory to save results to.
+
+                             freq_array: The frequencies present in the data.
+
+        The new flags are generated upon instantiation. This process uses
+        Monte-Carlo to approximate the thermal distribution and draw
+        a cutoff between the baselines exhibiting reasonable thermal noise and
+        those exhibiting possible RFI contamination. This is a very slow
+        algorithm at present.
         """
 
         if not read_paths:

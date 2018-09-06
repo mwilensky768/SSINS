@@ -1,3 +1,7 @@
+"""
+The visibility difference histogram class.
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -10,9 +14,77 @@ import time
 
 class VDH:
 
+    """
+    Defines the VDH class. This class just contains data relevant to a histogram
+    of the sky-subtracted visibility (visibility difference) amplitudes.
+    """
+
     def __init__(self, data=None, flag_choice=None, freq_array=None, pols=None,
                  vis_units=None, obs=None, outpath=None, bins=None, fit_hist=False,
                  MLE=True, read_paths={}):
+
+        """
+        init function for the VDH class. This grabs all the relevant metadata
+        that was passed, makes a histogram of the data and adds fits if desired.
+        The fit is made using maximum likelihood estimation for each baseline,
+        frequency, and polarization.
+
+        Keywords: data: The data to be histogrammed. Can be circumvented if
+                        other attributes are being read in.
+
+                  flag_choice: The flagging choice for the data. The histogram
+                               for no flags is always computed. If flag_choice
+                               is not None, then a second histogram will be
+                               computed with the flags applied.
+
+                  freq_array: The frequency array which describes axes 2 and 3
+                              of the data.
+
+                  pols: The polarizations present in the data
+
+                  vis_units: The units for the visibilities
+
+                  obs: The OBSID for the data
+
+                  outpath: The base directory for saving outputs
+
+                  bins: The bin edges for the histograms. If None, will use
+                        logarithmically spaced bins. If 'auto,' then the same
+                        thing happens as when passing 'auto' to np.histogram.
+
+                  fit_hist: Specifies whether or not to calculate a rayleigh
+                            mixture fit to the histograms via maximum likelihood
+                            estimation.
+
+                  MLE: Specify whether to calculate an MLE for each baseline,
+                       frequency, and polarization. This must be enabled in
+                       order to calculate a fit.
+
+                 read_paths: One can read in saved histograms using this keyword.
+                             Set the keys to the keywords to read in, and set
+                             the values as paths to the attributes to be read in.
+
+        Attributes: counts: The number of data points which lie in the bins
+                            whose edges are described by the corresponding entry
+                            in bins.
+
+                    bins: Will be an array whose entries are the bin edges for
+                          the data without and with flags applied, respectively.
+
+                    fits: Rayleigh-mixture expected counts for the bins in bins,
+                          found by maximum likelihood estimation.
+
+                    errors: The 1-sigma error bars for the fits.
+
+                    MLEs: The estimators for those corresponding entries in
+                          the fits.
+
+                    W_hist: A waterfall histogram may be calculated with
+                            rev_ind(data, window) which finds the number of
+                            baselines in a time/frequency/polarization which
+                            have amplitudes within the window given. Useful for
+                            seeing where bright RFI is spectrally located.
+        """
 
         self.flag_choice = flag_choice
 
@@ -44,6 +116,9 @@ class VDH:
                 os.makedirs('%s/%s' % (self.outpath, string))
 
     def save(self):
+        """
+        Saves metadata and data products to the outpath
+        """
 
         for string in ['arrs', 'metadata']:
             if not os.path.exists('%s/%s' % (self.outpath, string)):
@@ -68,6 +143,9 @@ class VDH:
                         getattr(self, attr))
 
     def read(self, read_paths):
+        """
+        Reads in metadata and data products using read_paths
+        """
 
         for attr in ['freq_array', 'pols', 'vis_units']:
             if attr in read_paths and read_paths[attr] is not None:
@@ -88,6 +166,9 @@ class VDH:
                     setattr(self, attr, pickle.load(f))
 
     def hist_make(self, data, bins=None):
+        """
+        Makes a histogram given the data, flag_choice, and bins choice.
+        """
         if bins is None:
             bins = np.logspace(np.floor(np.log10(np.amin(data.data[data.data > 0]))),
                                np.ceil(np.log10(np.amax(data.data))),
@@ -105,6 +186,9 @@ class VDH:
         return(counts, bins_arr)
 
     def rayleigh_mixture_fit(self, data, fit_hist=False):
+        """
+        Makes a rayleigh-mixture fit via maximum likelihood estimation.
+        """
         print('Beginning fit at %s' % time.strftime("%H:%M:%S"))
         MLEs = []
         fits = np.zeros(1 + bool(self.flag_choice), dtype=object)
@@ -136,6 +220,11 @@ class VDH:
         return(MLEs, fits, errors)
 
     def rev_ind(self, data, window):
+        """
+        Finds the number of baselines in a time-frequency-polarization bin which
+        had data whose brightness is within the window. Useful for finding the
+        spectral location of bright RFI.
+        """
         self.W_hist = []
         self.window = window
         for i in range(1 + bool(self.flag_choice)):
