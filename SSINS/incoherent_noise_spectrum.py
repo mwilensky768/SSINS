@@ -22,15 +22,77 @@ class INS:
                  chisq_hists=[], read_paths={}, samp_thresh_events=[]):
 
         """
-        init function for the INS class. Optional args are the obs, pols,
-        vis_units, outpath, and flag_choice, which are just used for writing out
-        data as well as plotting. Required arguments, if not using the read_paths
-        dictionary, are data, Nbls, and freq_array. The data are the averaged
-        visibility difference amplitudes from the sky_subtract class, while
-        Nbls is the number of baselines which contributed to each averaged point
-        in time/frequency/polarization. This function calculates the
-        mean-subtracted spectrum as well as a histogram of the mean-subtracted
-        spectrum.
+        init function for the INS class. Can set the attributes manually, or
+        read some in using the read_paths dictionary. The keys for read_paths
+        are the attribute names as strings, while the values are paths to
+        numpy loadable binary files (pickle is used for masked arrays). The init
+        function will calculate the Calculated Attributes (see below).
+
+        Required Parameters: These parameters must either be passed manually or
+                             included in the read_paths dictionary.
+
+                             data: The baseline-averaged sky-subtracted
+                                   visibility amplitudes.
+
+                             Nbls: An array of the same shape as data which
+                                   tells how many baselines were used for each
+                                   point in data.
+
+                             freq_array: frequencies for the data
+
+        Optional Attributes: pols: The polarizations present in the data.
+
+                             flag_choice: The type of flags used in the
+                                          sky_subtract object before
+                                          averaging across the baselines
+
+                             vis_units: The units for the visibilities
+
+                             obs: The OBSID for the spectrum
+
+                             outpath: A base directory to save attributes to
+
+         Match Filter Attributes: These attributes are not typically passed, but
+                                  instead calculated using the MF class.
+
+                                  match_events: Events (time/frequency-slice
+                                                pairs) in the spectrum located
+                                                by the match filter.
+
+                                  match_hists: Histograms for the match events
+                                               above.
+
+                                  chisq_events: Channels or events which were
+                                                identified by the chisq test in
+                                                the MF class.
+
+                                 chisq_hists: Histograms for the above events
+
+                                 samp_thresh_events: Events located by the
+                                                     samp thresh test in the MF
+                                                     class.
+
+         Calculated Attributes: The attributes are calculable using
+                                mean_subtract() and hist_make().
+
+                                data_ms: The mean-subtracted data array. The
+                                         data in this array is standardized
+                                         according to an estimator of the noise.
+
+                                counts:  The counts for the binned
+                                         mean-subtracted data
+
+                                bins: The bins for the mean-subtracted data
+
+                                sig_thresh: Without employing the match filter,
+                                            this parameter just describes the
+                                            default bins for the mean-subtracted
+                                            data. If a MF class is initialized
+                                            without passing the sig_thresh kwarg,
+                                            then the INS.sig_thresh is used for
+                                            the match filter as well. The
+                                            default calculation is the same for
+                                            both classes.
         """
 
         opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
