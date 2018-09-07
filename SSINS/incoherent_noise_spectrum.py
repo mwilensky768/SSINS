@@ -140,7 +140,7 @@ class INS:
         self.data_ms = self.mean_subtract()
         self.counts, self.bins, self.sig_thresh = self.hist_make()
 
-    def mean_subtract(self):
+    def mean_subtract(self, f=slice(None)):
 
         """
         A function which calculated the mean-subtracted spectrum from the
@@ -151,7 +151,7 @@ class INS:
         # This constant is determined by the Rayleigh distribution, which
         # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
-        MS = (self.data / self.data.mean(axis=0) - 1) * np.sqrt(self.Nbls / C)
+        MS = (self.data[:, :, f] / self.data[:, :, f].mean(axis=0) - 1) * np.sqrt(self.Nbls[:, :, f] / C)
         return(MS)
 
     def hist_make(self, sig_thresh=None, event=None):

@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from SSINS import util
 from scipy.special import erfc
+import time
 
 
 class MF:
@@ -156,6 +157,7 @@ class MF:
         mean-subtracted spectrum is recalculated. This repeats
         until there are no more outliers greater than sig_thresh.
         """
+        print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
         count = 1
         # Set these attributes to list form so that append method works
@@ -172,8 +174,10 @@ class MF:
                 self.INS.match_events.append(event)
                 self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
                                                                     event=event)))
-            self.INS.data_ms = self.INS.mean_subtract()
+            self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max)
         self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+
+        print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
     def apply_chisq_test(self):
         """
@@ -203,7 +207,7 @@ class MF:
                     self.INS.data[:, 0, self.slice_dict[shape_min]] = np.ma.masked
                     self.INS.chisq_events.append(event[2])
 
-            self.INS.data_ms = self.INS.mean_subtract()
+                self.INS.data_ms[:, :, event[2]] = self.INS.mean_subtract(f=event[2])
         self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
 
     def apply_samp_thresh_test(self):
