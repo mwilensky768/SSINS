@@ -184,10 +184,7 @@ def test_VDH_construct_plot():
     for attr in ['counts', 'bins', 'fits', 'errors']:
         for i in range(len(test_VDH.counts)):
             print('attr is %s i is %i' % (attr, i))
-            nt.ok_(np.allclose(getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i], atol=1),
-                   '%s, %s, %s' %
-                   (getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i],
-                    getattr(test_VDH, attr)[i] - getattr(ss.VDH, attr)[i]))
+            nt.ok_(np.allclose(getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i], atol=1))
     for attr in ['MLEs', 'W_hist']:
         for i in range(len(test_VDH.MLEs)):
             nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
@@ -275,7 +272,10 @@ def test_ES_construct_write():
     for attr in ['match_hists', 'chisq_hists']:
         for i in range(len(getattr(ss.INS, attr))):
             for k in range(2):
-                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]))
+                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]),
+                       '%s, %s, %s' % (attr,
+                                       getattr(test_INS, attr)[i][k],
+                                       getattr(ss.INS, attr)[i][k]))
     nt.ok_(np.all(test_INS.samp_thresh_events == ss.INS.samp_thresh_events))
 
     read_paths = {}
