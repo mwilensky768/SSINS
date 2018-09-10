@@ -149,7 +149,7 @@ class MF:
 
         return(p_min, shape_min, f_point)
 
-    def apply_match_test(self):
+    def apply_match_test(self, order=0):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -174,7 +174,8 @@ class MF:
                 self.INS.match_events.append(event)
                 self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
                                                                     event=event)))
-            self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max)
+                self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max,
+                                                                       order=order)
         self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
