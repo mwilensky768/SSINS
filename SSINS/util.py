@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 import scipy.stats
 import numpy as np
+import os
 
 
 def hist_fit(counts, bins, dist='norm'):
@@ -128,3 +129,35 @@ def make_obslist(obsfile):
         obslist.remove('')
     obslist.sort()
     return(obslist)
+
+
+def read_paths_INS(basedir, flag_choice, obs, tag=''):
+
+    """
+    Makes a read_paths dictionary from data which was saved using the save()
+    functions of the various objects.
+    """
+
+    read_paths = {}
+    for attr in ['data', 'Nbls']:
+        read_paths[attr] = '%s/arrs/%s_%s_INS_%s%s.npym' % (basedir, obs,
+                                                            flag_choice, attr,
+                                                            tag)
+
+    for attr in ['freq_array', 'pols', 'vis_units']:
+        path = '%s/metadata/%s_%s.npy' % (basedir, obs, attr)
+        if os.path.exists(path):
+            read_paths[attr] = path
+
+    for attr in ['match', 'chisq']:
+        for subattr in ['events', 'hists']:
+            attribute = '%s_%s' % (attr, subattr)
+            path = '%s/arrs/%s_%s_INS_%s.npy' % (basedir, obs, flag_choice,
+                                                 attribute)
+            if os.path.exists(path):
+                read_paths[attribute] = path
+    path = '%s/%s_%s_INS_samp_thresh_events.npy' % (basedir, obs, flag_choice)
+    if os.path.exists(path):
+        read_paths['samp_thresh_events'] = path
+
+    return(read_paths)
