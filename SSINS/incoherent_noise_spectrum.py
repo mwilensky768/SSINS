@@ -19,7 +19,8 @@ class INS:
     def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
                  flag_choice=None, vis_units=None, obs=None, outpath=None,
                  match_events=[], match_hists=[], chisq_events=[],
-                 chisq_hists=[], read_paths={}, samp_thresh_events=[]):
+                 chisq_hists=[], read_paths={}, samp_thresh_events=[],
+                 order=0):
 
         """
         init function for the INS class. Can set the attributes manually, or
@@ -93,6 +94,9 @@ class INS:
                                             the match filter as well. The
                                             default calculation is the same for
                                             both classes.
+         Keywords: order: The order of the mean_subtract function on
+                          initialization. For now, can possible allow for a
+                          linear drift in the mean (order=1).
         """
 
         opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
@@ -137,7 +141,7 @@ class INS:
         else:
             self.read(read_paths)
 
-        self.data_ms = self.mean_subtract()
+        self.data_ms = self.mean_subtract(order=order)
         self.counts, self.bins, self.sig_thresh = self.hist_make()
 
     def mean_subtract(self, f=slice(None), order=0):
@@ -145,7 +149,8 @@ class INS:
         """
         A function which calculated the mean-subtracted spectrum from the
         regular spectrum. A spectrum made from a perfectly clean observation
-        will be standardized (written as a z-score) by this operation.
+        will be standardized (written as a z-score) by this operation. Setting
+        order=1 allows for a linear drift in the mean w/respect to time.
         """
 
         # This constant is determined by the Rayleigh distribution, which
@@ -156,11 +161,10 @@ class INS:
         else:
             MS = np.ma.masked_array(np.zeros(self.data[:, :, f].shape))
             x = np.arange(self.data.shape[0])
-            A = np.vstack((x, np.ones(len(x)))).T
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
-                coeff = np.linalg.lstsq(A, y)[0]
-                mu = np.outer(x, coeff[0]) + np.outer(np.ones(len(x)), coeff[1])
+                coeff = np.ma.polyfit(x, y, order)
+                mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
                 MS[:, 0, :, i] = (self.data[:, 0, f, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i] / C)
 
         return(MS)
