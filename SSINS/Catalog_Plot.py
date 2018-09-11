@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
-             events=False, ms_vmin=None, ms_vmax=None,
+             events=False, ms_vmin=None, ms_vmax=None, data_cmap=cm.viridis,
              xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
     """
     Takes an INS and plots its relevant data products.
@@ -39,7 +39,8 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
     data_kwargs = [{'cbar_label': 'Amplitude (%s)' % (INS.vis_units),
                     'mask_color': 'white',
                     'vmin': vmin,
-                    'vmax': vmax},
+                    'vmax': vmax,
+                    'cmap': data_cmap},
                    {'cbar_label': 'Deviation ($\hat{\sigma}$)',
                     'mask_color': 'black',
                     'cmap': cm.coolwarm,
