@@ -131,6 +131,15 @@ def make_obslist(obsfile):
     return(obslist)
 
 
+def make_obsfile(obslist, outpath):
+    """
+    Makes a text file from a list of obsids
+    """
+    with open(outpath, 'w') as f:
+        for obs in obslist:
+            f.write("%s\n" % obs)
+
+
 def read_paths_INS(basedir, flag_choice, obs, tag=''):
 
     """
