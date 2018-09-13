@@ -150,7 +150,8 @@ class INS:
         A function which calculated the mean-subtracted spectrum from the
         regular spectrum. A spectrum made from a perfectly clean observation
         will be standardized (written as a z-score) by this operation. Setting
-        order=1 allows for a linear drift in the mean w/respect to time.
+        the order keyword allows for an order'th degree polynomial fit for each
+        channel, instead of just taking the mean.
         """
 
         # This constant is determined by the Rayleigh distribution, which
@@ -163,9 +164,16 @@ class INS:
             x = np.arange(self.data.shape[0])
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
-                coeff = np.ma.polyfit(x, y, order)
-                mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
-                MS[:, 0, :, i] = (self.data[:, 0, f, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i] / C)
+                good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
+                if len(good_chans) == y.shape[1]:
+                    coeff = np.ma.polyfit(x, y, order)
+                    mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
+                    MS[:, 0, :, i] = (self.data[:, 0, f, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i] / C)
+                elif len(good_chans):
+                    for chan in good_chans:
+                        coeff = np.ma.polyfit(x, y[:, chan], order)
+                        mu = np.sum([x**(order - k) * coeff[k] for k in range(order + 1)], axis=0)
+                        MS[:, 0, chan, i] = (self.data[:, 0, chan, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, chan, i] / C)
 
         return(MS)
 
