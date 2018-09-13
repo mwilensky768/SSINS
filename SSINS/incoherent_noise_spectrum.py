@@ -167,7 +167,7 @@ class INS:
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
                 coeff = np.ma.polyfit(x, y[:, good_chans], order)
                 mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
-                MS[:, 0, good_chans, i] = (self.data[:, 0, good_chans, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, good_chans, i] / C)
+                MS[:, 0, :, i][:, good_chans] = (y[:, good_chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans] / C)
 
         return(MS)
 
