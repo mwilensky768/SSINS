@@ -160,20 +160,14 @@ class INS:
         if not order:
             MS = (self.data[:, :, f] / self.data[:, :, f].mean(axis=0) - 1) * np.sqrt(self.Nbls[:, :, f] / C)
         else:
-            MS = np.ma.masked_array(np.zeros(self.data[:, :, f].shape))
+            MS = np.zeros_like(self.data[:, :, f])
             x = np.arange(self.data.shape[0])
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
-                if len(good_chans) == y.shape[1]:
-                    coeff = np.ma.polyfit(x, y, order)
-                    mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
-                    MS[:, 0, :, i] = (self.data[:, 0, f, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i] / C)
-                elif len(good_chans):
-                    for chan in good_chans:
-                        coeff = np.ma.polyfit(x, y[:, chan], order)
-                        mu = np.sum([x**(order - k) * coeff[k] for k in range(order + 1)], axis=0)
-                        MS[:, 0, chan, i] = (self.data[:, 0, chan, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, chan, i] / C)
+                coeff = np.ma.polyfit(x, y[:, good_chans], order)
+                mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
+                MS[:, 0, good_chans, i] = (self.data[:, 0, good_chans, i] / mu - 1) * np.sqrt(self.Nbls[:, 0, good_chans, i] / C)
 
         return(MS)
 
