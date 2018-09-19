@@ -122,6 +122,8 @@ class INS:
                             ' array, a Nbls array of matching shape, and a freq',
                             '_array of matching sub-shape')
             self.data = data
+            if not len(self.data.mask.shape):
+                self.data.mask = np.zeros(self.data.shape, dtype=bool)
             self.Nbls = Nbls
             self.freq_array = freq_array
 
@@ -165,9 +167,10 @@ class INS:
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
-                coeff = np.ma.polyfit(x, y[:, good_chans], order)
-                mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)], axis=0)
-                MS[:, 0, :, i][:, good_chans] = (y[:, good_chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans] / C)
+                for chan in good_chans:
+                    coeff = np.ma.polyfit(x, y[:, chan], order)
+                    mu = np.sum([x**(order - k) * coeff[k] for k in range(order + 1)], axis=0)
+                    MS[:, 0, :, i][:, chan] = (y[:, chan] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, chan] / C)
 
         return(MS)
 
@@ -246,6 +249,8 @@ class INS:
             assert arg in read_paths,\
                 'You must supply a path to a numpy loadable %s file for read_paths entry' % (arg)
             setattr(self, arg, np.load(read_paths[arg]))
+        if not len(self.data.mask.shape):
+            data.mask = np.zeros(self.data.shape, dtype=bool)
         for attr in ['pols', 'vis_units']:
             if attr not in read_paths:
                 warnings.warn('In order to use Catalog_Plot.py, please supply\

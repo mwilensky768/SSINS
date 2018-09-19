@@ -79,7 +79,6 @@ def chisq(counts, bins, weight='var', thresh=1, dist='norm'):
     """
 
     counts, bins = bin_combine(counts, bins, weight=weight, thresh=thresh, dist=dist)
-    print(counts, bins)
     exp, var = hist_fit(counts, bins, dist=dist)
     if weight is 'exp':
         S = np.sum(counts)
@@ -140,7 +139,7 @@ def make_obsfile(obslist, outpath):
             f.write("%s\n" % obs)
 
 
-def read_paths_INS(basedir, flag_choice, obs, tag=''):
+def read_paths_INS(basedir, flag_choice, obs, tag='', exclude=None):
 
     """
     Makes a read_paths dictionary from data which was saved using the save()
@@ -165,8 +164,11 @@ def read_paths_INS(basedir, flag_choice, obs, tag=''):
                                                  attribute)
             if os.path.exists(path):
                 read_paths[attribute] = path
-    path = '%s/%s_%s_INS_samp_thresh_events.npy' % (basedir, obs, flag_choice)
+    path = '%s/arrs/%s_%s_INS_samp_thresh_events.npy' % (basedir, obs, flag_choice)
     if os.path.exists(path):
         read_paths['samp_thresh_events'] = path
+    if exclude is not None:
+        for attr in exclude:
+            read_paths.pop(attr)
 
     return(read_paths)
