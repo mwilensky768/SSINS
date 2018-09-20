@@ -398,13 +398,14 @@ class SS:
         assert inpath is not None, 'Supply a path to a valid UVData file for the inpath keyword'
 
         UV = UVData()
-        UV.read(inpath, **read_kwargs)
-
         if bad_time_indices is not None:
-            bool_ind = np.ones(UV.Ntimes, dtype=bool)
-            bool_ind[bad_time_indices] = 0
-            times = np.unique(UV.time_array)[bool_ind]
-            UV.select(times=times)
+            UV.read(inpath, read_data=False)
+            time_arr = np.unique(UV.time_array)
+            good_ind = np.ones(time_arr.shape, dtype=bool)
+            good_ind[bad_time_indices] = 0
+            times = time_arr[good_ind]
+            read_kwargs['times'] = times
+        UV.read(inpath, **read_kwargs)
 
         return(UV)
 
