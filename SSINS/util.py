@@ -139,7 +139,8 @@ def make_obsfile(obslist, outpath):
             f.write("%s\n" % obs)
 
 
-def read_paths_INS(basedir, flag_choice, obs, tag='', exclude=None):
+def read_paths_construct(basedir, flag_choice, obs, product, tag='',
+                         exclude=None):
 
     """
     Makes a read_paths dictionary from data which was saved using the save()
@@ -147,26 +148,39 @@ def read_paths_INS(basedir, flag_choice, obs, tag='', exclude=None):
     """
 
     read_paths = {}
-    for attr in ['data', 'Nbls']:
-        read_paths[attr] = '%s/arrs/%s_%s_INS_%s%s.npym' % (basedir, obs,
-                                                            flag_choice, attr,
-                                                            tag)
+
+    if product is 'INS':
+        mask_attrs = ['data', 'Nbls']
+        attrs = ['match_events', 'match_hists', 'chisq_events', 'chisq_hists',
+                 'samp_thresh_events']
+
+    if product is 'VDH':
+        mask_attrs = ['W_hist', 'MLEs']
+        attrs = ['counts', 'bins', 'fits', 'errors']
+
+    if product is 'ES':
+        mask_attrs = ['avgs', 'uv_grid']
+        attrs = ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs']
+        path = '%s/metadata/%s_grid.npy' % (basedir, obs)
+        if os.path.exists(path):
+            read_paths['grid'] = path
+
+    for attr in mask_attrs:
+        path = '%s/arrs/%s_%s_%s_%s%s.npym' % (basedir, obs, flag_choice,
+                                               product, attr, tag)
+        if os.path.exists(path):
+            read_paths[attr] = path
+    for attr in attrs:
+        path = '%s/arrs/%s_%s_%s_%s.npy' % (basedir, obs, flag_choice, product,
+                                            attr)
+        if os.path.exists(path):
+            read_paths[attr] = path
 
     for attr in ['freq_array', 'pols', 'vis_units']:
         path = '%s/metadata/%s_%s.npy' % (basedir, obs, attr)
         if os.path.exists(path):
             read_paths[attr] = path
 
-    for attr in ['match', 'chisq']:
-        for subattr in ['events', 'hists']:
-            attribute = '%s_%s' % (attr, subattr)
-            path = '%s/arrs/%s_%s_INS_%s.npy' % (basedir, obs, flag_choice,
-                                                 attribute)
-            if os.path.exists(path):
-                read_paths[attribute] = path
-    path = '%s/arrs/%s_%s_INS_samp_thresh_events.npy' % (basedir, obs, flag_choice)
-    if os.path.exists(path):
-        read_paths['samp_thresh_events'] = path
     if exclude is not None:
         for attr in exclude:
             read_paths.pop(attr)

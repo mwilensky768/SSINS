@@ -37,8 +37,8 @@ def test_INS_construct_plot():
     ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
     ss.INS_prepare()
 
-    read_paths = util.read_paths_INS(DATA_PATH, flag_choice, obs,
-                                     exclude=['samp_thresh_events'])
+    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
+                                           exclude=['samp_thresh_events'])
 
     test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['pols', 'vis_units']:
@@ -73,7 +73,8 @@ def test_INS_construct_plot():
         if len(getattr(ss.INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
 
-    read_paths = util.read_paths_INS(DATA_PATH, flag_choice, obs, tag=tag)
+    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
+                                           tag=tag)
 
     test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['pols', 'vis_units']:
@@ -118,7 +119,7 @@ def test_VDH_construct_plot():
     ss.VDH_prepare(fit_hist=True)
     ss.VDH.rev_ind(ss.UV.data_array, window)
 
-    read_paths = {}
+    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'VDH')
     for attr in ['counts', 'bins', 'fits', 'errors']:
         rw_path = '%s/arrs/%s_%s_VDH_%s.npy' % (DATA_PATH, obs, ss.VDH.flag_choice, attr)
         read_paths[attr] = rw_path
@@ -178,7 +179,8 @@ def test_ES_construct_write():
     for subtag in tags:
         if len(getattr(ss.INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
-    read_paths = util.read_paths_INS(DATA_PATH, 'None', obs, tag=tag)
+    read_paths = util.read_paths_construct(DATA_PATH, 'None', obs, 'INS',
+                                           tag=tag)
 
     test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['pols', 'vis_units']:
@@ -197,21 +199,7 @@ def test_ES_construct_write():
                                        getattr(ss.INS, attr)[i][k]))
     nt.ok_(np.all(test_INS.samp_thresh_events == ss.INS.samp_thresh_events))
 
-    read_paths = {}
-    for attr in ['counts', 'bins', 'fits', 'errors']:
-        w_path = '%s/arrs/%s_%s_VDH_%s.npy' % (outpath, obs, ss.VDH.flag_choice, attr)
-        r_path = '%s/arrs/%s_%s_VDH_%s.npy' % (DATA_PATH, obs, ss.VDH.flag_choice, attr)
-        nt.ok_(os.path.exists(w_path), msg='%s does not exist' % w_path)
-        read_paths[attr] = r_path
-    for attr in ['freq_array', 'pols', 'vis_units']:
-        w_path = '%s/metadata/%s_%s.npy' % (outpath, obs, attr)
-        r_path = '%s/metadata/%s_%s.npy' % (DATA_PATH, obs, attr)
-        nt.ok_(os.path.exists(w_path), msg='%s does not exist' % w_path)
-        read_paths[attr] = r_path
-    w_path = '%s/arrs/%s_%s_VDH_MLEs.npym' % (outpath, obs, ss.VDH.flag_choice)
-    r_path = '%s/arrs/%s_%s_VDH_MLEs.npym' % (DATA_PATH, obs, ss.VDH.flag_choice)
-    nt.ok_(os.path.exists(w_path))
-    read_paths['MLEs'] = r_path
+    read_paths = util.read_paths_construct(DATA_PATH, 'INS', obs, 'VDH')
 
     test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['counts', 'bins', 'fits', 'errors']:
@@ -223,22 +211,7 @@ def test_ES_construct_write():
     for attr in ['pols', 'vis_units']:
         nt.ok_(np.all(getattr(test_VDH, attr) == getattr(ss.VDH, attr)))
 
-    read_paths = {}
-    for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
-        w_path = '%s/metadata/%s_%s.npy' % (outpath, obs, attr)
-        r_path = '%s/metadata/%s_%s.npy' % (DATA_PATH, obs, attr)
-        nt.ok_(os.path.exists(w_path))
-        read_paths[attr] = r_path
-    for attr in ['counts', 'exp_counts', 'exp_error', 'bins', 'cutoffs']:
-        w_path = '%s/arrs/%s_None_ES_%s.npy' % (outpath, obs, attr)
-        r_path = '%s/arrs/%s_None_ES_%s.npy' % (DATA_PATH, obs, attr)
-        nt.ok_(os.path.exists(w_path))
-        read_paths[attr] = r_path
-    for attr in ['avgs', 'uv_grid']:
-        w_path = '%s/arrs/%s_None_ES_%s.npym' % (outpath, obs, attr)
-        r_path = '%s/arrs/%s_None_ES_%s.npym' % (DATA_PATH, obs, attr)
-        nt.ok_(os.path.exists(w_path))
-        read_paths[attr] = r_path
+    read_paths = util.read_paths_construct(DATA_PATH, 'None', obs, 'ES')
 
     test_ES = ES(obs=obs, outpath=outpath, read_paths=read_paths)
     for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
