@@ -76,7 +76,7 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
     if vmax is None:
         vmax = np.amax(data)
 
-    if cmap is cm.coolwarm:
+    if cmap is cm.coolwarm or cmap is cm.RdGy_r:
         cax = ax.imshow(data, cmap=cmap, clim=(vmin, vmax),
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
     else:
