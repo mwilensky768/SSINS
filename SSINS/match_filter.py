@@ -150,7 +150,7 @@ class MF:
 
         return(p_min, shape_min, f_point)
 
-    def apply_match_test(self, order=0):
+    def apply_match_test(self, order=0, apply_N_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -179,6 +179,8 @@ class MF:
                 self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max,
                                                                        order=order)
         self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+        if apply_N_thresh:
+            self.apply_samp_thresh_test()
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -224,7 +226,8 @@ class MF:
 
         assert self.N_thresh < self.INS.data.shape[0], 'N_thresh is greater than the number of times. This would result in flagging the entire observation regardless of content.'
         ind = np.where(np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh)[:-1]
-        self.INS.samp_thresh_events = np.vstack(ind).T
-        self.INS.data[:, ind[0], ind[1]] = np.ma.masked
-        self.INS.data_ms = self.INS.mean_subtract()
-        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+        if len(ind):
+            self.INS.samp_thresh_events.append(np.vstack(ind).T)
+            self.INS.data[:, ind[0], ind[1]] = np.ma.masked
+            self.INS.data_ms = self.INS.mean_subtract()
+            self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)

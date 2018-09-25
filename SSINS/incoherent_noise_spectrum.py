@@ -166,11 +166,20 @@ class INS:
             x = np.arange(self.data.shape[0])
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
+                # Only iterate over channels that are not fully masked
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
-                for chan in good_chans:
-                    coeff = np.ma.polyfit(x, y[:, chan], order)
-                    mu = np.sum([x**(order - k) * coeff[k] for k in range(order + 1)], axis=0)
-                    MS[:, 0, :, i][:, chan] = (y[:, chan] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, chan] / C)
+                # Create a subarray mask of only those good channels
+                good_data = y[:, good_chans]
+                # Find the set of unique masks so that we can iterate over only those
+                unique_masks, mask_inv = np.unique(good_data.mask, axis=1,
+                                                   return_inverse=True)
+                for k in range(unique_masks.shape[1]):
+                    # Channels which share a mask
+                    chans = np.where(mask_inv == k)[0]
+                    coeff = np.ma.polyfit(x, good_data[:, chans], order)
+                    mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)],
+                                axis=0)
+                    MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
 
         return(MS)
 
@@ -265,6 +274,6 @@ class INS:
                 else:
                     setattr(self, attribute, [])
         if 'samp_thresh_events' in read_paths:
-            self.samp_thresh_events = np.load(read_paths['samp_thresh_events'])
+            self.samp_thresh_events = list(np.load(read_paths['samp_thresh_events']))
         else:
             self.samp_thresh_events = []

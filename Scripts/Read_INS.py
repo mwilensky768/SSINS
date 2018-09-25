@@ -5,6 +5,8 @@ from SSINS import MF
 from SSINS import Catalog_Plot as cp
 from matplotlib import cm
 import numpy as np
+import warnings
+warnings.simplefilter('ignore', np.RankWarning)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('basedir', help='The directory which contains the arrs, figs, and metadata subdirectories')
@@ -24,14 +26,25 @@ else:
     shape_dict = {}
 
 obslist = util.make_obslist(args.obsfile)
+obslist = [obslist[4 * i] for i in range(95)]
 
-for obs in obslist:
+i = 6
+for obs in obslist[6:]:
+    i += 1
+    print(i)
     read_paths = util.read_paths_construct(args.basedir, args.flag_choice, obs, 'INS')
-    ins = INS(read_paths=read_paths, flag_choice=args.flag_choice, obs=obs,
+    ins = INS(read_paths=read_paths, flag_choice=args.flag_choice, obs=obs[:-6],
               outpath=args.outdir, order=args.order)
+    ins.data = np.ma.concatenate((ins.data, ) + tuple([np.load('%s/arrs/%s.%s.HH_%s_INS_data.npym' % (args.basedir, obs[:-6], pol, args.flag_choice)) for pol in ['yy', 'xy', 'yx']]), axis=3)
+    ins.data.mask = np.zeros(ins.data.shape, dtype=bool)
+    ins.Nbls = np.ma.concatenate((ins.Nbls, ) + tuple([np.load('%s/arrs/%s.%s.HH_%s_INS_Nbls.npym' % (args.basedir, obs[:-6], pol, args.flag_choice)) for pol in ['yy', 'xy', 'yx']]), axis=3)
+    ins.Nbls.mask = np.zeros(ins.data.shape, dtype=bool)
+    ins.pols = ['XX', 'YY', 'XY', 'YX']
+    ins.data_ms = ins.mean_subtract(order=args.order)
     cp.INS_plot(ins, vmax=0.1, ms_vmin=-5, ms_vmax=5)
     ins.data[:, 0, :82] = np.ma.masked
     ins.data[:, 0, -50:] = np.ma.masked
-    mf = MF(ins, sig_thresh=5, shape_dict=shape_dict)
-    mf.apply_match_test(order=args.order)
+    ins.data_ms = ins.mean_subtract(order=args.order)
+    mf = MF(ins, sig_thresh=5, shape_dict=shape_dict, N_thresh=30)
+    mf.apply_match_test(order=args.order, apply_N_thresh=True)
     cp.MF_plot(mf, vmax=0.1, ms_vmin=-5, ms_vmax=5)
