@@ -406,6 +406,10 @@ class SS:
             times = time_arr[good_ind]
             read_kwargs['times'] = times
         UV.read(inpath, **read_kwargs)
+        if np.any(UV.ant_1_array == UV.ant_2_array):
+            warnings.warn('%s%s%s' % ('Autocorrelations are still present in the',
+                                      ' UVData object. User may want to remove',
+                                      ' these before analysis.'))
 
         return(UV)
 
