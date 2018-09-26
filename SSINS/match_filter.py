@@ -167,6 +167,12 @@ class MF:
             if type(getattr(self.INS, attr)) is not list:
                 setattr(self.INS, attr, list(getattr(self.INS, attr)))
         while count:
+            cond = np.all(np.isfinite(self.INS.data))
+            if not cond:
+                print(cond)
+            cond = np.all(np.isfinite(self.INS.data_ms))
+            if not cond:
+                print(cond)
             count = 0
             t_max, f_max, R_max = self.match_test()
             if R_max > -np.inf:
