@@ -163,7 +163,8 @@ class INS:
             MS = (self.data[:, :, f] / self.data[:, :, f].mean(axis=0) - 1) * np.sqrt(self.Nbls[:, :, f] / C)
         else:
             MS = np.zeros_like(self.data[:, :, f])
-            x = np.arange(self.data.shape[0])
+            # Make sure x is not zero so that np.polyfit can proceed without nans
+            x = np.arange(1, self.data.shape[0] + 1)
             for i in range(self.data.shape[-1]):
                 y = self.data[:, 0, f, i]
                 # Only iterate over channels that are not fully masked

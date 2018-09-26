@@ -45,6 +45,6 @@ for obs in obslist[6:]:
     ins.data[:, 0, :82] = np.ma.masked
     ins.data[:, 0, -50:] = np.ma.masked
     ins.data_ms = ins.mean_subtract(order=args.order)
-    mf = MF(ins, sig_thresh=5, shape_dict=shape_dict, N_thresh=30)
+    mf = MF(ins, sig_thresh=5, shape_dict=shape_dict, N_thresh=20)
     mf.apply_match_test(order=args.order, apply_N_thresh=True)
     cp.MF_plot(mf, vmax=0.1, ms_vmin=-5, ms_vmax=5)
