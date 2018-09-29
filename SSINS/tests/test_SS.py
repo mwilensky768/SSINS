@@ -40,7 +40,7 @@ def test_INS_construct_plot():
     read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
                                            exclude=['samp_thresh_events'])
 
-    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
+    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths, flag_choice=flag_choice)
     for attr in ['pols', 'vis_units']:
         nt.ok_(np.all(getattr(test_INS, attr) == getattr(ss.INS, attr)))
     for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins', 'freq_array']:
@@ -64,8 +64,8 @@ def test_INS_construct_plot():
                 (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice),
                 '%s' % figpath)
 
-    ss.MF_prepare(tests=('match', 'chisq', 'samp_thresh'), N_thresh=N_thresh,
-                  shape_dict=shape_dict)
+    ss.MF_prepare(N_thresh=N_thresh, shape_dict=shape_dict)
+    ss.MF.apply_match_test(apply_N_thresh=True)
 
     tags = ['match', 'chisq', 'samp_thresh']
     tag = ''
@@ -75,20 +75,20 @@ def test_INS_construct_plot():
 
     read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
                                            tag=tag)
-
-    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
+    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths, flag_choice=flag_choice)
     for attr in ['pols', 'vis_units']:
         nt.ok_(np.all(getattr(test_INS, attr) == getattr(ss.INS, attr)))
     for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins', 'freq_array']:
-        nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5))
-    for attr in ['match_events', 'chisq_events']:
+        nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5),
+               attr)
+    for attr in ['match_events', 'chisq_events', 'samp_thresh_events']:
         for i in range(len(getattr(ss.INS, attr))):
             nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]))
     for attr in ['match_hists', 'chisq_hists']:
         for i in range(len(getattr(ss.INS, attr))):
             for k in range(2):
-                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]))
-    nt.ok_(np.all(test_INS.samp_thresh_events == ss.INS.samp_thresh_events))
+                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]),
+                       '%s %s' % (getattr(test_INS, attr)[i][k], getattr(ss.INS, attr)[i][k]))
     cp.MF_plot(ss.MF)
 
     nt.ok_(os.path.exists('%s/figs/%s_%s_INS_data%s.png' %
@@ -189,7 +189,8 @@ def test_ES_construct_write():
         nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5))
     for attr in ['match_events', 'chisq_events']:
         for i in range(len(getattr(ss.INS, attr))):
-            nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]))
+            nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]),
+                   '%s, %s' % (getattr(test_INS, attr)[i], getattr(ss.INS, attr)[i]))
     for attr in ['match_hists', 'chisq_hists']:
         for i in range(len(getattr(ss.INS, attr))):
             for k in range(2):
@@ -218,7 +219,8 @@ def test_ES_construct_write():
         nt.ok_(np.all(getattr(test_ES, attr) == getattr(ss.ES, attr)))
     for attr in ['counts', 'bins', 'exp_counts', 'exp_error', 'cutoffs', 'avgs', 'uv_grid']:
         for i in range(len(test_ES.counts)):
-            nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1))
+            nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1),
+                   '%s\n%s, %s' % (attr, getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i]))
 
     ss.apply_flags(choice='custom', custom=ss.ES.mask)
     ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type, inpath=testfile)

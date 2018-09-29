@@ -12,7 +12,7 @@ import pickle
 import time
 
 
-class VDH:
+class VDH(object):
 
     """
     Defines the VDH class. This class just contains data relevant to a histogram

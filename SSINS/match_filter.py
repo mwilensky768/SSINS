@@ -11,7 +11,7 @@ import time
 from SSINS import Catalog_Plot as cp
 
 
-class MF:
+class MF(object):
 
     """
     Defines the Match Filter (MF) class. It requires an INS object to be passed
@@ -156,7 +156,9 @@ class MF:
         Where match_test() is implemented. The champion from match_test() is
         flagged if its outlier statistic is greater than sig_thresh, and the
         mean-subtracted spectrum is recalculated. This repeats
-        until there are no more outliers greater than sig_thresh.
+        until there are no more outliers greater than sig_thresh. Also can apply
+        the samp_thresh test, which flags channels between match test iterations
+        if those channels have less than N_thresh unflagged samples left.
         """
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -167,12 +169,6 @@ class MF:
             if type(getattr(self.INS, attr)) is not list:
                 setattr(self.INS, attr, list(getattr(self.INS, attr)))
         while count:
-            cond = np.all(np.isfinite(self.INS.data))
-            if not cond:
-                print(cond)
-            cond = np.all(np.isfinite(self.INS.data_ms))
-            if not cond:
-                print(cond)
             count = 0
             t_max, f_max, R_max = self.match_test()
             if R_max > -np.inf:
@@ -182,11 +178,14 @@ class MF:
                 self.INS.match_events.append(event)
                 self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
                                                                     event=event)))
-                self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max,
-                                                                       order=order)
+                if (apply_N_thresh and self.N_thresh):
+                    self.apply_samp_thresh_test()
+                if not np.all(self.INS.data[:, 0, f_max, 0].mask):
+                    self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max,
+                                                                           order=order)
+                else:
+                    self.INS.data_ms[:, :, f_max] = np.ma.masked
         self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
-        if apply_N_thresh:
-            self.apply_samp_thresh_test()
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -223,17 +222,20 @@ class MF:
 
     def apply_samp_thresh_test(self):
         """
-        A quick test to see if any channels are flagged beyond the tolerance
-        described by N_thresh. The goal of this test is to find channels which
-        are so thoroughly flagged that their statistics can no longer be trusted,
-        in which case it is likely that the entire observation for that channel
-        is contaminated, and so that channel is entirely flagged.
+        The sample threshold test. This tests to see if any channels have fewer
+        unflagged channels than a given threshold. If so, the entire channel is
+        flagged. A ValueError is raised if the threshold parameter is greater
+        than the number of times in the observation, due to the fact that this
+        will always lead to flagging the entire observation.
         """
-
-        assert self.N_thresh < self.INS.data.shape[0], 'N_thresh is greater than the number of times. This would result in flagging the entire observation regardless of content.'
-        ind = np.where(np.count_nonzero(np.logical_not(self.INS.data.mask), axis=0) < self.N_thresh)[:-1]
-        if len(ind):
-            self.INS.samp_thresh_events.append(np.vstack(ind).T)
-            self.INS.data[:, ind[0], ind[1]] = np.ma.masked
-            self.INS.data_ms = self.INS.mean_subtract()
-            self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+        if self.N_thresh > self.INS.data.shape[0]:
+            raise ValueError("N_thresh parameter is set higher than "
+                             "the number of time samples. This will "
+                             "always result in flagging the entire "
+                             "observation. Aborting flagging.")
+        good_chans = np.where(np.logical_not(np.all(self.INS.data[:, 0, :, 0].mask, axis=0)))[0]
+        N_unflagged = self.INS.data.shape[0] - np.count_nonzero(self.INS.data.mask[:, 0, good_chans, 0], axis=0)
+        if np.any(N_unflagged < self.N_thresh):
+            chans = np.where(N_unflagged < self.N_thresh)[0]
+            self.INS.samp_thresh_events.append(good_chans[chans])
+            self.INS.data[:, 0, good_chans[chans]] = np.ma.masked

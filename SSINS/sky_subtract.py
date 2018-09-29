@@ -18,7 +18,7 @@ import warnings
 import time
 
 
-class SS:
+class SS(object):
 
     """
     Defines the SS class.
@@ -200,15 +200,9 @@ class SS:
             Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask), axis=1)
         else:
             Nbls = self.UV.Nbls * np.ones(data.shape)
-        kwargs = {'data': data,
-                  'Nbls': Nbls,
-                  'freq_array': self.UV.freq_array,
-                  'pols': self.pols,
-                  'vis_units': self.UV.vis_units,
-                  'obs': self.obs,
-                  'outpath': self.outpath,
-                  'flag_choice': self.flag_choice}
-        self.INS = INS(**kwargs)
+        self.INS = INS(data=data, Nbls=Nbls, freq_array=self.UV.freq_array,
+                       pols=self.pols, vis_units=self.UV.vis_units, obs=self.obs,
+                       outpath=self.outpath, flag_choice=self.flag_choice)
 
     def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
 
@@ -249,7 +243,7 @@ class SS:
             self.VDH.rev_ind(self.UV.data_array, window)
 
     def MF_prepare(self, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
-                   tests=['match'], point=True, streak=True):
+                   point=True, streak=True):
 
         """
         Prepares a MF. Since a MF requires an INS, if the SS does not have an
@@ -288,9 +282,6 @@ class SS:
             self.INS_prepare()
         self.MF = MF(self.INS, sig_thresh=sig_thresh, shape_dict=shape_dict,
                      N_thresh=N_thresh, alpha=alpha, point=point, streak=streak)
-        if tests is not None:
-            for test in tests:
-                getattr(self.MF, 'apply_%s_test' % test)()
 
     def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
                    N_thresh=0, alpha=None, tests=['match'], choice=None,
@@ -347,9 +338,10 @@ class SS:
                 MF_kwargs = {'sig_thresh': sig_thresh,
                              'shape_dict': shape_dict,
                              'N_thresh': N_thresh,
-                             'alpha': alpha,
-                             'tests': tests}
+                             'alpha': alpha}
                 self.MF_prepare(**MF_kwargs)
+                for test in tests:
+                    getattr(self.MF, 'apply_%s_test' % test)()
         else:
             self.INS = INS
 

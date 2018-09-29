@@ -28,8 +28,8 @@ else:
 obslist = util.make_obslist(args.obsfile)
 obslist = [obslist[4 * i] for i in range(95)]
 
-i = 6
-for obs in obslist[6:]:
+i = 0
+for obs in obslist:
     i += 1
     print(i)
     read_paths = util.read_paths_construct(args.basedir, args.flag_choice, obs, 'INS')

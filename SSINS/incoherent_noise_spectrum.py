@@ -11,15 +11,15 @@ import warnings
 import pickle
 
 
-class INS:
+class INS(object):
     """
     Defines the incoherent noise spectrum (INS) class.
     """
 
     def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
                  flag_choice=None, vis_units=None, obs=None, outpath=None,
-                 match_events=[], match_hists=[], chisq_events=[],
-                 chisq_hists=[], read_paths={}, samp_thresh_events=[],
+                 match_events=None, match_hists=None, chisq_events=None,
+                 chisq_hists=None, read_paths={}, samp_thresh_events=None,
                  order=0):
 
         """
@@ -139,7 +139,10 @@ class INS:
                       'chisq_events': chisq_events, 'chisq_hists': chisq_hists,
                       'samp_thresh_events': samp_thresh_events}
             for kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
+                if kwargs[kwarg] is None:
+                    setattr(self, kwarg, [])
+                else:
+                    setattr(self, kwarg, kwargs[kwarg])
         else:
             self.read(read_paths)
 
@@ -179,7 +182,7 @@ class INS:
                     chans = np.where(mask_inv == k)[0]
                     coeff = np.ma.polyfit(x, good_data[:, chans], order)
                     mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)],
-                                axis=0)
+                                 axis=0)
                     MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
 
         return(MS)
