@@ -200,9 +200,15 @@ class SS(object):
             Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask), axis=1)
         else:
             Nbls = self.UV.Nbls * np.ones(data.shape)
-        self.INS = INS(data=data, Nbls=Nbls, freq_array=self.UV.freq_array,
-                       pols=self.pols, vis_units=self.UV.vis_units, obs=self.obs,
-                       outpath=self.outpath, flag_choice=self.flag_choice)
+        kwargs = {'data': data,
+                  'Nbls': Nbls,
+                  'freq_array': self.UV.freq_array,
+                  'pols': self.pols,
+                  'vis_units': self.UV.vis_units,
+                  'obs': self.obs,
+                  'outpath': self.outpath,
+                  'flag_choice': self.flag_choice}
+        self.INS = INS(**kwargs)
 
     def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
 
