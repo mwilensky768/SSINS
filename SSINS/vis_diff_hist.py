@@ -195,16 +195,17 @@ class VDH(object):
         errors = np.copy(fits)
         for i in range(1 + bool(self.flag_choice)):
             if i:
-                MLE = 0.5 * np.mean(data**2, axis=0)
-                N = np.count_nonzero(np.logical_not(data.mask), axis=0)
+                MLE = 0.5 * np.mean(data**2, axis=(0, 1))
+                N = np.count_nonzero(np.logical_not(data.mask), axis=(0, 1))
             else:
                 # Just use the data without the mask
-                MLE = 0.5 * np.mean(data.data**2, axis=0)
-                N = np.count_nonzero(data.data, axis=0)
+                MLE = 0.5 * np.mean(data.data**2, axis=(0, 1))
+                N = np.count_nonzero(data.data, axis=(0, 1))
             MLEs.append(MLE)
             P = np.zeros(len(self.bins[i]) - 1)
             Ntot = np.sum(N)
             if fit_hist:
+                Nbins = len(self.bins[i]) - 1
                 for mle, n in zip(MLE.flatten(), N.flatten()):
                     P += n / Ntot * (np.exp(-self.bins[i][:-1]**2 / (2 * mle)) -
                                      np.exp(-self.bins[i][1:]**2 / (2 * mle)))

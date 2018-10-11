@@ -103,8 +103,8 @@ class INS(object):
                     'outpath': outpath, 'flag_choice': flag_choice}
         for attr in ['obs', 'outpath']:
             if opt_args[attr] is None:
-                warnings.warn('In order to save outputs and use Catalog.py,'
-                              'please supply %s attribute' % (attr))
+                warnings.warn('%s%s' % ('In order to save outputs and use Catalog.py,',
+                                        'please supply %s attribute' % (attr)))
             else:
                 setattr(self, attr, opt_args[attr])
 

@@ -189,8 +189,8 @@ class ES:
         # Simulate some averaged rayleigh data and histogram - take averages/variances of histograms
         for i in range(self.MC_iter):
             sim_data = np.random.rayleigh(size=init_shape,
-                                          scale=np.sqrt(self.MLE[:, 0, event[2]]))
-            sim_data = sim_data.mean(axis=1)
+                                          scale=np.sqrt(self.MLE[0, event[2]]))
+            sim_data = sim_data.mean(axis=0)
             sim_counts[i, :], _ = np.histogram(sim_data, bins=bins)
         exp_counts = sim_counts.mean(axis=0)
         exp_error = np.sqrt(sim_counts.var(axis=0))
