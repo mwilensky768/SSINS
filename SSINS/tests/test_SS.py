@@ -118,7 +118,6 @@ def test_VDH_construct_plot():
     ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
     ss.VDH_prepare(fit_hist=True)
     ss.VDH.rev_ind(ss.UV.data_array, window)
-    ss.VDH.save()
 
     read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'VDH')
     for attr in ['counts', 'bins', 'fits', 'errors']:
@@ -147,7 +146,7 @@ def test_VDH_construct_plot():
                               (ss.VDH.outpath, obs, fit_tags[i])))
         shutil.copy('%s/figs/%s_%s_VDH.png' %
                     (ss.VDH.outpath, obs, fit_tags[i]), '%s' % figpath)
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_ES_construct_write():
@@ -227,7 +226,7 @@ def test_ES_construct_write():
     ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type, inpath=testfile)
     nt.ok_(os.path.exists('%s/%s_ES_flag.uvfits' % (outpath, obs)))
 
-    # shutil.rmtree(outpath)
+    shutil.rmtree(outpath)
 
 
 def test_scatter():
