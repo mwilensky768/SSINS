@@ -79,8 +79,8 @@ class SS(object):
         self.outpath = outpath
         for attr in ['obs', 'outpath']:
             if getattr(self, attr) is None:
-                warnings.warn('In order to save outputs and use Catalog_Plot.py,\
-                               please supply %s keyword other than None' % (attr))
+                warnings.warn('%s%s' % ('In order to save outputs and use Catalog_Plot.py,',
+                                        'please supply %s keyword other than None' % (attr)))
 
         if UV is None:
             self.UV = self.read(inpath, read_kwargs=read_kwargs,
