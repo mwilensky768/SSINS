@@ -10,7 +10,7 @@ SS
 
 sky_subtract: Initializing
 --------------------------
-Initializing by using pyuvdata
+Initializing the sky_subtract class by using pyuvdata
 
 (a) Initializing from a UVData object
 *************************************
@@ -93,10 +93,40 @@ Initializing by using pyuvdata
   # Custom flag masks can also be applied by either manually manipulating the mask
   # or on read by supplying a custom flag array.
 
-  custom = np.zeros_like(ss.UV.flag_array)
-  custom[:, :, 0, 0, :] = 1
-  ss.apply_flags(choice='custom', custom=custom)
+  >>> custom = np.zeros_like(ss.UV.flag_array)
+  >>> custom[:, :, 0, 0, :] = 1
+  >>> ss.apply_flags(choice='custom', custom=custom)
 
   # This flags everything in the zeroth frequency channel.
   # apply_flags() is called on initialization, so any flag manipulation can be
   # done on read or later as is fit for the situation
+
+sky_subtract: Data Products
+---------------------------
+Forming and plotting data products using the sky_subtract class. Options are
+incoherent_noise_spectrum (INS), vis_diff_hist (VDH), event_stat (ES),
+match_filter (MF).
+
+(a) Forming and Plotting Data Products
+**************************************
+::
+
+  >>> from SSINS import Catalog_Plot as cp
+
+  # The INS_prepare() method attaches an INS instance to the SS instance
+  >>> ss.INS_prepare()
+  flag_choice is set to None. If this does not reflect the flag_choice of the original data, then saved arrays will be mislabled
+  # This is a warning about the flag_choice attribute, which defaults to None
+  # It is used to label save outputs
+
+  # Similarly a Visibility Difference Histogram (VDH) instance can be formed with
+  >>> ss.VDH_prepare()
+
+  # We can save relevant data and metadata to ss.outpath with the following
+  >>> ss.INS.save()
+  >>> ss.VDH.save()
+
+  # Useful plots can be made using the Catalog_Plot module
+  # They are saved to ss.outpath
+  >>> cp.INS_plot(ss.INS, ms_vmax=5, ms_vmin=-5)
+  >>> cp.VDH_plot(ss.VDH, xscale='linear')
