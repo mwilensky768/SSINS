@@ -189,7 +189,7 @@ class SS(object):
             if hasattr(self, attr):
                 getattr(getattr(self, attr), 'save')()
 
-    def INS_prepare(self):
+    def INS_prepare(self, order=0):
 
         """
         Prepares an INS. Passes all possible relevant non-conflicting attributes.
@@ -207,7 +207,8 @@ class SS(object):
                   'vis_units': self.UV.vis_units,
                   'obs': self.obs,
                   'outpath': self.outpath,
-                  'flag_choice': self.flag_choice}
+                  'flag_choice': self.flag_choice,
+                  'order': order}
         self.INS = INS(**kwargs)
 
     def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
