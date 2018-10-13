@@ -189,7 +189,7 @@ class VDH(object):
         """
         Makes a rayleigh-mixture fit via maximum likelihood estimation.
         """
-        print('Beginning fit at %s' % time.strftime("%H:%M:%S"))
+
         MLEs = []
         fits = np.zeros(1 + bool(self.flag_choice), dtype=object)
         errors = np.copy(fits)
@@ -205,19 +205,21 @@ class VDH(object):
             P = np.zeros(len(self.bins[i]) - 1)
             Ntot = np.sum(N)
             if fit_hist:
+                print('Beginning fit at %s' % time.strftime("%H:%M:%S"))
                 Nbins = len(self.bins[i]) - 1
                 for mle, n in zip(MLE.flatten(), N.flatten()):
                     P += n / Ntot * (np.exp(-self.bins[i][:-1]**2 / (2 * mle)) -
                                      np.exp(-self.bins[i][1:]**2 / (2 * mle)))
                 fit = Ntot * P
                 error = np.sqrt(Ntot * P * (1 - P))
+
+                print('Done with fit at %s' % time.strftime("%H:%M:%S"))
             else:
                 fit = None
                 error = None
             fits[i] = fit
             errors[i] = error
         MLEs = np.array(MLEs)
-        print('Done with fit at %s' % time.strftime("%H:%M:%S"))
         return(MLEs, fits, errors)
 
     def rev_ind(self, data, window):
