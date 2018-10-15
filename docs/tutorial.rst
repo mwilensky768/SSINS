@@ -130,3 +130,86 @@ match_filter (MF).
   # They are saved to ss.outpath
   >>> cp.INS_plot(ss.INS, ms_vmax=5, ms_vmin=-5)
   >>> cp.VDH_plot(ss.VDH, xscale='linear')
+
+---
+INS
+---
+
+incoherent_noise_spectrum: Reading From Saved Data
+--------------------------------------------------
+
+(a) Using util
+**************
+::
+
+  # If data and metadata are saved they can be read back in using the read_paths
+  # keyword. This dictionary can be set manually, but also one can be set up
+  # using a function in util if they are saved in the same manner as is done by
+  # INS.save()
+  >>> import util
+  >>> from SSINS import INS
+  >>> basedir = SSINS/data
+  >>> obs = '1061313128_99bl_1pol_half_time'
+  >>> outpath = '%s/test_outputs' % basedir
+
+  # This function works for multiple data products, so we specify the product in
+  # the function call, along with other important metadata
+  >>> read_paths = util.read_paths_construct(basedir, 'original', obs, 'INS')
+
+  # This makes a dictionary which is used as follows
+  >>> ins = INS(obs=obs, outpath=outpath, read_paths=read_paths,
+                flag_choice='original')
+
+  # If events are caught by a filter, then there will be a tag on the filename
+  # This tag needs to be specified to the util function
+  >>> read_paths = util.read_paths_construct(basedir, None, obs, 'INS',
+                                             tag='match')
+  >>> ins2 = INS(read_paths=read_paths, obs=obs, outpath=outpath)
+
+incoherent_noise_spectrum: Plotting
+-----------------------------------
+
+(a) Using Catalog_Plot
+**********************
+::
+
+  # There exist plotting libraries and wrappers in the repo called plot_lib and
+  # Catalog_Plot respectively
+  >>> from SSINS import Catalog_Plot as cp
+  >>> from matplotlib import cm
+
+  # By default, this plots 2-d colormaps of the INS.data and INS.data_ms,
+  # Using INS.freq_array to determine the ticklabels, and saving to INS.outpath
+  >>> ins.outpath = 'SSINS/data/figs/default'
+  >>> cp.INS_plot(ins)
+
+  # Other typical matplotlib settings can be chosen, such as the colormap or the
+  # bounds of the colorbar
+  >>> ins.outpath = 'SSINS/data/figs/cmap_cbar'
+  >>> cp.INS_plot(ins, data_cmap=cm.plasma, vmin=0, vmax=150, ms_vmin=-5, ms_vmax=5)
+
+(b) Using plot_lib
+******************
+::
+
+  # Finer control over which plots come out can be obtained without the
+  # Catalog_Plot wrapper using just plot_lib
+  >>> from SSINS import plot_lib
+  >>> from matplotlib import cm
+  >>> import matplotlib.pyplot as plt
+
+  >>> fig, ax = plt.subplots(nrows=2)
+  >>> ins.outpath = 'SSINS/data/figs/order_compare'
+
+  # Here we take an INS and plot its mean-subtracted data in the first
+  # polarization with different order parameters
+
+  >>> for i in range(2):
+  ...     ins.mean_subtract(order=i)
+  ...     plot_lib.image_plot(fig, ax[i], ins.data_ms[:, 0, :, 0],
+  ...                         cmap=cm.coolwarm, freq_array=ins.freq_array[0],
+  ...                         title='order = %i' % i, vmin=-5, vmax=5)
+  >>> fig.savefig('%s/%s_order_compare.png' % (ins.outpath, ins.obs))
+
+  # This particular example is useful when the overall noise level appears to be
+  # drifting over the course of the observation and you want to ignore that drift
