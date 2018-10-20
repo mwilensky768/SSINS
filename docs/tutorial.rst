@@ -207,3 +207,126 @@ the repo contained in Catalog_Plot.
 
   # This particular example is useful when the overall noise level appears to be
   # drifting over the course of the observation and you want to ignore that drift
+
+incoherent_noise_spectrum: Using the mean_subtract() Method
+-----------------------------------------------------------
+
+(a) Basic Use
+*************
+::
+
+  # The method does not automatically set the data_ms attribute, so the assignment
+  # must be done manually
+  >>> ins.data_ms = ins.mean_subtract()
+
+  # A slice of the array can be calculated by using the f keyword (f for frequencies)
+  # Set up a slice object for frequency channels 100 to 199 inclusive
+  >>> f = slice(100, 200)
+  >>> ins.data_ms[:, :, f] = ins.mean_subtract(f=f)
+
+(b) Using the order Parameter
+*****************************
+::
+
+  # Sometimes the mean appears to drift in time to linear or higher order
+  # A polynomial fit to each channel can be constructed using the order parameter
+  >>> ins.data_ms = ins.mean_subtract(order=2)
+
+  # That made a quadratic fit for each channel
+  # This can also be done on initialization in the same way
+  >>> ins = INS(obs='obsid', outpath='test_outpath', read_paths=read_paths,
+                order=1)
+
+  # That made a linear fit
+
+--
+MF
+--
+
+match_filter: initialization
+----------------------------
+
+(a) Initializing from Scratch
+*****************************
+::
+
+  >>> from SSINS import MF
+
+  # Initialization involves setting desired parameters (reasonable defaults exist)
+  # RFI shapes are passed with a dictionary (this example is digital TV in South Africa, where HERA is located)
+  >>> shape_dict = {'TV4': [1.74e8, 1.82e8],
+                    'TV5': [1.82e8, 1.9e8],
+                    'TV6': [1.9e8, 1.98e8]}
+
+  # sig_thresh governs the maximal strength of outlier to leave unflagged
+  # The default is estimated from the size of the data
+  >>> sig_thresh = 5
+
+  # The single-frequency and broadband streak flaggers can be turned off (default on)
+  >>> point = False
+  >>> streak = False
+
+  # An INS() instance to operate on is required
+  >>> mf = MF(ins, shape_dict=shape_dict, sig_thresh=sig_thresh, point=point,
+              streak=streak)
+
+(b) Initializing from a SS() instance
+*************************************
+::
+
+  # As explained above, the SS class has thin wrappers around the useful classes in this module
+  # simply pass the keywords to the method as you would to the initialization
+  >>> ss.MF_prepare(sig_thresh=5, shape_dict={'TV4': [1.74e8, 1.82e8],
+                                              'TV5': [1.82e8, 1.9e8],
+                                              'TV6': [1.9e8, 1.98e8]})
+
+  # If the SS() does not have an INS() attached, it will construct one and pass
+  # it to the MF()
+
+match_filter: Applying Tests
+----------------------------
+
+(a) Basic Match-Shape Test:
+***************************
+::
+
+  >>> from SSINS import Catalog_Plot as cp
+
+  # Here, the shapes in the shape_dictionary are tested for
+  # This method will automatically apply flags to samples which match the flagging criterion
+  >>> mf.apply_match_test()
+
+  # There is a method in Catalog_Plot for plotting MF results
+  >>> cp.MF_plot(mf, ms_vmin=-mf.sig_thresh, ms_vmax=mf.sig_thresh)
+
+(b) Flagging All Times for Highly Contaminated Channels:
+********************************************************
+::
+
+  >>> from SSINS import MF
+
+  # the N_thresh parameter must be set on initialization
+  # If a channel has less than N_thresh clean samples remaining, all times will be flagged
+  >>> mf = MF(ins, N_thresh=20)
+
+  # One must simply set the apply_N_thresh keyword for the apply_match_test() method
+  >>> mf.apply_match_test(apply_N_thresh=True)
+
+(c) Flagging with Polynomial Fitting:
+*************************************
+::
+
+  >>> from SSINS import Catalog_Plot as cp
+  >>> order = 1
+
+  # Initialize the ins of the mf with the desired order
+  >>> mf.ins.data_ms = mf.ins.mean_subtract(order=order)
+
+  # Apply flagging at that order
+  >>> mf.apply_match_test(order=order)
+
+  # RFI shapes can be smeared at fits of nonzero order
+  # This is generally unproblematic for the filter, but looking at the results
+  # at different orders can be more or less informative depending on the observation
+  >>> mf.ins.data_ms = mf.ins.mf.ins.mean_subtract(order=0)
+  >>> cp.MF_plot(mf, ms_vmin=-mf.sig_thresh, ms_vmax=mf.sig_thresh)
