@@ -413,7 +413,7 @@ class SS(object):
         return(UV)
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
-              bad_time_indices=None, combine=True):
+              bad_time_indices=None, combine=True, nsample_default=1):
 
         """
         Lets one write out a newly flagged file. Data is recovered by reading
@@ -443,6 +443,7 @@ class SS(object):
         if UV is None:
             UV = self.read(inpath, read_kwargs=read_kwargs,
                            bad_time_indices=bad_time_indices)
+        UV.nsample_array[nsample_array == 0] = nsample_default
         UV.flag_array = UV.flag_array.reshape([UV.Ntimes, UV.Nbls, UV.Nspws,
                                                UV.Nfreqs, UV.Npols])
         if not combine:
