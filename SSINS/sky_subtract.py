@@ -413,7 +413,7 @@ class SS(object):
         return(UV)
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
-              bad_time_indices=None):
+              bad_time_indices=None, combine=True):
 
         """
         Lets one write out a newly flagged file. Data is recovered by reading
@@ -443,9 +443,11 @@ class SS(object):
         if UV is None:
             UV = self.read(inpath, read_kwargs=read_kwargs,
                            bad_time_indices=bad_time_indices)
+        UV.flag_array = UV.flag_array.reshape([UV.Ntimes, UV.Nbls, UV.Nspws,
+                                               UV.Nfreqs, UV.Npols])
+        if not combine:
+            UV.flag_array[:] = 0
         for i in range(UV.Ntimes - 1):
-            UV.flag_array = np.zeros([UV.Ntimes, UV.Nbls, UV.Nspws, UV.Nfreqs,
-                                      UV.Npols], dtype=bool)
             # This actually does not invert properly but I think it's the best way
             UV.flag_array[i][self.UV.data_array.mask[i]] = 1
             UV.flag_array[i + 1][self.UV.data_array.mask[i]] = 1
