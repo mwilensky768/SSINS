@@ -443,7 +443,7 @@ class SS(object):
         if UV is None:
             UV = self.read(inpath, read_kwargs=read_kwargs,
                            bad_time_indices=bad_time_indices)
-        UV.nsample_array[nsample_array == 0] = nsample_default
+        UV.nsample_array[UV.nsample_array == 0] = nsample_default
         UV.flag_array = UV.flag_array.reshape([UV.Ntimes, UV.Nbls, UV.Nspws,
                                                UV.Nfreqs, UV.Npols])
         if not combine:
