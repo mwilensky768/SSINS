@@ -38,7 +38,7 @@ class MidpointNormalize(colors.Normalize):
 
 def error_plot(fig, ax, x, y, xerr=None, yerr=None, title='', xlabel='',
                ylabel='Counts', legend=True, label='', drawstyle='steps-mid',
-               xscale='linear', yscale='linear', ylim=None):
+               xscale='linear', yscale='linear', ylim=None, leg_size=None):
 
     """
     Titled error_plot, but actually does not require error bars. Adjust drawstyle
@@ -54,7 +54,7 @@ def error_plot(fig, ax, x, y, xerr=None, yerr=None, title='', xlabel='',
     if ylim is not None:
         ax.set_ylim(ylim)
     if legend:
-        ax.legend()
+        ax.legend(fontsize=leg_size)
 
 
 def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',

@@ -112,7 +112,7 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
              xticklabels=None, yticklabels=None, aspect=None, xscale='log',
-             yscale='log', ylim=None):
+             yscale='log', ylim=None, leg_size=None):
     """
     Takes a VDH and plots its relevant data products.
     """
@@ -156,7 +156,7 @@ def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
                                xscale=xscale, yscale=yscale,
                                label=labels[attr][k],
                                xlabel='Amplitude (%s)' % (VDH.vis_units),
-                               ylim=ylim,
+                               ylim=ylim, leg_size=leg_size,
                                **hist_kwargs[attr])
         if hasattr(VDH, 'W_hist'):
             for m in range(2):
