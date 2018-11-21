@@ -217,12 +217,14 @@ class INS(object):
 
         return(counts, bins, sig_thresh)
 
-    def save(self):
+    def save(self, sig_thresh=None):
         """
         Writes out relevant data products.
         """
         tags = ['match', 'chisq', 'samp_thresh']
         tag = ''
+        if sig_thresh is not None:
+            tag += '_%s' % sig_thresh
         for subtag in tags:
             if len(getattr(self, '%s_events' % (subtag))):
                 tag += '_%s' % subtag
