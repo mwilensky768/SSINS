@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 
 def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None, data_cmap=cm.viridis,
-             xticklabels=None, yticklabels=None, zero_mask=False, aspect=None):
+             xticklabels=None, yticklabels=None, zero_mask=False, aspect=None,
+             sig_thresh=None):
     """
     Takes an INS and plots its relevant data products.
     Image Plots: Data/Mean-Subtracted Data
@@ -49,6 +50,8 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
 
     tags = ['match', 'chisq', 'samp_thresh']
     tag = ''
+    if sig_thresh is not None:
+        tag += '_5s'
     for subtag in tags:
         if len(getattr(INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
@@ -97,7 +100,7 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
 
 def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
             ms_vmax=None, xticklabels=None, yticklabels=None, zero_mask=False,
-            aspect=None):
+            aspect=None, sig_thresh=None):
 
     """
     A very thin wrapper around INS_plot that lets one pass an MF class instead
@@ -107,7 +110,8 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
 
     INS_plot(MF.INS, xticks=xticks, yticks=yticks, vmin=vmin, vmax=vmax,
              ms_vmin=ms_vmin, ms_vmax=ms_vmax, xticklabels=xticklabels,
-             yticklabels=yticklabels, zero_mask=zero_mask, aspect=aspect)
+             yticklabels=yticklabels, zero_mask=zero_mask, aspect=aspect,
+             sig_thresh=sig_thresh)
 
 
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
