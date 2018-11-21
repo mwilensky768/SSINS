@@ -51,7 +51,7 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
     tags = ['match', 'chisq', 'samp_thresh']
     tag = ''
     if sig_thresh is not None:
-        tag += '_5s'
+        tag += '_%s' % sig_thresh
     for subtag in tags:
         if len(getattr(INS, '%s_events' % (subtag))):
             tag += '_%s' % subtag
