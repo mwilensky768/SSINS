@@ -58,7 +58,7 @@ def error_plot(fig, ax, x, y, xerr=None, yerr=None, title='', xlabel='',
 
 
 def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
-               xlabel='Frequency (Mhz)', ylabel='Time (2s)',
+               xlabel='Frequency (Mhz)', ylabel='Time (2 s)',
                cbar_label=None, xticks=None, yticks=None,
                xticklabels=None, yticklabels=None, zero_mask=False,
                mask_color='white', freq_array=None, aspect=None, grid=None):
