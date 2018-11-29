@@ -413,7 +413,7 @@ class SS(object):
         return(UV)
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
-              bad_time_indices=None, combine=True, nsample_default=1):
+              bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
 
         """
         Lets one write out a newly flagged file. Data is recovered by reading
@@ -454,4 +454,4 @@ class SS(object):
             UV.flag_array[i + 1][self.UV.data_array.mask[i]] = 1
         UV.flag_array = UV.flag_array.reshape([UV.Nblts, UV.Nspws, UV.Nfreqs,
                                                UV.Npols])
-        getattr(UV, 'write_%s' % file_type_out)(outpath)
+        getattr(UV, 'write_%s' % file_type_out)(outpath, **write_kwargs)
