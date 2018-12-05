@@ -103,6 +103,7 @@ class MF(object):
         R_max = -np.inf
         t_max = None
         f_max = None
+        shape_max = None
         for shape in self.slice_dict:
             if shape is 'point':
                 t, f, p = np.unravel_index(np.absolute(self.INS.data_ms[:, 0]).argmax(),
@@ -119,8 +120,8 @@ class MF(object):
                 R = sliced_arr[t, p] / self.sig_thresh
             if R > 1:
                 if R > R_max:
-                    t_max, f_max, R_max = (t, f, R)
-        return(t_max, f_max, R_max)
+                    t_max, f_max, R_max, shape_max = (t, f, R, shape)
+        return(t_max, f_max, R_max, shape_max)
 
     def chisq_test(self):
 
@@ -170,11 +171,11 @@ class MF(object):
                 setattr(self.INS, attr, list(getattr(self.INS, attr)))
         while count:
             count = 0
-            t_max, f_max, R_max = self.match_test()
+            t_max, f_max, R_max, shape_max = self.match_test()
             if R_max > -np.inf:
                 count += 1
-                event = (t_max, 0, f_max)
-                self.INS.data[event] = np.ma.masked
+                event = (t_max, 0, f_max, shape_max)
+                self.INS.data[event[:-1]] = np.ma.masked
                 self.INS.match_events.append(event)
                 self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
                                                                     event=event)))
