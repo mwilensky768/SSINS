@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import scipy.stats
 import numpy as np
 import os
+from astropy.io import fits
 
 
 def hist_fit(counts, bins, dist='norm'):
@@ -100,20 +101,19 @@ def slc_len(slc, shape):
     return(slc.indices(shape)[1] - slc.indices(shape)[0])
 
 
-def event_fraction(match_events, Nfreqs, Ntimes):
+def event_fraction(match_events, Ntimes, shape_list, Nfreqs):
     """
     Calculates the fraction of times an event was caught by the flagger for
     each type of event.
     """
-
-    shapes, counts = np.unique(np.array(match_events)[:, 2], return_counts=True)
+    shapes, counts = np.unique(np.array(match_events)[:, -1], return_counts=True)
     # Explicit for loop since problem with dict comp involving unhashable types
-    keys, values = [], []
+    match_event_frac = {shape: 0 for shape in shape_list}
     for i, shape in enumerate(shapes):
-        if type(shape) is slice:
-            keys.append(tuple([shape.indices(Nfreqs)[k] for k in range(2)]))
-            values.append(counts[i] / Ntimes)
-    match_event_frac = dict(zip(keys, values))
+        if shape is 'point':
+            match_event_frac[shape] = counts[i] / (Ntimes * Nfreqs)
+        else:
+            match_event_frac[shape] = counts[i] / Ntimes
 
     return(match_event_frac)
 

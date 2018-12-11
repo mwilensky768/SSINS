@@ -66,6 +66,7 @@ def test_INS_construct_plot():
 
     ss.MF_prepare(N_thresh=N_thresh, shape_dict=shape_dict)
     ss.MF.apply_match_test(apply_N_thresh=True)
+    ss.INS.save()
 
     tags = ['match', 'chisq', 'samp_thresh']
     tag = ''
@@ -98,7 +99,7 @@ def test_INS_construct_plot():
                 (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice, tag),
                 '%s' % figpath)
 
-    shutil.rmtree(outpath)
+    # shutil.rmtree(outpath)
 
 
 def test_VDH_construct_plot():
