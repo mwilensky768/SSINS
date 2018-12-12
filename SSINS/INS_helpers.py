@@ -5,6 +5,7 @@ Some useful functions specifically involving INS analysis.
 from __future__ import absolute_import, division, print_function
 
 from SSINS import util, INS
+import numpy as np
 
 
 def INS_concat(INS_sequence, axis, metadata_kwargs={}):
