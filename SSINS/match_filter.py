@@ -164,7 +164,6 @@ class MF(object):
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
         count = 1
-        obs = self.INS.obs
         # Set these attributes to list form so that append method works
         for attr in ['match_events', 'match_hists']:
             if type(getattr(self.INS, attr)) is not list:
