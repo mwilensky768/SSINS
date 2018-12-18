@@ -9,18 +9,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument('obs', action='store', help='How the observation will be referred to')
 parser.add_argument('inpath', action='store', help='The path to the data file, and the file_type')
 parser.add_argument('outpath', action='store', help='The base directory for saving all outputs')
+parser.add_argument('-t', action='store', nargs='*', help='The desired catalogs.', required=True)
+parser.add_argument('--ft', action='store', help='The file type')
+parser.add_argument('--fc', action='store', help='Path to numpy loadable boolean array of frequencies to read in')
 args = parser.parse_args()
 
 # Here is a dictionary for the RFI class keywords
 
-data_kwargs = {'read_kwargs': {'file_type': 'miriad', 'ant_str': 'cross'},
+data_kwargs = {'read_kwargs': {'file_type': args.ft, 'ant_str': 'cross'},
                'obs': args.obs,
                'inpath': args.inpath,
                'outpath': args.outpath}
 
-# The type of catalog you would like made - options are 'INS', 'VDH', 'MF', and 'ES'
-catalog_types = ['INS', 'MF']
-
+if args.fc is not None:
+    data_kwargs['read_kwargs']['freq_chans'] = np.load(args.fc)
 
 catalog_data_kwargs = {'INS': {},
                        'VDH': {},
@@ -42,7 +44,7 @@ sky_sub = SS(**data_kwargs)
 sky_sub.apply_flags(choice='original')
 
 
-for cat in catalog_types:
+for cat in args.t:
     getattr(sky_sub, '%s_prepare' % (cat))(**catalog_data_kwargs[cat])
     getattr(cp, '%s_plot' % (cat))(getattr(sky_sub, cat), **catalog_plot_kwargs[cat])
 sky_sub.save_data()
