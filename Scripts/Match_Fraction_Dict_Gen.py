@@ -18,7 +18,7 @@ parser.add_argument('--mins', nargs='*', type=float, help='The minimum freqs for
 parser.add_argument('--maxs', nargs='*', type=float, help='The maximum freqs for the shapes (in hz)')
 parser.add_argument('-s', action='store_false', help='Whether _not_ to flag streaks')
 parser.add_argument('-p', action='store_false', help='Whether _not_ to flag points')
-parser.add_argument('-N', type=int, default=0, help='N_thres - defaults to 0')
+parser.add_argument('-N', type=int, default=0, help='N_thresh - defaults to 0')
 args = parser.parse_args()
 
 shape_dict = {}
