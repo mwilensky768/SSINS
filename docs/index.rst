@@ -15,7 +15,7 @@ Welcome to SSINS's documentation!
 Indices and tables
 ==================
 
-_`Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
+`Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
 
 * :ref:`genindex`
 * :ref:`modindex`
