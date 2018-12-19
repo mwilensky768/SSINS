@@ -20,7 +20,7 @@ class INS(object):
                  flag_choice=None, vis_units=None, obs=None, outpath=None,
                  match_events=None, match_hists=None, chisq_events=None,
                  chisq_hists=None, read_paths={}, samp_thresh_events=None,
-                 order=0):
+                 order=0, coeff_write=False):
 
         """
         init function for the INS class. Can set the attributes manually, or
@@ -146,10 +146,10 @@ class INS(object):
         else:
             self.read(read_paths)
 
-        self.data_ms = self.mean_subtract(order=order)
+        self.data_ms = self.mean_subtract(order=order, coeff_write=coeff_write)
         self.counts, self.bins, self.sig_thresh = self.hist_make()
 
-    def mean_subtract(self, f=slice(None), order=0):
+    def mean_subtract(self, f=slice(None), order=0, coeff_write=False):
 
         """
         A function which calculated the mean-subtracted spectrum from the
@@ -181,8 +181,11 @@ class INS(object):
                     # Channels which share a mask
                     chans = np.where(mask_inv == k)[0]
                     coeff = np.ma.polyfit(x, good_data[:, chans], order)
+                    if coeff_write:
+                        with open('%s/%s_ms_poly_coeff_order_%i.npy' % (self.outpath, self.obs, order), 'wb') as file:
+                            pickle.dump(coeff, file)
                     mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)],
-                                 axis=0)
+                                axis=0)
                     MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
 
         return(MS)
