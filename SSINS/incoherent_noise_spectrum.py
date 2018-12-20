@@ -182,7 +182,8 @@ class INS(object):
                     chans = np.where(mask_inv == k)[0]
                     coeff = np.ma.polyfit(x, good_data[:, chans], order)
                     if coeff_write:
-                        with open('%s/%s_ms_poly_coeff_order_%i.npy' % (self.outpath, self.obs, order), 'wb') as file:
+                        with open('%s/%s_ms_poly_coeff_order_%i_%s.npy' %
+                                  (self.outpath, self.obs, order, self.pols[i]), 'wb') as file:
                             pickle.dump(coeff, file)
                     mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)],
                                 axis=0)
