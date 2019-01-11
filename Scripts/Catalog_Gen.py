@@ -31,7 +31,7 @@ catalog_data_kwargs = {'INS': {},
                                              'TV8': [1.88e8, 1.95e8]}},
                        'ES': {}}
 
-catalog_plot_kwargs = {'INS': {},
+catalog_plot_kwargs = {'INS': {'ms_vmin': -5, 'ms_vmax': 5},
                        'VDH': {},
                        'MF': {},
                        'ES': {}}
