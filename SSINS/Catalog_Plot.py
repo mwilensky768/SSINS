@@ -18,10 +18,35 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None, data_cmap=cm.viridis,
              xticklabels=None, yticklabels=None, zero_mask=False, aspect=None,
              sig_thresh=None):
-    """
-    Takes an INS and plots its relevant data products.
-    Image Plots: Data/Mean-Subtracted Data
-    Histograms: Mean-Subtracted Data, Events optional using events keyword.
+    """Takes an INS and plots its relevant data products.
+    :param INS An INS class whose data is to be plotted. Required argument.
+    :type INS
+    :param xticks The frequency channels to be ticked. Defaults to None which uses matplotlib defaults.
+    :type sequence
+    :param yticks The times to be ticked. Defaults to None which uses matplotlib defaults.
+    :type sequence
+    :param vmin The bottom value of the colormap on the INS.
+    :type float
+    :param vmax The top value of the colormap - useful if something is blowing out the rest of the spectrum.
+    :type float
+    :param Setting this to True will plot histograms of mean-subtracted data after each event that is caught. Defaults to False.
+    :type bool
+    :param ms_vmin The bottom value of the colormap for the mean-subtracted spectrum.
+    :type float
+    :param ms_vmax The top value of the colormap for the mean-subtracted spectrum. Useful if certain frequencies are blowing out the rest of the spectrum.
+    :type float
+    :param data_cmap The colormap for the INS. Defaults to cm.viridis.
+    :type matplotlib.colors.ListedColormap
+    :param xticklabels How the ticked frequencies ought to be labeled (useful if physical units are desired). Defaults to None, which labels by channel #.
+    :type sequence
+    :param yticklabels How the ticked times ought to be labeled. Defaults to None, which labels by time index.
+    :type sequence
+    :param zero_mask Set to True if data with value=0 ought to be masked. Defaults to False.
+    :type bool
+    :param aspect Set the aspect ratio of the INS waterfall plots.
+    :type float
+    :param sig_thresh Tag filenames by sig_thresh.
+    :type float
     """
 
     if not os.path.exists('%s/figs' % (INS.outpath)):
