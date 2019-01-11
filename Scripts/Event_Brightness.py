@@ -41,6 +41,16 @@ for obs in obslist:
     for shape in args.shapes:
         events = [event[:-1] for event in ins.match_events if event[-1] == shape]
         sum = 0
+        chan = shape[-1]
+        if shape in ['TV6', 'TV7', 'TV8']:
+            broad_events = [event[:-1] for event in ins.match_events if event[:-1] == 'broad%s' % chan]
+            broad_events_times = [event[0] for event in broad_events]
+            event_remove = []
+            for event in events:
+                if event[0] in broad_events_times:
+                    event_remove.append(event)
+            for event in event_remove:
+                events.remove(event)
         for event in events:
             sum += np.sum(ins.data.data[event])
         bright_dict[args.sig][shape][obs] = sum
