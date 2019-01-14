@@ -9,7 +9,7 @@ The only real dependency is **pyuvdata** which is available at https://github.co
 
 ## Installation
 
-Once pyuvdata and all dependencies of that are installed, simply clone this repo and add it to your python path
+Once pyuvdata and all dependencies of that are installed, simply clone this repo and either add it to your python path, or run `python setup.py install`.
 
 ## Documentation
 
