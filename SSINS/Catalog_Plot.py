@@ -18,35 +18,24 @@ def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None, data_cmap=cm.viridis,
              xticklabels=None, yticklabels=None, zero_mask=False, aspect=None,
              sig_thresh=None):
-    """Takes an INS and plots its relevant data products.
-    :param INS An INS class whose data is to be plotted. Required argument.
-    :type INS
-    :param xticks The frequency channels to be ticked. Defaults to None which uses matplotlib defaults.
-    :type sequence
-    :param yticks The times to be ticked. Defaults to None which uses matplotlib defaults.
-    :type sequence
-    :param vmin The bottom value of the colormap on the INS.
-    :type float
-    :param vmax The top value of the colormap - useful if something is blowing out the rest of the spectrum.
-    :type float
-    :param Setting this to True will plot histograms of mean-subtracted data after each event that is caught. Defaults to False.
-    :type bool
-    :param ms_vmin The bottom value of the colormap for the mean-subtracted spectrum.
-    :type float
-    :param ms_vmax The top value of the colormap for the mean-subtracted spectrum. Useful if certain frequencies are blowing out the rest of the spectrum.
-    :type float
-    :param data_cmap The colormap for the INS. Defaults to cm.viridis.
-    :type matplotlib.colors.ListedColormap
-    :param xticklabels How the ticked frequencies ought to be labeled (useful if physical units are desired). Defaults to None, which labels by channel #.
-    :type sequence
-    :param yticklabels How the ticked times ought to be labeled. Defaults to None, which labels by time index.
-    :type sequence
-    :param zero_mask Set to True if data with value=0 ought to be masked. Defaults to False.
-    :type bool
-    :param aspect Set the aspect ratio of the INS waterfall plots.
-    :type float
-    :param sig_thresh Tag filenames by sig_thresh.
-    :type float
+    """Takes an INS and plots its relevant data products. Saves the plots out
+    in INS.outpath
+
+    Args:
+        INS (INS): The INS whose data is to be plotted. *Required*
+        xticks (sequence): The frequency channel indices to tick in INS waterfall plots.
+        yticks (sequence): The time indices to tick in INS waterfall plots.
+        vmin (float): The minimum of the colormap for the INS (non-mean-subtracted)
+        vmax (float): The maximum of the colormap for the INS (non-mean-subtracted)
+        events (bool): Set to True to plot histograms of events between flagging iterations. Default is False.
+        ms_vmin (float): The minimum of the colormap for the mean-subtracted INS
+        ms_vmax (float): The maximum of the colormap for the mean-subtracted INS
+        data_cmap (colormap): The colormap for the non-mean-subtracted data
+        xticklabels (sequence of str): The labels for the frequency ticks
+        yticklabels (sequence of str): The labels for the time ticks
+        zero_mask (bool): Set to True if zero'd data points ought to be masked. Default is False.
+        aspect (float or 'auto'): Set the aspect ratio of the waterfall plots.
+        sig_thresh (str): Used to tag the output plots with the sig_thresh used in flagging.
     """
 
     if not os.path.exists('%s/figs' % (INS.outpath)):
@@ -127,10 +116,9 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
             ms_vmax=None, xticklabels=None, yticklabels=None, zero_mask=False,
             aspect=None, sig_thresh=None):
 
-    """
-    A very thin wrapper around INS_plot that lets one pass an MF class instead
-    of an INS class. Made for the express purpose of convenient simultaneous
-    looping through different libraries using getattr().
+    """A very thin wrapper around INS_plot. Just a convenience function for
+    iterating with getattr(). Args are identical, except that it takes a MF
+    instead of an INS.
     """
 
     INS_plot(MF.INS, xticks=xticks, yticks=yticks, vmin=vmin, vmax=vmax,
@@ -142,8 +130,23 @@ def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
 def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
              xticklabels=None, yticklabels=None, aspect=None, xscale='log',
              yscale='log', ylim=None, leg_size=None):
-    """
-    Takes a VDH and plots its relevant data products.
+
+    """A function for plotting the relevant data from a VDH. Saves plots at
+    VDH.outpath
+
+    Args:
+        VDH (VDH): A VDH instance. Required argument.
+        xticks (sequence): The frequency channel indicies to be ticked in waterfall histograms.
+        yticks (sequence): The time indices to be ticked in waterfall histograms.
+        vmin (float): The minimum value for the colormap in waterfall histograms.
+        vmax (float): The maximum value for the colormap in waterfall histograms.
+        xticklabels (sequence): The labels for the ticked frequencies in the waterfall histograms.
+        yticklabels (sequence): The labels for the ticked time in the waterfall histograms.
+        aspect ('auto', 'equal', or float): The aspect ratio for the waterfall histograms.
+        xscale ('log', 'linear'): The scale for the x-axis of the 1-d histogram. Defaults to 'log'.
+        yscale ('log', 'linear'): The scale for the y-axis of the 1-d histogram. Defaults to 'log'.
+        ylim (sequence): The limits for the y-axis in the 1-d histogram.
+        leg_size (named fontsize): The size for the font in the legend.
     """
 
     im_kwargs = {'xticks': xticks,
@@ -203,10 +206,22 @@ def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
             zero_mask=False, mask_color='white', aspect=None, vmin=None,
             vmax=None, xscale='linear', yscale='log'):
 
-    """
-    Takes an event_stat class an plots some relevant data products, including
-    some uv-grids of averaged events, as well as histograms of those averaged
-    events.
+    """Plots relevant information contained in an ES instance. Saves them to
+    ES.outpath.
+
+    Args:
+        ES (ES): An ES instance to plot information of.
+        xticks (sequence): The u-indices to tick in the grid.
+        yticks (sequence): The v-indices to tick in the grid.
+        xticklabels (sequence): The labels for the ticked u-indices.
+        yticklabels (sequence): The labels for the v-indices.
+        zero_mask (bool): Whether or not to mask grid points with zero power. Default is False.
+        mask_color: The color of the mask.
+        aspect (float, 'equal', 'auto'): The aspect ratio for the grid plot.
+        vmin (float): The minimum value for the colorbar.
+        vmax (float): The maximum value for the colorbar.
+        xscale ('linear', 'log'): The scale for the x-axis in the event histograms. Default is 'linear'.
+        yscale ('linear', 'log'): The scale for the y-axis in the event histograms. Default is 'log'.
     """
 
     im_kwargs = {'vmin': vmin,
