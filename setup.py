@@ -1,12 +1,5 @@
 from setuptools import setup
-import glob
-import os.path as path
-from os import listdir
-import sys
 import os
-from hera_qm import version
-import os.path as op
-import json
 
 
 def package_files(package_dir, subdirectory):
