@@ -1,4 +1,4 @@
-### SSINS Readme
+# SSINS Readme
 
 SSINS is a python package intended for radio frequency interference flagging in radio astronomy datasets. It stands for Sky-Subtracted Incoherent Noise Spectra.
 
@@ -7,7 +7,7 @@ SSINS is a python package intended for radio frequency interference flagging in 
 The only required dependency is **pyuvdata** which is available at https://github.com/RadioAstronomySoftwareGroup/pyuvdata
 **pyuvdata has its own dependencies!**
 
-# Optional Dependencies
+### Optional Dependencies
 
 **matplotlib** will be necessary if the user wants to use the Catalog_Plot and plot_lib libraries
 
