@@ -29,74 +29,37 @@ class INS(object):
         numpy loadable binary files (pickle is used for masked arrays). The init
         function will calculate the Calculated Attributes (see below).
 
-        Required Parameters: These parameters must either be passed manually or
-                             included in the read_paths dictionary.
-
-                             data: The baseline-averaged sky-subtracted
-                                   visibility amplitudes.
-
-                             Nbls: An array of the same shape as data which
-                                   tells how many baselines were used for each
-                                   point in data.
-
-                             freq_array: frequencies for the data
-
-        Optional Attributes: pols: The polarizations present in the data.
-
-                             flag_choice: The type of flags used in the
-                                          sky_subtract object before
-                                          averaging across the baselines
-
-                             vis_units: The units for the visibilities
-
-                             obs: The OBSID for the spectrum
-
-                             outpath: A base directory to save attributes to
-
-         Match Filter Attributes: These attributes are not typically passed, but
-                                  instead calculated using the MF class.
-
-                                  match_events: Events (time/frequency-slice
-                                                pairs) in the spectrum located
-                                                by the match filter.
-
-                                  match_hists: Histograms for the match events
-                                               above.
-
-                                  chisq_events: Channels or events which were
-                                                identified by the chisq test in
-                                                the MF class.
-
-                                 chisq_hists: Histograms for the above events
-
-                                 samp_thresh_events: Events located by the
-                                                     samp thresh test in the MF
-                                                     class.
-
-         Calculated Attributes: The attributes are calculable using
-                                mean_subtract() and hist_make().
-
-                                data_ms: The mean-subtracted data array. The
-                                         data in this array is standardized
-                                         according to an estimator of the noise.
-
-                                counts:  The counts for the binned
-                                         mean-subtracted data
-
-                                bins: The bins for the mean-subtracted data
-
-                                sig_thresh: Without employing the match filter,
-                                            this parameter just describes the
-                                            default bins for the mean-subtracted
-                                            data. If a MF class is initialized
-                                            without passing the sig_thresh kwarg,
-                                            then the INS.sig_thresh is used for
-                                            the match filter as well. The
-                                            default calculation is the same for
-                                            both classes.
-         Keywords: order: The order of the mean_subtract function on
-                          initialization. For now, can possible allow for a
-                          linear drift in the mean (order=1).
+        Args:
+            data: The data which will be assigned to the data attribute. (Required)
+            Nbls: The number of baselines that went into each element of the
+                  data array. (Required)
+            freq_array: The frequencies (in hz) that describe the data, as found
+                        in a UVData object. (Required)
+            pols: The polarizations present in the data, in the order of the data array.
+            flag_choice: The flag choice used in the original SS object.
+            vis_units: The units for the visibilities.
+            obs: The obsid for the data.
+            outpath: The base directory for data outputs.
+            match_events: A list of events found by the filter in the MF class.
+                          Usually not assigned initially.
+            match_hists: Histograms describing the match_events.
+                         Usually not assigned initially.
+            chsq_events: Events found by the chisq_test in the MF class.
+                         Usually not assigned initially.
+            chisq_hists: Histograms describing the chisq events.
+                         Usually not assigned initially.
+            read_paths: A dictionary that can be used to read in a match filter,
+                        rather than passing attributes to init or constructing
+                        from an SS object. The keys are the attributes to be
+                        passed in, while the values are paths to files that
+                        contain the attribute data.
+            samp_thresh_events: Events using the samp_thresh_test in the MF class.
+                                Usually not assigned initially.
+            order: The order of polynomial fit for each frequency channel when
+                   calculating the mean-subtracted spectrum. Setting order=0
+                   just calculates the mean in each frequency channel.
+            coeff_write: An option to write out the coefficients of the polynomial
+                         fit to each frequency channel.
         """
 
         opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
@@ -114,6 +77,7 @@ class INS(object):
                                         'the original data, then saved arrays ',
                                         'will be mislabled'))
         self.flag_choice = flag_choice
+        """The flag choice for the original SS object."""
 
         if not read_paths:
             args = (data, Nbls, freq_array)
@@ -122,10 +86,14 @@ class INS(object):
                             ' array, a Nbls array of matching shape, and a freq',
                             '_array of matching sub-shape')
             self.data = data
+            """The sky-subtracted visibilities averaged over the baselines.
+               Axes are (time, spw, freq, pol)."""
             if not len(self.data.mask.shape):
                 self.data.mask = np.zeros(self.data.shape, dtype=bool)
             self.Nbls = Nbls
+            """The number of baselines that went into each element of the data array."""
             self.freq_array = freq_array
+            """The frequencies (in hz) describing the data."""
 
             for attr in ['pols', 'vis_units']:
                 if opt_args[attr] is None:
@@ -144,19 +112,30 @@ class INS(object):
                 else:
                     setattr(self, kwarg, kwargs[kwarg])
         else:
-            self.read(read_paths)
+            self._read(read_paths)
 
         self.data_ms = self.mean_subtract(order=order, coeff_write=coeff_write)
+        """The mean-subtracted data."""
         self.counts, self.bins, self.sig_thresh = self.hist_make()
+        """Histogram data for the mean-subtracted data array."""
 
     def mean_subtract(self, f=slice(None), order=0, coeff_write=False):
 
         """
         A function which calculated the mean-subtracted spectrum from the
         regular spectrum. A spectrum made from a perfectly clean observation
-        will be standardized (written as a z-score) by this operation. Setting
-        the order keyword allows for an order'th degree polynomial fit for each
-        channel, instead of just taking the mean.
+        will be standardized (written as a z-score) by this operation.
+
+        Args:
+            f: The frequency slice over which to do the calculation. Usually not
+               set by the user.
+            order: The order of the polynomial fit for each frequency channel, by LLSE.
+                   Setting order=0 just calculates the mean.
+            coeff_write: Option to write out the polynomial fit coefficients for
+                         each frequency channel when this function is run.
+
+        Returns:
+            MS (masked array): The mean-subtracted data array.
         """
 
         # This constant is determined by the Rayleigh distribution, which
@@ -194,13 +173,25 @@ class INS(object):
     def hist_make(self, sig_thresh=None, event=None):
 
         """
-        A function which will make histograms. Bins can me modulated using the
-        sig_thresh parameter, which is related to the sig_thresh paramter of the
-        match filter (MF) class. A reasonable sig_thresh can be determined
-        from the size of the data set by looking for the z-score beyond which
-        less than 1 count of noise is expected. If an event is given, then
-        data is averaged over the frequencies of the event before construction
-        of the histogram.
+        A function which will make histograms of the mean-subtracted data.
+
+        Args:
+            sig_thresh: The significance threshold within which to make the
+                        primary bins. Bins are of unit width. Data outside the
+                        sig_thresh will be placed in a single outlier bin.
+                        Will calculate a reasonable one by default.
+            event: Used to histogram a single shape or frequency channel.
+                   Providing an event as found in the INS.match_events list
+                   will histogram the data corresponding to the shape for that
+                   event, where the data is averaged over that shape before
+                   histogramming.
+
+        Returns:
+            counts (array): The counts in each bin.
+            bins (array): The bin edges.
+            sig_thresh (float): The sig_thresh parameter. Will be the calculated value
+                                if sig_thresh is None, else it will be what sig_thresh
+                                was set to.
         """
 
         if sig_thresh is None:
@@ -224,6 +215,11 @@ class INS(object):
     def save(self, sig_thresh=None):
         """
         Writes out relevant data products.
+
+        Args:
+            sig_thresh: Can give a little sig_thresh tag at the end of the
+                        filename if desired. (Technically this does not have
+                        to be an integer, so you can tag it however you want.)
         """
         tags = ['match', 'chisq', 'samp_thresh']
         tag = ''
@@ -257,11 +253,14 @@ class INS(object):
                 np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
                         getattr(self, attr))
 
-    def read(self, read_paths):
+    def _read(self, read_paths):
         """
-        Reads in attributes from numpy loadable (or unpicklable) files whose
-        paths are specified in a read_paths dictionary, where the keys are the
-        attributes and the values are the paths.
+        Reads in attributes from numpy loadable (or depicklable) files.
+
+        Args:
+            read_paths: A dictionary whose keys are the attributes to be read in
+                        and whose values are paths to files where the attribute
+                        data is written.
         """
 
         for arg in ['data', 'Nbls', 'freq_array']:
