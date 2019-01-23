@@ -16,7 +16,7 @@ Indices and tables
 ==================
 
 `Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
-`INS class <https://ssins.readthedocs.io/en/latest/INS.html?highlight=INS>`_
+`INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html?highlight=INS>`_
 
 * :ref:`genindex`
 * :ref:`modindex`
