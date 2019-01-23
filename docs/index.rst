@@ -16,6 +16,7 @@ Indices and tables
 ==================
 
 `Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
+`INS class <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=INS>`_
 
 * :ref:`genindex`
 * :ref:`modindex`
