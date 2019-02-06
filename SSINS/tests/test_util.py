@@ -15,6 +15,21 @@ def test_obslist():
     nt.eq_(obslist_test, obslist)
 
 
+def test_red_event_sort():
+
+    # Make up a simple event list with three shapes, where shape_a and shape_b are redundant
+    match_events = [(0, 0, slice(10, 20), 'shape_a'), (0, 0, slice(9, 21), 'shape_b'),
+                    (1, 0, slice(9, 21), 'shape_b'), (2, 0, slice(10, 20), 'shape_a'),
+                    (0, 0, slice(30, 40), 'shape_c')]
+
+    # The first event should be removed if we prioritize shape_b over shape_a
+    answer = [(0, 0, slice(9, 21), 'shape_b'), (1, 0, slice(9, 21), 'shape_b'),
+              (2, 0, slice(10, 20), 'shape_a'), (0, 0, slice(30, 40), 'shape_c')]
+
+    test_output = util.red_event_sort(match_events, [('shape_a', 'shape_b')], keep_prior=[1, 0])
+    nt.eq_(test_output, answer)
+
+
 def test_match_fraction():
     # Make up a simple event list belonging to some fictitious data with 5 times and 100 frequencies
     events = np.array([(1, 0, slice(0, 10)), (2, 0, slice(0, 10)), (3, 0, slice(10, 20))])
