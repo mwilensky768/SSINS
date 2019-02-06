@@ -17,16 +17,19 @@ def test_obslist():
 
 def test_red_event_sort():
 
-    # Make up a simple event list with three shapes, where shape_a and shape_b are redundant
+    # Make up a simple event list with five shapes, where shape_a is redundant
+    # with shape_b and shape_c with shape_d
     match_events = [(0, 0, slice(10, 20), 'shape_a'), (0, 0, slice(9, 21), 'shape_b'),
                     (1, 0, slice(9, 21), 'shape_b'), (2, 0, slice(10, 20), 'shape_a'),
-                    (0, 0, slice(30, 40), 'shape_c')]
+                    (0, 0, slice(30, 40), 'shape_c'), (2, 0, slice(20, 30), 'shape_e'),
+                    (0, 0, slice(29, 31), 'shape_d')]
 
-    # The first event should be removed if we prioritize shape_b over shape_a
+    # The first and last event should be removed if we prioritize shape_b over shape_a and shape_c over shape_d
     answer = [(0, 0, slice(9, 21), 'shape_b'), (1, 0, slice(9, 21), 'shape_b'),
-              (2, 0, slice(10, 20), 'shape_a'), (0, 0, slice(30, 40), 'shape_c')]
+              (2, 0, slice(10, 20), 'shape_a'), (0, 0, slice(30, 40), 'shape_c'),
+              (2, 0, slice(20, 30), 'shape_e')]
 
-    test_output = util.red_event_sort(match_events, [('shape_a', 'shape_b')], keep_prior=[1, 0])
+    test_output = util.red_event_sort(match_events, [('shape_a', 'shape_b'), ('shape_d', 'shape_c')], keep_prior=[1, 0])
     nt.eq_(test_output, answer)
 
 
