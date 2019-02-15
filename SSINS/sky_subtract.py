@@ -285,99 +285,34 @@ class SS(object):
                           search.
         """
 
-        if not hasattr(self, 'INS'):
-            self.INS_prepare()
-        self.MF = MF(self.INS, sig_thresh=sig_thresh, shape_dict=shape_dict,
+        self.MF = MF(self.UV.freq_array, sig_thresh=sig_thresh, shape_dict=shape_dict,
                      N_thresh=N_thresh, alpha=alpha, point=point, streak=streak)
 
-    def ES_prepare(self, grid_lim=None, INS=None, sig_thresh=None, shape_dict={},
-                   N_thresh=0, alpha=None, tests=['match'], choice=None,
-                   fit_hist=False, bins=None, custom=None,
-                   MC_iter=int(1e4), grid_dim=50, R_thresh=10):
+    def ES_prepare(self, apply_tests=True, tests=None, order=0, sig_thresh=None,
+                   shape_dict={}, N_thresh=0, alpha=None, point=True, streak=True,
+                   test_kwargs=None):
 
         """
-        Creates an ES class to work with. If a filtered INS is not already
-        made, one is made according to the corresponding passed keywords. The
-        filtered INS is used to make an improved MLE using the VDH class. The
-        MLE is then used to simulate thermal distributions for the data,
-        possibly flagged, averaged over those events which were located in the
-        filtered INS. This allows for INS-informed flagging while still
-        preserving some of the possibly uncontaminated baselines.
 
-        Keywords: grid_lim: Sets the limits of the uv-grid (in meters)
-
-                  INS: If None, will either prepare or use the one which is
-                       already prepared. Otherwise the passed one will be used
-                       for the MLE.
-
-                  sig_thresh: keyword for the MF preparation step
-
-                  shape_dict: keyword for the MF preparation step
-
-                  N_thresh: keyword for the MF preparation step
-
-                  alpha: keyword for the MF preparation step
-
-                  tests: keyword for the MF preparation step
-
-                  choice: keyword for apply_flags(). Only 'custom', None, and
-                          'original' choices can be used in this context.
-
-                  custom: keyword for apply_flags().
-
-                  fit_hist: keyword for the VDH preparation step
-
-                  bins: keyword for the VDH preparation step
-
-                  MC_iter: How many thermal histograms to simulate and average
-                           together. Anything more then ~10 takes a long time.
-
-                  grid_dim: The number of pixels in each dimension of the grid.
-
-                  R_thresh: Aggression parameter for flagging. Should be at
-                            least 2. A higher number is less aggressive.
         """
 
-        # Make a match filtered noise spectrum if one is not already passed and
-        # one is not already made.
-        if INS is None:
-            if not hasattr(self, 'MF'):
-                MF_kwargs = {'sig_thresh': sig_thresh,
-                             'shape_dict': shape_dict,
-                             'N_thresh': N_thresh,
-                             'alpha': alpha}
-                self.MF_prepare(**MF_kwargs)
-                for test in tests:
-                    getattr(self.MF, 'apply_%s_test' % test)()
-        else:
-            self.INS = INS
-
-        # Calculate MLE's with the INS flags in mind, and then apply choice of
-        # non-INS flags to the data
-        self.apply_flags(choice='INS', INS=self.INS)
-        VDH_kwargs = {'bins': bins,
-                      'fit_hist': fit_hist}
-        print('Preparing VDH at %s' % time.strftime("%H:%M:%S"))
-        self.VDH_prepare(**VDH_kwargs)
-        print('Done preparing VDH at %s ' % time.strftime("%H:%M:%S"))
-        self.apply_flags(choice=choice, custom=custom)
-
-        ES_kwargs = {'data': self.UV.data_array,
-                     'flag_choice': choice,
-                     'events': self.INS.match_events,
-                     'MLE': self.VDH.MLEs[-1],
-                     'uvw_array': self.UV.uvw_array,
-                     'vis_units': self.UV.vis_units,
+        ES_kwargs = {'flag_choice': self.flag_choice,
                      'obs': self.obs,
-                     'pols': self.pols,
-                     'outpath': self.outpath,
-                     'MC_iter': MC_iter,
-                     'grid_dim': grid_dim,
-                     'grid_lim': grid_lim,
-                     'R_thresh': R_thresh,
-                     'freq_array': self.UV.freq_array}
+                     'outpath': self.outpath}
 
         self.ES = ES(**ES_kwargs)
+        if not hasattr(self, INS):
+            self.INS_prepare(order=order)
+        if not hasattr(self.MF):
+            self.MF_prepare(sig_thresh=sig_thresh, shape_dict=shape_dict,
+                            N_thresh=N_thresh, alpha=alpha, point=point,
+                            streak=streak)
+        if apply_tests:
+            if tests is None:
+                raise TypeError("To apply tests, must supply types of test to apply")
+            else:
+                for i, test in enumerate(tests):
+                    getattr(self.MF, 'apply_%s_test' % test)(self.INS, self.ES, **test_kwargs[i])
 
     def read(self, inpath, read_kwargs={}, bad_time_indices=None):
 
