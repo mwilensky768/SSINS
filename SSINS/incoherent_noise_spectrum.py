@@ -18,9 +18,7 @@ class INS(object):
 
     def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
                  flag_choice=None, vis_units=None, obs=None, outpath=None,
-                 match_events=None, match_hists=None, chisq_events=None,
-                 chisq_hists=None, read_paths={}, samp_thresh_events=None,
-                 order=0, coeff_write=False):
+                 read_paths={}, order=0, coeff_write=False):
 
         """
         init function for the INS class. Can set the attributes manually, or
@@ -103,14 +101,6 @@ class INS(object):
                 else:
                     setattr(self, attr, opt_args[attr])
 
-            kwargs = {'match_events': match_events, 'match_hists': match_hists,
-                      'chisq_events': chisq_events, 'chisq_hists': chisq_hists,
-                      'samp_thresh_events': samp_thresh_events}
-            for kwarg in kwargs:
-                if kwargs[kwarg] is None:
-                    setattr(self, kwarg, [])
-                else:
-                    setattr(self, kwarg, kwargs[kwarg])
         else:
             self._read(read_paths)
 
@@ -241,12 +231,6 @@ class INS(object):
             np.save('%s/arrs/%s_%s_INS_%s%s.npy' %
                     (self.outpath, self.obs, self.flag_choice, attr, tag),
                     getattr(self, attr))
-        for attr in ['match_events', 'match_hists', 'chisq_events',
-                     'chisq_hists', 'samp_thresh_events']:
-            if len(getattr(self, attr)):
-                np.save('%s/arrs/%s_%s_INS_%s.npy' %
-                        (self.outpath, self.obs, self.flag_choice, attr),
-                        getattr(self, attr))
 
         for attr in ['freq_array', 'pols', 'vis_units']:
             if hasattr(self, attr):
@@ -275,14 +259,3 @@ class INS(object):
                                path to numpy loadable %s attribute for read_paths entry' % (attr))
             else:
                 setattr(self, attr, np.load(read_paths[attr]))
-        for attr in ['match', 'chisq']:
-            for subattr in ['events', 'hists']:
-                attribute = '%s_%s' % (attr, subattr)
-                if attribute in read_paths:
-                    setattr(self, attribute, list(np.load(read_paths[attribute])))
-                else:
-                    setattr(self, attribute, [])
-        if 'samp_thresh_events' in read_paths:
-            self.samp_thresh_events = list(np.load(read_paths['samp_thresh_events']))
-        else:
-            self.samp_thresh_events = []
