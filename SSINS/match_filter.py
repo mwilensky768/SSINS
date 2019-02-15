@@ -18,7 +18,7 @@ class MF(object):
     to it in order to operate on it.
     """
 
-    def __init__(self, INS, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
+    def __init__(self, freq_array, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
                  point=True, streak=True):
 
         """
@@ -59,7 +59,7 @@ class MF(object):
                                 shapes are passed in the shape_dict.
         """
 
-        self.INS = INS
+        self.freq_array = freq_array
         self.shape_dict = shape_dict
         self.N_thresh = N_thresh
         if sig_thresh is None:
@@ -80,10 +80,10 @@ class MF(object):
 
         slice_dict = {}
         for shape in self.shape_dict:
-            if min(self.INS.freq_array[0, :]) < min(self.shape_dict[shape]) or \
-               max(self.INS.freq_array[0, :]) > max(self.shape_dict[shape]):
-                slice_dict[shape] = slice(np.argmin(np.abs(self.INS.freq_array[0, :] - min(self.shape_dict[shape]))),
-                                          np.argmin(np.abs(self.INS.freq_array[0, :] - max(self.shape_dict[shape]))))
+            if min(self.freq_array[0, :]) < min(self.shape_dict[shape]) or \
+               max(self.freq_array[0, :]) > max(self.shape_dict[shape]):
+                slice_dict[shape] = slice(np.argmin(np.abs(self.freq_array[0, :] - min(self.shape_dict[shape]))),
+                                          np.argmin(np.abs(self.freq_array[0, :] - max(self.shape_dict[shape]))))
         if point:
             slice_dict['point'] = None
         if streak:
@@ -91,13 +91,13 @@ class MF(object):
 
         return(slice_dict)
 
-    def match_test(self):
+    def match_test(self, INS):
 
         """
         The primary test that the filter is used with. The greatest outlier in
         each shape is put forth and a champion among them is chosen. The time,
-        frequencies, and outlier statistic of this champion is returned to the
-        stack.
+        frequencies, and outlier statistic and shape of this champion is
+        returned to the stack.
         """
 
         R_max = -np.inf
@@ -106,14 +106,14 @@ class MF(object):
         shape_max = None
         for shape in self.slice_dict:
             if shape is 'point':
-                t, f, p = np.unravel_index(np.absolute(self.INS.data_ms[:, 0]).argmax(),
-                                           self.INS.data_ms[:, 0].shape)
-                R = np.absolute(self.INS.data_ms[t, 0, f, p] / self.sig_thresh)
+                t, f, p = np.unravel_index(np.absolute(INS.data_ms[:, 0]).argmax(),
+                                           INS.data_ms[:, 0].shape)
+                R = np.absolute(INS.data_ms[t, 0, f, p] / self.sig_thresh)
                 f = slice(f, f + 1)
             else:
-                N = np.count_nonzero(np.logical_not(self.INS.data_ms[:, 0, self.slice_dict[shape]].mask),
+                N = np.count_nonzero(np.logical_not(INS.data_ms[:, 0, self.slice_dict[shape]].mask),
                                      axis=1)
-                sliced_arr = np.absolute(self.INS.data_ms[:, 0, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
+                sliced_arr = np.absolute(INS.data_ms[:, 0, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
                 t, p = np.unravel_index((sliced_arr / self.sig_thresh).argmax(),
                                         sliced_arr.shape)
                 f = self.slice_dict[shape]
@@ -123,7 +123,7 @@ class MF(object):
                     t_max, f_max, R_max, shape_max = (t, f, R, shape)
         return(t_max, f_max, R_max, shape_max)
 
-    def chisq_test(self):
+    def chisq_test(self, INS):
 
         """
         A test to measure the chi-square of the binned shapes and channels
@@ -136,22 +136,22 @@ class MF(object):
             if shape is 'point':
                 p = 1
                 f_point = None
-                for f in range(self.INS.data.shape[2]):
-                    stat, p_point = util.chisq(*self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                   event=(0, 0, slice(f, f + 1)))[:-1])
+                for f in range(INS.data.shape[2]):
+                    stat, p_point = util.chisq(*INS.hist_make(sig_thresh=self.sig_thresh,
+                                                              event=(0, 0, slice(f, f + 1)))[:-1])
                     if p_point < p:
                         p = p_point
                         f_point = f
             else:
-                stat, p = util.chisq(*self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                         event=(0, 0, self.slice_dict[shape]))[:-1])
+                stat, p = util.chisq(*INS.hist_make(sig_thresh=self.sig_thresh,
+                                                    event=(0, 0, self.slice_dict[shape]))[:-1])
             if p < p_min:
                 p_min = p
                 shape_min = shape
 
         return(p_min, shape_min, f_point)
 
-    def apply_match_test(self, order=0, apply_N_thresh=False):
+    def apply_match_test(self, INS, ES, order=0, apply_N_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -164,63 +164,54 @@ class MF(object):
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
         count = 1
-        # Set these attributes to list form so that append method works
-        for attr in ['match_events', 'match_hists']:
-            if type(getattr(self.INS, attr)) is not list:
-                setattr(self.INS, attr, list(getattr(self.INS, attr)))
         while count:
             count = 0
             t_max, f_max, R_max, shape_max = self.match_test()
             if R_max > -np.inf:
                 count += 1
                 event = (t_max, 0, f_max, shape_max)
-                self.INS.data[event[:-1]] = np.ma.masked
-                self.INS.match_events.append(event)
-                self.INS.match_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                    event=event)))
+                INS.data[event[:-1]] = np.ma.masked
+                ES.match_events.append(event)
+                ES.match_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                         event=event))
                 if (apply_N_thresh and self.N_thresh):
-                    self.apply_samp_thresh_test()
+                    self.apply_samp_thresh_test(INS)
                 if not np.all(self.INS.data[:, 0, f_max, 0].mask):
-                    self.INS.data_ms[:, :, f_max] = self.INS.mean_subtract(f=f_max,
-                                                                           order=order)
+                    INS.data_ms[:, :, f_max] = INS.mean_subtract(f=f_max, order=order)
                 else:
-                    self.INS.data_ms[:, :, f_max] = np.ma.masked
-        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+                    INS.data_ms[:, :, f_max] = np.ma.masked
+        INS.counts, INS.bins, INS.sig_thresh = INS.hist_make(sig_thresh=self.sig_thresh)
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
-    def apply_chisq_test(self):
+    def apply_chisq_test(self, INS, ES):
         """
         Calculates the p-value of each shape and channel using chisq_test().
         Should the p-value of a shape or channel be less than the significance
         threshold, alpha, the entire observation will be flagged for that shape
         or channel.
         """
-        # Set these attributes to list so that append method works
-        for attr in ['chisq_hists', 'chisq_events']:
-            if type(getattr(self.INS, attr)) is not list:
-                setattr(self.INS, attr, list(getattr(self.INS), attr))
         p_min = 0
         while p_min < self.alpha:
             p_min, shape_min, f_point = self.chisq_test()
             if p_min < self.alpha:
                 if shape_min is 'point':
-                    event = (0, 0, slice(f_point, f_point + 1))
-                    self.INS.chisq_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                        event=event)))
-                    self.INS.data[:, 0, slice(f_point, f_point + 1)] = np.ma.masked
-                    self.INS.chisq_events.append(event[2])
+                    event = (0, 0, slice(f_point, f_point + 1), 'point')
+                    ES.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                             event=event))
+                    INS.data[:, 0, slice(f_point, f_point + 1)] = np.ma.masked
+                    ES.chisq_events.append(event)
                 else:
-                    event = (0, 0, self.slice_dict[shape_min])
-                    self.INS.chisq_hists.append(list(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                                        event=event)))
-                    self.INS.data[:, 0, self.slice_dict[shape_min]] = np.ma.masked
-                    self.INS.chisq_events.append(event[2])
+                    event = (0, 0, self.slice_dict[shape_min], shape_min)
+                    ES.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
+                                                             event=event))
+                    INS.data[:, 0, self.slice_dict[shape_min]] = np.ma.masked
+                    ES.chisq_events.append(event)
 
-                self.INS.data_ms[:, :, event[2]] = self.INS.mean_subtract(f=event[2])
-        self.INS.counts, self.INS.bins, self.INS.sig_thresh = self.INS.hist_make(sig_thresh=self.sig_thresh)
+                INS.data_ms[:, :, event[2]] = INS.mean_subtract(f=event[2])
+        INS.counts, INS.bins, INS.sig_thresh = INS.hist_make(sig_thresh=self.sig_thresh)
 
-    def apply_samp_thresh_test(self):
+    def apply_samp_thresh_test(self, INS, ES):
         """
         The sample threshold test. This tests to see if any channels have fewer
         unflagged channels than a given threshold. If so, the entire channel is
@@ -228,14 +219,14 @@ class MF(object):
         than the number of times in the observation, due to the fact that this
         will always lead to flagging the entire observation.
         """
-        if self.N_thresh > self.INS.data.shape[0]:
+        if self.N_thresh > INS.data.shape[0]:
             raise ValueError("N_thresh parameter is set higher than "
                              "the number of time samples. This will "
                              "always result in flagging the entire "
                              "observation. Aborting flagging.")
-        good_chans = np.where(np.logical_not(np.all(self.INS.data[:, 0, :, 0].mask, axis=0)))[0]
-        N_unflagged = self.INS.data.shape[0] - np.count_nonzero(self.INS.data.mask[:, 0, good_chans, 0], axis=0)
+        good_chans = np.where(np.logical_not(np.all(INS.data[:, 0, :, 0].mask, axis=0)))[0]
+        N_unflagged = INS.data.shape[0] - np.count_nonzero(INS.data.mask[:, 0, good_chans, 0], axis=0)
         if np.any(N_unflagged < self.N_thresh):
             chans = np.where(N_unflagged < self.N_thresh)[0]
-            self.INS.samp_thresh_events.append(good_chans[chans])
-            self.INS.data[:, 0, good_chans[chans]] = np.ma.masked
+            ES.samp_thresh_events.append(good_chans[chans])
+            INS.data[:, 0, good_chans[chans]] = np.ma.masked
