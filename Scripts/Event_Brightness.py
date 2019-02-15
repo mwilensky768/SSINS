@@ -13,7 +13,7 @@ parser.add_argument('-d', '--shape_dict',
                     help='A pickled shape dictionary for match filtering')
 parser.add_argument('--sig', default=5,
                     help='The significance threshold for match filtering')
-parser.add_argument('-N', default=0, help='The N threshold')
+parser.add_argument('-N', default=0, type=int, help='The N threshold')
 parser.add_argument('-i', '--indir', help='The base directory of the INS',
                     required=True)
 parser.add_argument('--flag_choice', help='The flag choice for the INS',
@@ -30,30 +30,20 @@ else:
 obslist = util.make_obslist(args.obsfile)
 
 bright_dict = {args.sig: {shape: {} for shape in args.shapes}}
-print(shape_dict)
 
 for obs in obslist:
     read_paths = util.read_paths_construct(args.indir, args.flag_choice, obs, 'INS')
-    ins = INS(obs=obs, outpath=args.outdir, read_paths=read_paths)
+    ins = INS(obs=obs, outpath=args.outdir, read_paths=read_paths, flag_choice=args.flag_choice)
     mf = MF(ins, sig_thresh=args.sig, N_thresh=args.N, shape_dict=shape_dict,
             streak=args.streak, point=args.point)
     mf.apply_match_test(apply_N_thresh=True)
+    ins.match_events = util.red_event_sort(ins.match_events,
+                                           [('TV6', 'broad6'),
+                                            ('TV7', 'broad7'),
+                                            ('TV8', 'broad8')],
+                                           keep_prior=[1, 0])
     for shape in args.shapes:
-        events = [event[:-1] for event in ins.match_events if event[-1] == shape]
-        sum = 0
-        chan = shape[-1]
-        if shape in ['TV6', 'TV7', 'TV8']:
-            broad_events = [event[:-1] for event in ins.match_events if event[:-1] == 'broad%s' % chan]
-            broad_events_times = [event[0] for event in broad_events]
-            event_remove = []
-            for event in events:
-                if event[0] in broad_events_times:
-                    event_remove.append(event)
-            for event in event_remove:
-                events.remove(event)
-        for event in events:
-            sum += np.sum(ins.data.data[event])
-        bright_dict[args.sig][shape][obs] = sum
+        bright_dict[args.sig][shape][obs] = np.sum([ins.data.data[event[:-1]] for event in ins.match_events if event[-1] == shape])
     del ins
     del mf
 

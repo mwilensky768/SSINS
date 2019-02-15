@@ -31,6 +31,7 @@ if not os.path.exists(args.outdir):
     os.makedirs(args.outdir)
 
 missing_obs = []
+short_obs = []
 shape_list = args.shapes + ['total']
 if args.s:
     shape_list.insert(-1, 'streak')
@@ -46,7 +47,10 @@ for obs in obslist:
             ins = INS(read_paths=read_paths, obs=obs)
             mf = MF(ins, sig_thresh=sig, N_thresh=args.N, shape_dict=shape_dict,
                     point=args.p, streak=args.s)
-            mf.apply_match_test(apply_N_thresh=True)
+            try:
+                mf.apply_match_test(apply_N_thresh=True)
+            except ValueError:
+                short_obs.append(obs)
             if len(ins.match_events):
                 event_frac = util.event_fraction(ins.match_events, ins.data.shape[0],
                                                  shape_list, ins.data.shape[2])
@@ -62,4 +66,5 @@ for obs in obslist:
         missing_obs.append(obs)
 
 util.make_obsfile(missing_obs, '%s/missing_obs.txt' % args.outdir)
+util.make_obsfile(short_obs, '%s/short_obs.txt' % args.outdir)
 pickle.dump(occ_dict, open('%s/occ_dict.pik' % args.outdir, 'wb'))
