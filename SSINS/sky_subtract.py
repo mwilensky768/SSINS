@@ -18,61 +18,16 @@ import warnings
 import time
 
 
-class SS(object):
+class SS(UVData):
 
     """
     Defines the SS class.
     """
 
-    def __init__(self, obs=None, outpath=None, UV=None, inpath=None,
-                 bad_time_indices=None, read_kwargs={}, flag_choice=None,
-                 INS=None, custom=None, diff=True):
+    def __init__(self, obs=None, outpath=None
+                 flag_choice=None, INS=None, custom=None, diff=True):
 
         """
-        init function for the SS class. One may pass it a UVData object with
-        the UV keyword. The typical mode of operation is to pass an inpath
-        which leads to a datafile in a pyuvdata-readable format. Currently only
-        data with Nbls * Ntimes = Nblts are supported.
-
-        Keywords: obs: The OBSID of the data in question. Only necessary if
-                       saved outputs are desired.
-
-                  outpath: The location to a directory where saved outputs ought
-                           to go. Only necessary if saved outputs are desired.
-
-                  UV: A UVData object to pass. If this is set to None, then a
-                      path to a pyuvdata-readable file must be supplied for the
-                      inpath keyword. Otherwise, this will be the working UVData
-                      object in all analysis.
-
-                  inpath: A path to a pyuvdata-readable file with which to form
-                          the working UVData object during analysis. Necessary
-                          if the UV keyword is not set to a valid UVData object.
-
-                  bad_time_indices: One may remove times from the observation
-                                    by index rather than JD by setting this
-                                    keyword equal to a sequence of indices to be
-                                    removed from the UVData object.
-
-                  read_kwargs: If the UVData object is read-in rather than
-                               manually supplied, then this keyword dictionary
-                               will be passed to pyuvdata.UVData.read() so as to
-                               allow for relatively robust UVData object setup.
-
-                  flag_choice: The flag choice to apply to the data. See
-                               apply_flags() function for more explanation.
-
-                  INS: A keyword for apply_flags().
-
-                  custom: A keyword for apply_flags().
-
-                  diff: Whether or not to difference the data. This should be
-                        left true unless differences were already formed by the
-                        user. This will also take the original UVData flag_array
-                        and form "differenced flags," where a difference is
-                        flagged if either of its contributing visibilities were
-                        flagged. The data and flag arrays are also reshaped so
-                        that they have separate time and baseline axes.
         """
 
         self.obs = obs
@@ -81,43 +36,13 @@ class SS(object):
             if getattr(self, attr) is None:
                 warnings.warn('%s%s' % ('In order to save outputs and use Catalog_Plot.py,',
                                         'please supply %s keyword other than None' % (attr)))
+        self.flag_choice = flag_choice
+        super(SS, self).__init__()
 
-        if UV is None:
-            self.UV = self.read(inpath, read_kwargs=read_kwargs,
-                                bad_time_indices=bad_time_indices)
-
-            self.flag_choice = flag_choice
-        else:
-            self.UV = UV
-            self.flag_choice = flag_choice
-
-        pol_keys = list(range(-8, 5))
-        pol_keys.remove(0)
-        pol_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'I', 'Q',
-                      'U', 'V']
-        pol_dict = dict(zip(pol_keys, pol_values))
-        self.pols = np.array([pol_dict[self.UV.polarization_array[k]] for k in
-                              range(self.UV.Npols)])
-
-        if diff:
-            assert self.UV.Nblts == self.UV.Nbls * self.UV.Ntimes, 'Nblts != Nbls * Ntimes'
-            cond = np.all([self.UV.baseline_array[:self.UV.Nbls] == self.UV.baseline_array[k * self.UV.Nbls:(k + 1) * self.UV.Nbls]
-                           for k in range(1, self.UV.Ntimes - 1)])
-            assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
-
-            reshape = [self.UV.Ntimes, self.UV.Nbls, self.UV.Nspws,
-                       self.UV.Nfreqs, self.UV.Npols]
-
-            self.UV.data_array = np.reshape(self.UV.data_array, reshape)
-            self.UV.data_array = np.diff(self.UV.data_array, axis=0)
-            self.UV.data_array = np.ma.masked_array(np.absolute(self.UV.data_array))
-
-            self.UV.flag_array = np.reshape(self.UV.flag_array, reshape)
-            self.UV.flag_array = np.logical_or(self.UV.flag_array[:-1],
-                                               self.UV.flag_array[1:])
-
-        if self.flag_choice is not None:
-            self.apply_flags(choice=self.flag_choice, INS=INS, custom=custom)
+    def read(filename, **kwargs):
+        super(SS, self).read(filename, **kwargs)
+        if hasattr(self, data_array):
+            self.diff()
 
     def apply_flags(self, choice=None, INS=None, custom=None):
         """
@@ -159,6 +84,28 @@ class SS(object):
                 warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
         elif np.any(self.UV.data_array.mask):
             self.UV.data_array.mask = False
+
+    def diff():
+
+        assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
+        cond = np.all([self.baseline_array[:self.Nbls] == self.baseline_array[k * self.Nbls:(k + 1) * self.Nbls]
+                       for k in range(1, self.Ntimes - 1)])
+        assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+
+        # Difference in time and OR the flags
+        self.data_array = np.ma.masked_array(np.absolute(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls]))
+        self.flag_array = np.logical_or(self.flag_array[self.Nbls:], self.flag_array[:-self.Nbls])
+
+        # Adjust the UVData attributes.
+        self.ant_1_array = self.ant_1_array[:-self.Nbls]
+        self.ant_2_array = self.ant_2_array[:-self.Nbls]
+        self.baseline_array = self.baseline_array[:-self.Nbls]
+        self.integration_time = self.integration_time[self.Nbls:] + self.integration_time[:-self.Nbls]
+        self.Ntimes -= 1
+        self.nsample_array = 0.5 * (self.nsample_array[self.Nbls:] + self.nsample_array[:-self.Nbls])
+        self.time_array = 0.5 * (self.time_array[self.Nbls:] + self.time_array[:-self.Nbls])
+        self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
+        super(SS, self).set_lsts_from_time_array()
 
     def save_meta(self):
 
@@ -313,39 +260,6 @@ class SS(object):
             else:
                 for i, test in enumerate(tests):
                     getattr(self.MF, 'apply_%s_test' % test)(self.INS, self.ES, **test_kwargs[i])
-
-    def read(self, inpath, read_kwargs={}, bad_time_indices=None):
-
-        """
-        Essentially a wrapper around UVData.read() with some extra bells and
-        whistles.
-
-        Keywords: inpath: path to pyuvdata-readable datafile
-
-                  read_kwargs: Keyword dictionary to pass to UVData.read()
-
-                  bad_time_indices: If a sequence is passed, removes data from
-                                    the UVData object based on index rather than
-                                    JD.
-        """
-
-        assert inpath is not None, 'Supply a path to a valid UVData file for the inpath keyword'
-
-        UV = UVData()
-        if bad_time_indices is not None:
-            UV.read(inpath, read_data=False)
-            time_arr = np.unique(UV.time_array)
-            good_ind = np.ones(time_arr.shape, dtype=bool)
-            good_ind[bad_time_indices] = 0
-            times = time_arr[good_ind]
-            read_kwargs['times'] = times
-        UV.read(inpath, **read_kwargs)
-        if np.any(UV.ant_1_array == UV.ant_2_array):
-            warnings.warn('%s%s%s' % ('Autocorrelations are still present in the',
-                                      ' UVData object. User may want to remove',
-                                      ' these before analysis.'))
-
-        return(UV)
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
               bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
