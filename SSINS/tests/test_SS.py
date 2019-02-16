@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import nose.tools as nt
+import pytest
 from SSINS.data import DATA_PATH
 from SSINS import SS
 from SSINS import INS
@@ -18,6 +18,25 @@ import matplotlib.pyplot as plt
 Tests the various capabilities of the sky_subtract class
 """
 
+
+def test_SS_read():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    # Reading with no args tests warning
+    ss = SS()
+
+    # Test reading in only metadata skips if block
+    ss.read(testfile, read_data=False)
+    assert(not hasattr(ss, 'data_array'))
+
+    # Test select on read and diff
+    ss.read(testfile, times=np.unique(self.time_array)[1:10])
+    assert(ss.Ntimes == 8, "Diff seems like it wasn't executed correctly")
+
+    # See that it still passes UVData check
+    assert(ss.check())
 
 def test_INS_construct_plot():
     """
