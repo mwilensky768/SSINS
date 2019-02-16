@@ -24,8 +24,7 @@ class SS(UVData):
     Defines the SS class.
     """
 
-    def __init__(self, obs=None, outpath=None
-                 flag_choice=None, INS=None, custom=None, diff=True):
+    def __init__(self, obs=None, outpath=None):
 
         """
         """
@@ -41,7 +40,7 @@ class SS(UVData):
 
     def read(filename, **kwargs):
         super(SS, self).read(filename, **kwargs)
-        if hasattr(self, data_array):
+        if self.data_array is not None:
             self.diff()
 
     def apply_flags(self, choice=None, INS=None, custom=None):
@@ -106,25 +105,6 @@ class SS(UVData):
         self.time_array = 0.5 * (self.time_array[self.Nbls:] + self.time_array[:-self.Nbls])
         self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
         super(SS, self).set_lsts_from_time_array()
-
-    def save_meta(self):
-
-        """
-        Saves useful metadata to the outpath.
-        """
-
-        path = '%s/metadata' % self.outpath
-        if not os.path.exists(path):
-            os.makedirs(path)
-        assert os.path.exists(path), 'Output directory, %s, could not be created.\
-                                      Check permissions.' % (path)
-        np.save('%s/%s_pols.npy' % (path, self.obs), self.pols)
-        for meta in ['vis_units', 'freq_array']:
-            np.save('%s/metadata/%s_%s.npy' %
-                    (self.outpath, self.obs, meta), getattr(self.UV, meta))
-        for meta in ['time_array', 'lst_array']:
-            np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, meta),
-                    np.unique(getattr(self.UV, meta)))
 
     def save_data(self):
         """
