@@ -122,60 +122,7 @@ class INS(UVFlag):
 
         return(MS)
 
-    def save(self, sig_thresh=None):
-        """
-        Writes out relevant data products.
-
-        Args:
-            sig_thresh: Can give a little sig_thresh tag at the end of the
-                        filename if desired. (Technically this does not have
-                        to be an integer, so you can tag it however you want.)
-        """
-        tags = ['match', 'chisq', 'samp_thresh']
-        tag = ''
-        if sig_thresh is not None:
-            tag += '_%s' % sig_thresh
-        for subtag in tags:
-            if len(getattr(self, '%s_events' % (subtag))):
-                tag += '_%s' % subtag
-
-        for string in ['arrs', 'metadata']:
-            if not os.path.exists('%s/%s' % (self.outpath, string)):
-                os.makedirs('%s/%s' % (self.outpath, string))
-
-        for attr in ['data', 'data_ms', 'Nbls']:
-            with open('%s/arrs/%s_%s_INS_%s%s.npym' %
-                      (self.outpath, self.obs, self.flag_choice, attr, tag), 'wb') as f:
-                pickle.dump(getattr(self, attr), f)
-        for attr in ['counts', 'bins']:
-            np.save('%s/arrs/%s_%s_INS_%s%s.npy' %
-                    (self.outpath, self.obs, self.flag_choice, attr, tag),
-                    getattr(self, attr))
-
-        for attr in ['freq_array', 'pols', 'vis_units']:
-            if hasattr(self, attr):
-                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
-                        getattr(self, attr))
-
-    def _read(self, read_paths):
-        """
-        Reads in attributes from numpy loadable (or depicklable) files.
-
-        Args:
-            read_paths: A dictionary whose keys are the attributes to be read in
-                        and whose values are paths to files where the attribute
-                        data is written.
-        """
-
-        for arg in ['data', 'Nbls', 'freq_array']:
-            assert arg in read_paths,\
-                'You must supply a path to a numpy loadable %s file for read_paths entry' % (arg)
-            setattr(self, arg, np.load(read_paths[arg]))
-        if not len(self.data.mask.shape):
-            data.mask = np.zeros(self.data.shape, dtype=bool)
-        for attr in ['pols', 'vis_units']:
-            if attr not in read_paths:
-                warnings.warn('In order to use Catalog_Plot.py, please supply\
-                               path to numpy loadable %s attribute for read_paths entry' % (attr))
-            else:
-                setattr(self, attr, np.load(read_paths[attr]))
+    def write(self, filename, clobber=False, data_compression='lzf'):
+        self.metric_array = self.metric_array.data
+        super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
+        self.metric_array = np.ma.masked_where(self.metric_ms.mask, self.metric_array)
