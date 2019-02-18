@@ -24,18 +24,10 @@ class SS(UVData):
     Defines the SS class.
     """
 
-    def __init__(self, obs=None, outpath=None):
+    def __init__(self):
 
         """
         """
-
-        self.obs = obs
-        self.outpath = outpath
-        for attr in ['obs', 'outpath']:
-            if getattr(self, attr) is None:
-                warnings.warn('%s%s' % ('In order to save outputs and use Catalog_Plot.py,',
-                                        'please supply %s keyword other than None' % (attr)))
-        self.flag_choice = flag_choice
         super(SS, self).__init__()
 
     def read(filename, **kwargs):
@@ -43,7 +35,7 @@ class SS(UVData):
         if self.data_array is not None:
             self.diff()
 
-    def apply_flags(self, choice=None, INS=None, custom=None):
+    def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
         A function which applies flags to the data via numpy masked arrays. Also
         changes the SS.flag_choice attribute, which will affect saved outputs,
@@ -70,7 +62,7 @@ class SS(UVData):
                   INS: The INS whose flags will be applied. Must be used in
                        conjunction with choice='INS'
         """
-        self.flag_choice = choice
+        self.flag_choice = flag_choice
         if choice is 'original':
             self.UV.data_array.mask = self.UV.flag_array
         elif choice is 'INS':
