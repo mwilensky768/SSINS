@@ -83,8 +83,6 @@ class INS(UVFlag):
                set by the user.
             order: The order of the polynomial fit for each frequency channel, by LLSE.
                    Setting order=0 just calculates the mean.
-            coeff_write: Option to write out the polynomial fit coefficients for
-                         each frequency channel when this function is run.
 
         Returns:
             MS (masked array): The mean-subtracted data array.
@@ -112,10 +110,6 @@ class INS(UVFlag):
                     # Channels which share a mask
                     chans = np.where(mask_inv == k)[0]
                     coeff = np.ma.polyfit(x, good_data[:, chans], self.order)
-                    if coeff_write:
-                        with open('%s/%s_ms_poly_coeff_order_%i_%s.npy' %
-                                  (self.outpath, self.obs, self.order, self.pols[i]), 'wb') as file:
-                            pickle.dump(coeff, file)
                     mu = np.sum([np.outer(x**(self.order - k), coeff[k]) for k in range(self.order + 1)],
                                 axis=0)
                     MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
