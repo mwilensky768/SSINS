@@ -114,3 +114,45 @@ class ES:
                     setattr(self, attr, pickle.load(file))
                 else:
                     setattr(self, attr, [])
+
+    def hist_make(self, INS, bins=None, event=None):
+
+        """
+        A function which will make histograms of the mean-subtracted data.
+
+        Args:
+            sig_thresh: The significance threshold within which to make the
+                        primary bins. Bins are of unit width. Data outside the
+                        sig_thresh will be placed in a single outlier bin.
+                        Will calculate a reasonable one by default.
+            event: Used to histogram a single shape or frequency channel.
+                   Providing an event as found in the INS.match_events list
+                   will histogram the data corresponding to the shape for that
+                   event, where the data is averaged over that shape before
+                   histogramming.
+
+        Returns:
+            counts (array): The counts in each bin.
+            bins (array): The bin edges.
+            sig_thresh (float): The sig_thresh parameter. Will be the calculated value
+                                if sig_thresh is None, else it will be what sig_thresh
+                                was set to.
+        """
+
+        if bins is None:
+            bin_max = np.sqrt(2) * erfcinv(1. / np.prod(INS.data.shape))
+        bins = np.linspace(-bin_max, bin_max,
+                           num=int(2 * np.ceil(2 * sig_thresh)))
+        if event is None:
+            dat = INS.data_ms
+        else:
+            N = np.count_nonzero(np.logical_not(INS.data_ms.mask[:, 0, event[2]]), axis=1)
+            dat = INS.data_ms[:, 0, event[2]].mean(axis=1) * np.sqrt(N)
+        if dat.min() < -sig_thresh:
+            bins = np.insert(bins, 0, dat.min())
+        if dat.max() > sig_thresh:
+            bins = np.append(bins, dat.max())
+        counts, _ = np.histogram(dat[np.logical_not(dat.mask)],
+                                 bins=bins)
+
+        return(counts, bins)
