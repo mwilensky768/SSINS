@@ -18,7 +18,7 @@ class MF(object):
     to it in order to operate on it.
     """
 
-    def __init__(self, freq_array, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
+    def __init__(self, freq_array, sig_thresh, shape_dict={}, N_thresh=0, alpha=None,
                  point=True, streak=True):
 
         """
@@ -62,10 +62,7 @@ class MF(object):
         self.freq_array = freq_array
         self.shape_dict = shape_dict
         self.N_thresh = N_thresh
-        if sig_thresh is None:
-            self.sig_thresh = self.INS.sig_thresh
-        else:
-            self.sig_thresh = sig_thresh
+        self.sig_thresh = sig_thresh
         if alpha is None:
             self.alpha = erfc(self.sig_thresh / np.sqrt(2))
         self.slice_dict = self.shape_slicer(point, streak)
@@ -137,21 +134,20 @@ class MF(object):
                 p = 1
                 f_point = None
                 for f in range(INS.data.shape[2]):
-                    stat, p_point = util.chisq(*INS.hist_make(sig_thresh=self.sig_thresh,
-                                                              event=(0, 0, slice(f, f + 1)))[:-1])
+                    stat, p_point = util.chisq(*ES.hist_make(event=(0, 0, slice(f, f + 1))))
                     if p_point < p:
                         p = p_point
                         f_point = f
             else:
-                stat, p = util.chisq(*INS.hist_make(sig_thresh=self.sig_thresh,
-                                                    event=(0, 0, self.slice_dict[shape]))[:-1])
+                stat, p = util.chisq(*ES.hist_make(event=(0, 0, self.slice_dict[shape])))
             if p < p_min:
                 p_min = p
                 shape_min = shape
 
         return(p_min, shape_min, f_point)
 
-    def apply_match_test(self, INS, ES, order=0, apply_N_thresh=False):
+    def apply_match_test(self, INS, ES=None, event_record=False,
+                         order=0, apply_N_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -163,6 +159,9 @@ class MF(object):
         """
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
+        if event_record and (ES is None):
+            ES = ES()
+
         count = 1
         while count:
             count = 0
@@ -171,47 +170,49 @@ class MF(object):
                 count += 1
                 event = (t_max, 0, f_max, shape_max)
                 INS.data[event[:-1]] = np.ma.masked
-                ES.match_events.append(event)
-                ES.match_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                         event=event))
+                if event_record:
+                    ES.match_events.append(event)
                 if (apply_N_thresh and self.N_thresh):
-                    self.apply_samp_thresh_test(INS)
+                    self.apply_samp_thresh_test(INS, ES=ES, event_record=event_record)
                 if not np.all(self.INS.data[:, 0, f_max, 0].mask):
                     INS.data_ms[:, :, f_max] = INS.mean_subtract(f=f_max, order=order)
                 else:
                     INS.data_ms[:, :, f_max] = np.ma.masked
-        INS.counts, INS.bins, INS.sig_thresh = INS.hist_make(sig_thresh=self.sig_thresh)
+
+        return(ES)
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
-    def apply_chisq_test(self, INS, ES):
+    def apply_chisq_test(self, INS, ES=None, event_record=False):
         """
         Calculates the p-value of each shape and channel using chisq_test().
         Should the p-value of a shape or channel be less than the significance
         threshold, alpha, the entire observation will be flagged for that shape
         or channel.
         """
+        if event_record and (ES is None):
+            ES = ES()
+
         p_min = 0
         while p_min < self.alpha:
             p_min, shape_min, f_point = self.chisq_test()
             if p_min < self.alpha:
                 if shape_min is 'point':
                     event = (0, 0, slice(f_point, f_point + 1), 'point')
-                    ES.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                             event=event))
                     INS.data[:, 0, slice(f_point, f_point + 1)] = np.ma.masked
-                    ES.chisq_events.append(event)
+                    if event_record:
+                        ES.chisq_events.append(event)
                 else:
                     event = (0, 0, self.slice_dict[shape_min], shape_min)
-                    ES.chisq_hists.append(self.INS.hist_make(sig_thresh=self.sig_thresh,
-                                                             event=event))
                     INS.data[:, 0, self.slice_dict[shape_min]] = np.ma.masked
-                    ES.chisq_events.append(event)
+                    if event_record:
+                        ES.chisq_events.append(event)
 
                 INS.data_ms[:, :, event[2]] = INS.mean_subtract(f=event[2])
-        INS.counts, INS.bins, INS.sig_thresh = INS.hist_make(sig_thresh=self.sig_thresh)
 
-    def apply_samp_thresh_test(self, INS, ES):
+        return(ES)
+
+    def apply_samp_thresh_test(self, INS, ES=None, event_record=False):
         """
         The sample threshold test. This tests to see if any channels have fewer
         unflagged channels than a given threshold. If so, the entire channel is
@@ -219,6 +220,7 @@ class MF(object):
         than the number of times in the observation, due to the fact that this
         will always lead to flagging the entire observation.
         """
+
         if self.N_thresh > INS.data.shape[0]:
             raise ValueError("N_thresh parameter is set higher than "
                              "the number of time samples. This will "
@@ -228,5 +230,6 @@ class MF(object):
         N_unflagged = INS.data.shape[0] - np.count_nonzero(INS.data.mask[:, 0, good_chans, 0], axis=0)
         if np.any(N_unflagged < self.N_thresh):
             chans = np.where(N_unflagged < self.N_thresh)[0]
-            ES.samp_thresh_events.append(good_chans[chans])
+            if event_record:
+                ES.samp_thresh_events.append(good_chans[chans])
             INS.data[:, 0, good_chans[chans]] = np.ma.masked
