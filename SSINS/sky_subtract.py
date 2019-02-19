@@ -106,43 +106,44 @@ class SS(UVData):
 
         self.INS = INS(self, history='', label='', order=order)
 
-    def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
+    def MLE_calc(self):
 
+        self.MLE = np.sqrt(0.5 * np.mean(self.data_array, axis=(0, 1, -1)))
+
+    def mixture_prob(self, bins):
         """
-        Prepares a VDH. Passes all possible relevant non-conflicting attributes.
+        Calculates the probabilities of landing in each bin for a given set of
+        bins.
 
-        Keywords: bins: The bins to use for the histogram. Options are None,
-                        'auto', sequence
-
-                        None: Logarithmically spaced bins spanning the nonzero
-                              data are made.
-
-                        'auto': Same as passing 'auto' to np.histogram()
-
-                        sequence: The sequence is used to define the bin edges.
-
-                  fit_hist: Make a Rayleigh-mixture fit to the histograms.
-                            Requires MLE=True
-
-                  MLE: Calculate the Rayleigh MLE for each baseline, frequency,
-                       and polarization.
-
-                  window: Provide upper and lower limits for VDH.rev_ind()
+        args:
+            bins: The bin edges of the bins to calculate the probabilities for.
         """
 
-        kwargs = {'data': self.UV.data_array,
-                  'flag_choice': self.flag_choice,
-                  'freq_array': self.UV.freq_array,
-                  'pols': self.pols,
-                  'vis_units': self.UV.vis_units,
-                  'obs': self.obs,
-                  'outpath': self.outpath,
-                  'bins': bins,
-                  'fit_hist': fit_hist,
-                  'MLE': MLE}
-        self.VDH = VDH(**kwargs)
-        if window is not None:
-            self.VDH.rev_ind(self.UV.data_array, window)
+        if not hasattr(self, 'MLE'):
+            self.MLE_calc()
+
+        N_spec = np.sum(np.logical_not(ss.data_array.mask), axis=(0, 1, -1))
+        N_total = np.sum(N_spec)
+
+        # Calculate the fraction belonging to each frequency
+        chi_spec = N_spec / N_total
+
+        # initialize the probability array
+        prob = np.zeros(len(bins) - 1)
+        # Calculate the mixture distribution
+        # If this could be vectorized over frequency, that would be better.
+        for chan in range(ss.Nfreqs):
+            quants = scipy.stats.rayleigh.cdf(bins, scale=self.MLE[chan])
+            prob += chi_spec[chan] * (quants[1:] - quants[:-1])
+
+        return(prob)
+
+    def rev_ind(self, band):
+
+        where_band = np.logical_and(self.data_array > min(band), self.data_array > max_band)
+        where_band_mask = np.logical_and(np.logical_not(ss.data_array.mask), where_band)
+        shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
+        return(np.sum(where_band_mask.reshape(shape), axis=(1, 2)))
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
               bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
