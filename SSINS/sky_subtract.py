@@ -30,9 +30,9 @@ class SS(UVData):
         """
         super(SS, self).__init__()
 
-    def read(filename, **kwargs):
+    def read(filename, diff=True, **kwargs):
         super(SS, self).read(filename, **kwargs)
-        if self.data_array is not None:
+        if (self.data_array is not None) and diff:
             self.diff()
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
@@ -98,37 +98,13 @@ class SS(UVData):
         self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
         super(SS, self).set_lsts_from_time_array()
 
-    def save_data(self):
-        """
-        Saves formed data products to the outpath using their respective save()
-        functions.
-        """
-
-        for attr in ['INS', 'VDH', 'ES']:
-            if hasattr(self, attr):
-                getattr(getattr(self, attr), 'save')()
-
-    def INS_prepare(self, order=0):
+    def INS_prepare(self, history='', label='', order=0):
 
         """
         Prepares an INS. Passes all possible relevant non-conflicting attributes.
         """
 
-        data = self.UV.data_array.mean(axis=1)
-        if np.any(self.UV.data_array.mask):
-            Nbls = np.count_nonzero(np.logical_not(self.UV.data_array.mask), axis=1)
-        else:
-            Nbls = self.UV.Nbls * np.ones(data.shape)
-        kwargs = {'data': data,
-                  'Nbls': Nbls,
-                  'freq_array': self.UV.freq_array,
-                  'pols': self.pols,
-                  'vis_units': self.UV.vis_units,
-                  'obs': self.obs,
-                  'outpath': self.outpath,
-                  'flag_choice': self.flag_choice,
-                  'order': order}
-        self.INS = INS(**kwargs)
+        self.INS = INS(self, history='', label='', order=order)
 
     def VDH_prepare(self, bins=None, fit_hist=False, MLE=True, window=None):
 
@@ -167,71 +143,6 @@ class SS(UVData):
         self.VDH = VDH(**kwargs)
         if window is not None:
             self.VDH.rev_ind(self.UV.data_array, window)
-
-    def MF_prepare(self, sig_thresh=None, shape_dict={}, N_thresh=0, alpha=None,
-                   point=True, streak=True):
-
-        """
-        Prepares a MF. Since a MF requires an INS, if the SS does not have an
-        INS yet, then an INS is prepared with the current settings.
-
-        Keywords: sig_thresh: Passes this as the sig_thresh attribute of the MF.
-                              sig_thresh=None will force the MF to calculate a
-                              reasonable one based on the data size.
-
-                  shape_dict: Gives the shape dictionary to the MF. Keys are
-                              only used internally, but they refer to the names
-                              of the RFI shapes being looked for. Values are
-                              upper and lower frequency limits for the
-                              corresponding shapes.
-
-                  N_thresh: Sets the N_thresh parameter used in the
-                            samp_thresh_test
-
-                  alpha: Sets the significance level for the chisq_test.
-                         alpha=None will force the MF to calculate one based on
-                         the data size.
-
-                  tests: The tests performed by the match filter, in the order
-                         of the sequence given. Options are 'match', 'chisq',
-                         'samp_thresh'
-
-                  point: Instruct the MF to look for single-point outliers if
-                         point=True. Else omit this search.
-
-                  streak: Instruct the MF to look for broadband (possibly not
-                          band-limited) features in the data. Else omit this
-                          search.
-        """
-
-        self.MF = MF(self.UV.freq_array, sig_thresh=sig_thresh, shape_dict=shape_dict,
-                     N_thresh=N_thresh, alpha=alpha, point=point, streak=streak)
-
-    def ES_prepare(self, apply_tests=True, tests=None, order=0, sig_thresh=None,
-                   shape_dict={}, N_thresh=0, alpha=None, point=True, streak=True,
-                   test_kwargs=None):
-
-        """
-
-        """
-
-        ES_kwargs = {'flag_choice': self.flag_choice,
-                     'obs': self.obs,
-                     'outpath': self.outpath}
-
-        self.ES = ES(**ES_kwargs)
-        if not hasattr(self, INS):
-            self.INS_prepare(order=order)
-        if not hasattr(self.MF):
-            self.MF_prepare(sig_thresh=sig_thresh, shape_dict=shape_dict,
-                            N_thresh=N_thresh, alpha=alpha, point=point,
-                            streak=streak)
-        if apply_tests:
-            if tests is None:
-                raise TypeError("To apply tests, must supply types of test to apply")
-            else:
-                for i, test in enumerate(tests):
-                    getattr(self.MF, 'apply_%s_test' % test)(self.INS, self.ES, **test_kwargs[i])
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
               bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
