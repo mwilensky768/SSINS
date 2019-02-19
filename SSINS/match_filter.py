@@ -147,7 +147,7 @@ class MF(object):
         return(p_min, shape_min, f_point)
 
     def apply_match_test(self, INS, ES=None, event_record=False,
-                         order=0, apply_N_thresh=False):
+                         apply_N_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -168,14 +168,14 @@ class MF(object):
             t_max, f_max, R_max, shape_max = self.match_test()
             if R_max > -np.inf:
                 count += 1
-                event = (t_max, 0, f_max, shape_max)
+                event = (t_max, f_max, shape_max)
                 INS.data[event[:-1]] = np.ma.masked
                 if event_record:
                     ES.match_events.append(event)
                 if (apply_N_thresh and self.N_thresh):
                     self.apply_samp_thresh_test(INS, ES=ES, event_record=event_record)
-                if not np.all(self.INS.data[:, 0, f_max, 0].mask):
-                    INS.data_ms[:, :, f_max] = INS.mean_subtract(f=f_max, order=order)
+                if not np.all(self.INS.metric_array[:, f_max, 0].mask):
+                    INS.data_ms[:, f_max] = INS.mean_subtract(f=f_max)
                 else:
                     INS.data_ms[:, :, f_max] = np.ma.masked
 

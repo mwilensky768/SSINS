@@ -17,7 +17,7 @@ class INS(UVFlag):
     Defines the incoherent noise spectrum (INS) class.
     """
 
-    def __init__(self, input, history='', label='', weights=None, order=0):
+    def __init__(self, input, history='', label='', order=0):
 
         """
         init function for the INS class. Can set the attributes manually, or
@@ -32,7 +32,6 @@ class INS(UVFlag):
                   data array. (Required)
             freq_array: The frequencies (in hz) that describe the data, as found
                         in a UVData object. (Required)
-            pols: The polarizations present in the data, in the order of the data array.
             flag_choice: The flag choice used in the original SS object.
             vis_units: The units for the visibilities.
             obs: The obsid for the data.
@@ -63,7 +62,7 @@ class INS(UVFlag):
                                   waterfall=False, history='', label='')
         if self.type is 'baseline':
             # Set the metric array to the data array without the spw axis
-            self.metric_array = input.data_array[:, 0]
+            self.metric_array = input.data_array
             self.weights_array = np.logical_not(input.data_array.mask)
             super(INS, self).to_waterfall(method='mean')
 
@@ -81,8 +80,6 @@ class INS(UVFlag):
         Args:
             f: The frequency slice over which to do the calculation. Usually not
                set by the user.
-            order: The order of the polynomial fit for each frequency channel, by LLSE.
-                   Setting order=0 just calculates the mean.
 
         Returns:
             MS (masked array): The mean-subtracted data array.
@@ -92,13 +89,13 @@ class INS(UVFlag):
         # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
         if not self.order:
-            MS = (self.data[:, :, f] / self.data[:, :, f].mean(axis=0) - 1) * np.sqrt(self.Nbls[:, :, f] / C)
+            MS = (self.metric_array[:, f] / self.metric_array[:, f].mean(axis=0) - 1) * np.sqrt(self.weights_array[:, f] / C)
         else:
-            MS = np.zeros_like(self.data[:, :, f])
+            MS = np.zeros_like(self.metric_array[:, f])
             # Make sure x is not zero so that np.polyfit can proceed without nans
-            x = np.arange(1, self.data.shape[0] + 1)
-            for i in range(self.data.shape[-1]):
-                y = self.data[:, 0, f, i]
+            x = np.arange(1, self.metric_array.shape[0] + 1)
+            for i in range(self.metric_array.shape[-1]):
+                y = self.metric_array[:, f, i]
                 # Only iterate over channels that are not fully masked
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
                 # Create a subarray mask of only those good channels
@@ -112,7 +109,7 @@ class INS(UVFlag):
                     coeff = np.ma.polyfit(x, good_data[:, chans], self.order)
                     mu = np.sum([np.outer(x**(self.order - k), coeff[k]) for k in range(self.order + 1)],
                                 axis=0)
-                    MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
+                    MS[:, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.weights_array[:, f, i][:, good_chans[chans]] / C)
 
         return(MS)
 
