@@ -63,12 +63,12 @@ class SS(UVData):
                        conjunction with choice='INS'
         """
         self.flag_choice = flag_choice
-        if choice is 'original':
+        if flag_choice is 'original':
             self.UV.data_array.mask = self.UV.flag_array
-        elif choice is 'INS':
+        elif flag_choice is 'INS':
             ind = np.where(INS.data.mask)
             self.UV.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
-        elif choice is 'custom':
+        elif flag_choice is 'custom':
             if custom is not None:
                 self.UV.data_array[custom] = np.ma.masked
             else:
