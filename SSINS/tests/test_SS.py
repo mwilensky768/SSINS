@@ -134,7 +134,7 @@ def test_rev_ind():
     band = [0.5 * (dat_sort[-2] + dat_sort[-1]), dat_sort[-1] + 1]
 
     # Find the indices of this data point
-    ind = np.unravel_index(ss.data_array.argmax())
+    ind = np.unravel_index(ss.data_array.argmax(), ss.data_array.shape)
     # Convert the blt to a time index
     t = ind[0] % ss.Nbls
     f = ind[2]
