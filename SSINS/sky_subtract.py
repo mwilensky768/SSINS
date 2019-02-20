@@ -88,6 +88,7 @@ class SS(UVData):
         self.flag_array = np.logical_or(self.flag_array[self.Nbls:], self.flag_array[:-self.Nbls])
 
         # Adjust the UVData attributes.
+        self.Nblts -= self.Nbls
         self.ant_1_array = self.ant_1_array[:-self.Nbls]
         self.ant_2_array = self.ant_2_array[:-self.Nbls]
         self.baseline_array = self.baseline_array[:-self.Nbls]
