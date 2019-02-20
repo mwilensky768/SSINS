@@ -30,7 +30,7 @@ class SS(UVData):
         """
         super(SS, self).__init__()
 
-    def read(filename, diff=True, **kwargs):
+    def read(self, filename, diff=True, **kwargs):
         super(SS, self).read(filename, **kwargs)
         if (self.data_array is not None) and diff:
             self.diff()
@@ -143,7 +143,7 @@ class SS(UVData):
         where_band = np.logical_and(self.data_array > min(band), self.data_array > max_band)
         where_band_mask = np.logical_and(np.logical_not(ss.data_array.mask), where_band)
         shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
-        return(np.sum(where_band_mask.reshape(shape), axis=(1, 2)))
+        return(np.sum(where_band_mask.reshape(shape), axis=1))
 
     def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
               bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
