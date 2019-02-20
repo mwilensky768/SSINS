@@ -114,8 +114,8 @@ def test_mixture_prob():
     # Generate the mixture probabilities
     mixture_prob = ss.mixture_prob(bins=bins)
 
-    # Check that they sum to 1
-    assert np.sum(mixture_prob) == 1, "Probabilities did not add up to 1"
+    # Check that they sum to close to 1
+    assert np.isclose(np.sum(mixture_prob), 1), "Probabilities did not add up to close to 1"
 
 
 def test_rev_ind():

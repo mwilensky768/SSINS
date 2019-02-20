@@ -30,10 +30,12 @@ class SS(UVData):
         """
         super(SS, self).__init__()
 
-    def read(self, filename, diff=True, **kwargs):
+    def read(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
+             **kwargs):
         super(SS, self).read(filename, **kwargs)
         if (self.data_array is not None) and diff:
             self.diff()
+            self.apply_flags(flag_choice=flag_choice)
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
@@ -73,8 +75,8 @@ class SS(UVData):
                 self.data_array[custom] = np.ma.masked
             else:
                 warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
-        elif np.any(self.data_array.mask):
-            self.data_array.mask = False
+        elif np.any(self.data_array.mask) or (not self.data_array.mask):
+            self.data_array.mask = np.zeros(self.data_array.shape, dtype=bool)
 
     def diff(self):
 

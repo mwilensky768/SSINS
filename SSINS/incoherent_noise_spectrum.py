@@ -62,9 +62,10 @@ class INS(UVFlag):
                                   waterfall=False, history='', label='')
         if self.type is 'baseline':
             # Set the metric array to the data array without the spw axis
-            self.metric_array = input.data_array
+            self.metric_array = np.abs(input.data_array)
             self.weights_array = np.logical_not(input.data_array.mask)
-            super(INS, self).to_waterfall(method='absmean')
+            print(self.weights_array)
+            super(INS, self).to_waterfall(method='mean')
 
         self.order = order
         self.metric_ms = self.mean_subtract()
