@@ -9,9 +9,9 @@ from SSINS import ES
 from SSINS import Catalog_Plot as cp
 from SSINS import plot_lib as pl
 from SSINS import util
-import shutil
 import os
 import numpy as np
+from pyuvdata import UVData
 
 """
 Tests the various capabilities of the sky_subtract class
@@ -173,3 +173,4 @@ def test_write():
     UV.read(outfile)
     assert np.all(UV.flag_array[:2 * UV.Nbls]), "Not all expected flags were propagated"
     assert not np.any(UV.flag_array[2 * UV.Nbls:]), "More flags were made than expected"
+    os.remove(outfile)
