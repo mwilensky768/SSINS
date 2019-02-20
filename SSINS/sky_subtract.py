@@ -64,17 +64,17 @@ class SS(UVData):
         """
         self.flag_choice = flag_choice
         if flag_choice is 'original':
-            self.UV.data_array.mask = self.UV.flag_array
+            self.data_array.mask = self.flag_array
         elif flag_choice is 'INS':
             ind = np.where(INS.data.mask)
-            self.UV.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
+            self.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
         elif flag_choice is 'custom':
             if custom is not None:
-                self.UV.data_array[custom] = np.ma.masked
+                self.data_array[custom] = np.ma.masked
             else:
                 warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
-        elif np.any(self.UV.data_array.mask):
-            self.UV.data_array.mask = False
+        elif np.any(self.data_array.mask):
+            self.data_array.mask = False
 
     def diff(self):
 
