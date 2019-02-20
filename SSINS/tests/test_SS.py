@@ -28,7 +28,7 @@ def test_SS_read():
 
     # Test reading in only metadata skips if block
     ss.read(testfile, read_data=False)
-    assert(not hasattr(ss, 'data_array'))
+    assert(ss.data_array is None, "Data array is not None")
 
     # Test select on read and diff
     ss.read(testfile, times=np.unique(self.time_array)[1:10])
