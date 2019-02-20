@@ -112,8 +112,8 @@ class ES:
             if attr in read_paths:
                 with open(read_paths[attr], 'rb') as file:
                     setattr(self, attr, pickle.load(file))
-                else:
-                    setattr(self, attr, [])
+            else:
+                setattr(self, attr, [])
 
     def hist_make(self, INS, bins=None, event=None):
 
@@ -144,10 +144,10 @@ class ES:
         bins = np.linspace(-bin_max, bin_max,
                            num=int(2 * np.ceil(2 * sig_thresh)))
         if event is None:
-            dat = INS.data_ms
+            dat = INS.metric_ms
         else:
             N = np.count_nonzero(np.logical_not(INS.data_ms.mask[:, 0, event[2]]), axis=1)
-            dat = INS.data_ms[:, 0, event[2]].mean(axis=1) * np.sqrt(N)
+            dat = INS.metric_ms[:, 0, event[2]].mean(axis=1) * np.sqrt(N)
         if dat.min() < -sig_thresh:
             bins = np.insert(bins, 0, dat.min())
         if dat.max() > sig_thresh:
