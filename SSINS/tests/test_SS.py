@@ -87,7 +87,7 @@ def test_INS_prepare():
 
     # Mock the averaging method
     new_shape = [ss.Ntimes, ss.Nbls, ss.Nfreqs, ss.Npols]
-    test_dat = np.mean(ss.data_array.reshape(new_shape), axis=1)
+    test_dat = np.mean(np.abs(ss.data_array).reshape(new_shape), axis=1)
 
     # Mock the weights array
     test_weights = np.sum(np.logical_not(ss.data_array.mask).reshape(new_shape), axis=1)
@@ -109,7 +109,7 @@ def test_mixture_prob():
     ss.apply_flags('original')
 
     # Generate some bins
-    counts, bins = np.histogram(ss.data_array[np.logical_not(ss.data_array.mask)], bins='auto')
+    counts, bins = np.histogram(np.absolute(ss.data_array)[np.logical_not(ss.data_array.mask)], bins='auto')
 
     # Generate the mixture probabilities
     mixture_prob = ss.mixture_prob(bins=bins)
@@ -132,7 +132,7 @@ def test_rev_ind():
     band = [0.5 * (dat_sort[-2] + dat_sort[-1]), dat_sort[-1] + 1]
 
     # Find the indices of this data point
-    ind = np.unravel_index(ss.data_array.argmax(), ss.data_array.shape)
+    ind = np.unravel_index(np.absolute(ss.data_array).argmax(), ss.data_array.shape)
     # Convert the blt to a time index
     t = ind[0] % ss.Nbls
     f = ind[2]

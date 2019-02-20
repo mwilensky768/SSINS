@@ -64,7 +64,7 @@ class INS(UVFlag):
             # Set the metric array to the data array without the spw axis
             self.metric_array = input.data_array
             self.weights_array = np.logical_not(input.data_array.mask)
-            super(INS, self).to_waterfall(method='mean')
+            super(INS, self).to_waterfall(method='absmean')
 
         self.order = order
         self.metric_ms = self.mean_subtract()
