@@ -66,6 +66,8 @@ class INS(UVFlag):
             self.weights_array = np.logical_not(input.data_array.mask)
             print(self.weights_array)
             super(INS, self).to_waterfall(method='mean')
+        if not hasattr(self.metric_array, 'mask'):
+            self.metric_array = np.ma.masked_array(self.metric_array)
 
         self.order = order
         self.metric_ms = self.mean_subtract()
