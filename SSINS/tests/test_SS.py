@@ -98,3 +98,53 @@ test_INS_prepare():
     assert(np.all(test_dat == ss.INS.metric_array), "Averaging did not work as intended.")
     # Check that the weights summed correctly
     assert(np.all(test_weights == ss.INS.weights_array), "Weights did not sum properly")
+
+
+test_mixture_prob():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile)
+    ss.apply_flags('original')
+
+    # Generate some bins
+    counts, bins = np.histogram(ss.data_array[np.logical_not(ss.data_array.mask)], bins='auto')
+
+    # Generate the mixture probabilities
+    mixture_prob = ss.mixture(prob, bins=bins)
+
+    # Check that they sum to 1
+    assert(np.sum(mixture_prob) == 1, "Probabilities did not add up to 1")
+
+
+test_rev_ind():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile)
+
+    # Make a band that will pick out only the largest value in the data
+    dat_sort = np.sort(ss.data_array, axis=None)
+    band = [0.5 * (dat_sort[-2] + dat_sort[-1]), dat_sort[-1] + 1]
+
+    # Find the indices of this data point
+    ind = np.unravel_index(ss.data_array.argmax())
+    # Convert the blt to a time index
+    t = ind[0] % ss.Nbls
+    f = ind[2]
+    p = ind[3]
+
+    # Make the waterfall histogram
+    wf_hist = ss.rev_ind(band)
+
+    # Check that it picked up that point
+    assert(wf_hist[t, f, p] == 1, "The algorithm did not find the data point")
+
+    # Check no other points were picked up
+    assert(np.count_nonzero(wf_hist) == 1, "The algorithm found other data")
