@@ -180,7 +180,8 @@ class SS(UVData):
         """
 
         if UV is None:
-            UV = super(SS, self).read(filename_in, **read_kwargs)
+            UV = UVData()
+            UV.read(filename_in, **read_kwargs)
 
         # Test that assumptions abouts blts axis are ok
         assert UV.Nblts == UV.Nbls * UV.Ntimes, 'Nblts != Nbls * Ntimes for UV object.'
@@ -206,4 +207,4 @@ class SS(UVData):
             UV.flag_array[(i + 1) * self.Nbls: (i + 2) * self.Nbls][self.data_array.mask[i * self.Nbls: (i + 1) * self.Nbls]] = 1
 
         # Write file
-        getattr(UV, 'write_%s' % file_type_out)(file_name_out, **write_kwargs)
+        getattr(UV, 'write_%s' % file_type_out)(filename_out, **write_kwargs)
