@@ -9,8 +9,7 @@ import os
 import numpy as np
 from SSINS import image_plot, error_plot
 from SSINS import util
-from matplotlib import cm, use
-use('Agg')
+from matplotlib import cm
 import matplotlib.pyplot as plt
 
 

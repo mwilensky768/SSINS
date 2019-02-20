@@ -5,8 +5,7 @@ these functions is unnecessary.
 
 from __future__ import absolute_import, division, print_function
 
-from matplotlib import cm, use
-use('Agg')
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
