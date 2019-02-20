@@ -84,7 +84,7 @@ class SS(UVData):
         assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
 
         # Difference in time and OR the flags
-        self.data_array = np.ma.masked_array(np.absolute(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls]))
+        self.data_array = np.ma.masked_array(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls])
         self.flag_array = np.logical_or(self.flag_array[self.Nbls:], self.flag_array[:-self.Nbls])
 
         # Adjust the UVData attributes.
@@ -109,7 +109,7 @@ class SS(UVData):
 
     def MLE_calc(self):
 
-        self.MLE = np.sqrt(0.5 * np.mean(self.data_array, axis=(0, 1, -1)))
+        self.MLE = np.sqrt(0.5 * np.mean(np.absolute(self.data_array)**2, axis=(0, 1, -1)))
 
     def mixture_prob(self, bins):
         """
@@ -141,8 +141,10 @@ class SS(UVData):
 
     def rev_ind(self, band):
 
-        where_band = np.logical_and(self.data_array > min(band), self.data_array > max(band))
-        where_band_mask = np.logical_and(np.logical_not(self.data_array.mask), where_band)
+        where_band = np.logical_and(np.absolute(self.data_array) > min(band),
+                                    np.absolute(self.data_array) > max(band))
+        where_band_mask = np.logical_and(np.logical_not(self.data_array.mask),
+                                         where_band)
         shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
         return(np.sum(where_band_mask.reshape(shape), axis=1))
 
