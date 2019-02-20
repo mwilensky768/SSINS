@@ -31,7 +31,7 @@ def test_SS_read():
     assert(ss.data_array is None, "Data array is not None")
 
     # Test select on read and diff
-    ss.read(testfile, times=np.unique(self.time_array)[1:10])
+    ss.read(testfile, times=np.unique(ss.time_array)[1:10])
     assert(ss.Ntimes == 8, "Diff seems like it wasn't executed correctly")
 
     # See that it still passes UVData check
