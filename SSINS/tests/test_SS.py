@@ -9,10 +9,8 @@ from SSINS import ES
 from SSINS import Catalog_Plot as cp
 from SSINS import plot_lib as pl
 from SSINS import util
-import shutil
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 """
 Tests the various capabilities of the sky_subtract class
