@@ -38,7 +38,7 @@ def test_SS_read():
     assert(ss.check())
 
 
-test_apply_flags():
+def test_apply_flags():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -76,7 +76,7 @@ test_apply_flags():
     assert(ss.flag_choice is 'INS')
 
 
-test_INS_prepare():
+def test_INS_prepare():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -100,7 +100,7 @@ test_INS_prepare():
     assert(np.all(test_weights == ss.INS.weights_array), "Weights did not sum properly")
 
 
-test_mixture_prob():
+def test_mixture_prob():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -120,7 +120,7 @@ test_mixture_prob():
     assert(np.sum(mixture_prob) == 1, "Probabilities did not add up to 1")
 
 
-test_rev_ind():
+def test_rev_ind():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
