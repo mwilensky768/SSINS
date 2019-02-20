@@ -114,7 +114,7 @@ def test_mixture_prob():
     counts, bins = np.histogram(ss.data_array[np.logical_not(ss.data_array.mask)], bins='auto')
 
     # Generate the mixture probabilities
-    mixture_prob = ss.mixture(prob, bins=bins)
+    mixture_prob = ss.mixture_prob(bins=bins)
 
     # Check that they sum to 1
     assert(np.sum(mixture_prob) == 1, "Probabilities did not add up to 1")
