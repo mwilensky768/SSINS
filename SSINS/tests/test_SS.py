@@ -128,13 +128,13 @@ def test_rev_ind():
     ss.read(testfile)
 
     # Make a band that will pick out only the largest value in the data
-    dat_sort = np.sort(ss.data_array, axis=None)
+    dat_sort = np.sort(np.abs(ss.data_array), axis=None)
     band = [0.5 * (dat_sort[-2] + dat_sort[-1]), dat_sort[-1] + 1]
 
     # Find the indices of this data point
     ind = np.unravel_index(np.absolute(ss.data_array).argmax(), ss.data_array.shape)
     # Convert the blt to a time index
-    t = ind[0] % ss.Nbls
+    t = ind[0] // ss.Nbls
     f = ind[2]
     p = ind[3]
 

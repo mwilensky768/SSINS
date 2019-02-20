@@ -142,7 +142,7 @@ class SS(UVData):
     def rev_ind(self, band):
 
         where_band = np.logical_and(np.absolute(self.data_array) > min(band),
-                                    np.absolute(self.data_array) > max(band))
+                                    np.absolute(self.data_array) < max(band))
         where_band_mask = np.logical_and(np.logical_not(self.data_array.mask),
                                          where_band)
         shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
