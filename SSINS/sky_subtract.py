@@ -134,8 +134,9 @@ class SS(UVData):
         # Calculate the mixture distribution
         # If this could be vectorized over frequency, that would be better.
         for chan in range(self.Nfreqs):
-            quants = scipy.stats.rayleigh.cdf(bins, scale=self.MLE[chan])
-            prob += chi_spec[chan] * (quants[1:] - quants[:-1])
+            if self.MLE[chan] > 0:
+                quants = scipy.stats.rayleigh.cdf(bins, scale=self.MLE[chan])
+                prob += chi_spec[chan] * (quants[1:] - quants[:-1])
 
         return(prob)
 
