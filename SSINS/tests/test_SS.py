@@ -9,6 +9,7 @@ from SSINS import ES
 from SSINS import Catalog_Plot as cp
 from SSINS import plot_lib as pl
 from SSINS import util
+import shutil
 import os
 import numpy as np
 
@@ -146,3 +147,29 @@ def test_rev_ind():
 
     # Check no other points were picked up
     assert np.count_nonzero(wf_hist) == 1, "The algorithm found other data"
+
+
+def test_write():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
+
+    ss = SS()
+    ss.read(testfile)
+
+    custom = np.zeros_like(ss.data_array.mask)
+    custom[:ss.Nbls] = 1
+
+    # Flags the first time and no others
+    ss.apply_flags(flag_choice='custom', custom=custom)
+
+    # Write this out without combining flags
+    ss.write(outfile, 'uvfits', filename_in=testfile, combine=False)
+
+    # Check if the flags propagated correctly
+    UV = UVData()
+    UV.read(outfile)
+    assert np.all(UV.flag_array[:2 * UV.Nbls]), "Not all expected flags were propagated"
+    assert not np.any(UV.flag_array[2 * UV.Nbls:]), "More flags were made than expected"
