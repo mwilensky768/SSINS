@@ -123,7 +123,7 @@ class SS(UVData):
         if not hasattr(self, 'MLE'):
             self.MLE_calc()
 
-        N_spec = np.sum(np.logical_not(ss.data_array.mask), axis=(0, 1, -1))
+        N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
         N_total = np.sum(N_spec)
 
         # Calculate the fraction belonging to each frequency
@@ -133,7 +133,7 @@ class SS(UVData):
         prob = np.zeros(len(bins) - 1)
         # Calculate the mixture distribution
         # If this could be vectorized over frequency, that would be better.
-        for chan in range(ss.Nfreqs):
+        for chan in range(self.Nfreqs):
             quants = scipy.stats.rayleigh.cdf(bins, scale=self.MLE[chan])
             prob += chi_spec[chan] * (quants[1:] - quants[:-1])
 
