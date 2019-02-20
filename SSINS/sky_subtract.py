@@ -76,7 +76,7 @@ class SS(UVData):
         elif np.any(self.UV.data_array.mask):
             self.UV.data_array.mask = False
 
-    def diff():
+    def diff(self):
 
         assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
         cond = np.all([self.baseline_array[:self.Nbls] == self.baseline_array[k * self.Nbls:(k + 1) * self.Nbls]
