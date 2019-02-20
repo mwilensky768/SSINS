@@ -151,8 +151,8 @@ class SS(UVData):
         shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
         return(np.sum(where_band_mask.reshape(shape), axis=1))
 
-    def write(self, outpath, file_type_out, UV=None, inpath=None, read_kwargs={},
-              bad_time_indices=None, combine=True, nsample_default=1, write_kwargs={}):
+    def write(self, filename_out, file_type_out, UV=None, filename_in=None,
+              read_kwargs={}, combine=True, nsample_default=1, write_kwargs={}):
 
         """
         Lets one write out a newly flagged file. Data is recovered by reading
@@ -180,17 +180,30 @@ class SS(UVData):
         """
 
         if UV is None:
-            UV = self.read(inpath, read_kwargs=read_kwargs,
-                           bad_time_indices=bad_time_indices)
-        UV.nsample_array[UV.nsample_array == 0] = nsample_default
-        UV.flag_array = UV.flag_array.reshape([UV.Ntimes, UV.Nbls, UV.Nspws,
-                                               UV.Nfreqs, UV.Npols])
+            UV = super(SS, self).read(filename_in, **read_kwargs)
+
+        # Test that assumptions abouts blts axis are ok
+        assert UV.Nblts == UV.Nbls * UV.Ntimes, 'Nblts != Nbls * Ntimes for UV object.'
+        cond = np.all([UV.baseline_array[:UV.Nbls] == UV.baseline_array[k * UV.Nbls:(k + 1) * UV.Nbls]
+                       for k in range(1, UV.Ntimes)])
+        assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+
+        # Check nsample_array for issue
+        if np.any(UV.nsample_array == 0) and (file_type_out is 'uvfits'):
+            warnings.warn("Writing uvfits file with some nsample == 0. This will"
+                          " result in a failure to propagate flags. Changing "
+                          " nsample value to nsample_default parameter (default is 1)")
+            UV.nsample_array[UV.nsample_array == 0] = nsample_default
+
+        # Option to keep old flags
         if not combine:
             UV.flag_array[:] = 0
-        for i in range(UV.Ntimes - 1):
+
+        # Propagate the new flags
+        for i in range(self.Ntimes):
             # This actually does not invert properly but I think it's the best way
-            UV.flag_array[i][self.UV.data_array.mask[i]] = 1
-            UV.flag_array[i + 1][self.UV.data_array.mask[i]] = 1
-        UV.flag_array = UV.flag_array.reshape([UV.Nblts, UV.Nspws, UV.Nfreqs,
-                                               UV.Npols])
-        getattr(UV, 'write_%s' % file_type_out)(outpath, **write_kwargs)
+            UV.flag_array[i * self.Nbls: (i + 1) * self.Nbls][self.data_array.mask[i * self.Nbls: (i + 1) * self.Nbls]] = 1
+            UV.flag_array[(i + 1) * self.Nbls: (i + 2) * self.Nbls][self.data_array.mask[i * self.Nbls: (i + 1) * self.Nbls]] = 1
+
+        # Write file
+        getattr(UV, 'write_%s' % file_type_out)(file_name_out, **write_kwargs)
