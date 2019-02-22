@@ -5,81 +5,49 @@ these functions is unnecessary.
 
 from __future__ import absolute_import, division, print_function
 
-from matplotlib import cm
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 import numpy as np
 
 
-class MidpointNormalize(colors.Normalize):
-
-    """
-    A short class which is used by image_plot to keep zero at the color-center
-    of diverging colormaps.
-    """
-
-    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
-        """
-        A short init line using inheritance
-        """
-        self.midpoint = midpoint
-        colors.Normalize.__init__(self, vmin, vmax, clip)
-
-    def __call__(self, value, clip=None):
-        """
-        Colormapping function
-        """
-        # ignoring masked values and all kinds of edge cases
-        result, is_scalar = self.process_value(value)
-        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
-        return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
-
-
-def error_plot(fig, ax, x, y, xerr=None, yerr=None, title='', xlabel='',
-               ylabel='Counts', legend=True, label='', drawstyle='steps-mid',
-               xscale='linear', yscale='linear', ylim=None, leg_size=None):
-
-    """
-    Titled error_plot, but actually does not require error bars. Adjust drawstyle
-    to one's needs.
-    """
-
-    ax.errorbar(x, y, xerr=xerr, yerr=yerr, label=label, drawstyle=drawstyle)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.set_xscale(xscale, nonposx='clip')
-    ax.set_yscale(yscale, nonposy='clip')
-    if ylim is not None:
-        ax.set_ylim(ylim)
-    if legend:
-        ax.legend(fontsize=leg_size)
-
-
-def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
-               xlabel='Frequency (Mhz)', ylabel='Time (2 s)',
+def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
+               xlabel='', ylabel='', midpoint=False, aspect='auto',
                cbar_label=None, xticks=None, yticks=None,
-               xticklabels=None, yticklabels=None, zero_mask=False,
-               mask_color='white', freq_array=None, aspect=None, grid=None):
+               xticklabels=None, yticklabels=None, mask_color='white'):
 
     """
     Plots 2-d images. The colormap cm.coolwarm invokes the MidpointNormalize()
     class.
     """
 
-    if zero_mask:
-        data = np.ma.masked_equal(data, 0)
+    from matplotlib import colors
 
-    if vmin is None:
-        vmin = np.amin(data)
-    if vmax is None:
-        vmax = np.amax(data)
+    class MidpointNormalize(colors.Normalize):
 
-    if cmap is cm.coolwarm or cmap is cm.RdGy_r:
-        cax = ax.imshow(data, cmap=cmap, clim=(vmin, vmax),
+        """
+        A short class which is used by image_plot to keep zero at the color-center
+        of diverging colormaps.
+        """
+
+        def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+            """
+            A short init line using inheritance
+            """
+            self.midpoint = midpoint
+            colors.Normalize.__init__(self, vmin, vmax, clip)
+
+        def __call__(self, value, clip=None):
+            """
+            Colormapping function
+            """
+            # ignoring masked values and all kinds of edge cases
+            result, is_scalar = self.process_value(value)
+            x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+            return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
+
+    if midpoint:
+        cax = ax.imshow(data, cmap=cmap, aspect=aspect,
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
     else:
-        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
+        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect)
 
     cmap.set_bad(color=mask_color)
     cbar = fig.colorbar(cax, ax=ax)
@@ -95,51 +63,38 @@ def image_plot(fig, ax, data, cmap=cm.viridis, vmin=None, vmax=None, title='',
         ax.set_yticks(yticks)
     if xticklabels is not None:
         ax.set_xticklabels(xticklabels)
-    elif xlabel == 'Frequency (Mhz)':
-        xticklabels = ['%.0f' % (freq_array[tick] * 10 ** (-6)) for tick in ax.get_xticks()[1:-1].astype(int)]
-        xticklabels.insert(0, '0')
-        xticklabels.append('0')
-        ax.set_xticklabels(xticklabels)
-    elif xlabel == '$\lambda u$ (m)':
-        xticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_xticks()[1:-1].astype(int)]
-        xticklabels.insert(0, '0')
-        xticklabels.append('0')
-        ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
-    elif ylabel == '$\lambda v$ (m)':
-        yticklabels = ['%.0f' % (grid[tick]) for tick in ax.get_yticks()[1:-1].astype(int)]
-        yticklabels.insert(0, '0')
-        yticklabels.append('0')
-        ax.set_yticklabels(yticklabels)
-    if aspect is not None:
-        ax.set_aspect(aspect)
-    else:
-        ax.set_aspect(data.shape[1] / (data.shape[0] * 5))
 
 
-def scatter_plot_2d(fig, ax, x, y, title='', xlabel='', ylabel='', c=None,
-                    ylim=None, cmap=None, vmin=None, vmax=None, norm=None,
-                    cbar_label=None, s=None, xticks=None, yticks=None,
-                    edgecolors='face'):
+def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
+              label='', model_func=None, legend=True, title='', density=False,
+              xlabel='', ylim=None):
 
-    """
-    Makes a scatter plot in a plane. Can use the c and cmap keywords to color
-    the scatter points.
-    """
+    counts, bins, _ = ax.hist(data, bins=bins, histtype='step', label=label,
+                              density=density)
 
-    cax = ax.scatter(x, y, c=c, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm, s=s,
-                     edgecolors=edgecolors)
-
+    ax.set_xscale(xscale)
+    ax.set_yscale(yscale)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    if xticks is not None:
-        ax.set_xticks(xticks)
-    if yticks is not None:
-        ax.set_yticks(yticks)
-    if cmap is not None:
-        cbar = fig.colorbar(cax, ax=ax)
-        cbar.set_label(cbar_label)
-    if ylim:
+    if density:
+        ax.set_ylabel('Probability Density')
+    else:
+        ax.set_ylabel('Counts')
+
+    if model_func is not None:
+        model_prob = model_function(bins)
+        if density:
+            model_y = model_prob / np.diff(bins)
+        else:
+            model_y = model_prob * np.sum(counts)
+        model_y = np.append(model_y, 0)
+        ax.plot(bins, model_y, label='%s Model' % label, drawstyle='steps-post')
+
+    if legend:
+        ax.legend()
+    if ylim is None:
+        ax.set_ylim([0.9, 10 * np.amax(data)])
+    else:
         ax.set_ylim(ylim)

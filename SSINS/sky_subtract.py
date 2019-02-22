@@ -29,6 +29,7 @@ class SS(UVData):
         """
         """
         super(SS, self).__init__()
+        self.MLE = None
 
     def read(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
              **kwargs):
@@ -65,6 +66,7 @@ class SS(UVData):
                        conjunction with choice='INS'
         """
         self.flag_choice = flag_choice
+        self.MLE = None
         if flag_choice is 'original':
             self.data_array.mask = self.flag_array
         elif flag_choice is 'INS':
@@ -124,6 +126,8 @@ class SS(UVData):
 
         if not hasattr(self, 'MLE'):
             self.MLE_calc()
+        if bins is 'auto':
+            _, bins = np.histogram(np.abs(ss.data_array[np.logical_not(ss.data_array.mask)]))
 
         N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
         N_total = np.sum(N_spec)

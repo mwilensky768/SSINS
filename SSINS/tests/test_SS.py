@@ -109,11 +109,8 @@ def test_mixture_prob():
     ss.read(testfile)
     ss.apply_flags('original')
 
-    # Generate some bins
-    counts, bins = np.histogram(np.absolute(ss.data_array)[np.logical_not(ss.data_array.mask)], bins='auto')
-
     # Generate the mixture probabilities
-    mixture_prob = ss.mixture_prob(bins=bins)
+    mixture_prob = ss.mixture_prob(bins='auto')
 
     # Check that they sum to close to 1
     assert np.isclose(np.sum(mixture_prob), 1), "Probabilities did not add up to close to 1"
