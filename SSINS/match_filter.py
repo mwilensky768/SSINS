@@ -208,7 +208,7 @@ class MF(object):
                     if event_record:
                         ES.chisq_events.append(event)
 
-                INS.data_ms[:, :, event[2]] = INS.mean_subtract(f=event[2])
+                INS.data_ms[:, event[2]] = INS.mean_subtract(f=event[2])
 
         return(ES)
 

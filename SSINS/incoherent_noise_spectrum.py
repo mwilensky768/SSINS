@@ -64,10 +64,13 @@ class INS(UVFlag):
             # Set the metric array to the data array without the spw axis
             self.metric_array = np.abs(input.data_array)
             self.weights_array = np.logical_not(input.data_array.mask)
-            print(self.weights_array)
             super(INS, self).to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
+            # Only mask elements initially if no baselines contributed
+            self.metric_array.mask = np.logical_not(self.weights_array)
+            if self.metric_array.mask is False:
+                self.metric_array.mask = np.zeros(self.metric_array.shape, dtype=bool)
 
         self.order = order
         self.metric_ms = self.mean_subtract()

@@ -70,15 +70,21 @@ class SS(UVData):
         if flag_choice is 'original':
             self.data_array.mask = self.flag_array
         elif flag_choice is 'INS':
-            ind = np.where(INS.data.mask)
-            self.data_array[ind[0], :, ind[1], ind[2], ind[3]] = np.ma.masked
+            self.data_array.mask[:] = False
+            ind = np.where(INS.metric_array.mask)
+            for i in range(len(ind[0])):
+                self.data_array[ind[0][i] * self.Nbls:(ind[0][i] + 1) * self.Nbls,
+                                :, ind[1][i], ind[2][i]] = np.ma.masked
         elif flag_choice is 'custom':
+            self.data_array.mask[:] = False
             if custom is not None:
                 self.data_array[custom] = np.ma.masked
             else:
                 warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
-        elif np.any(self.data_array.mask) or (not self.data_array.mask):
+        elif flag_choice is None:
             self.data_array.mask = np.zeros(self.data_array.shape, dtype=bool)
+        else:
+            raise ValueError('flag_choice of %s is unacceptable, aborting.' % flag_choice)
 
     def diff(self):
 
@@ -103,14 +109,6 @@ class SS(UVData):
         self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
         super(SS, self).set_lsts_from_time_array()
 
-    def INS_prepare(self, history='', label='', order=0):
-
-        """
-        Prepares an INS. Passes all possible relevant non-conflicting attributes.
-        """
-
-        self.INS = INS(self, history='', label='', order=order)
-
     def MLE_calc(self):
 
         self.MLE = np.sqrt(0.5 * np.mean(np.absolute(self.data_array)**2, axis=(0, 1, -1)))
@@ -124,10 +122,10 @@ class SS(UVData):
             bins: The bin edges of the bins to calculate the probabilities for.
         """
 
-        if not hasattr(self, 'MLE'):
+        if self.MLE is None:
             self.MLE_calc()
         if bins is 'auto':
-            _, bins = np.histogram(np.abs(ss.data_array[np.logical_not(ss.data_array.mask)]))
+            _, bins = np.histogram(np.abs(self.data_array[np.logical_not(self.data_array.mask)]))
 
         N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
         N_total = np.sum(N_spec)
@@ -178,9 +176,6 @@ class SS(UVData):
 
                   read_kwargs: The UVData.read keyword dict for the original
                                UVData object
-
-                  bad_time_indices: Bad time indices to remove from original
-                                    UVData object.
         """
 
         if UV is None:
