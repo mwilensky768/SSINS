@@ -42,7 +42,7 @@ def test_apply_flags():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
-    insfile = os.path.join(DATA_PATH, '%s_ins.uvh5' % obs)
+    insfile = os.path.join(DATA_PATH, '%s_SSINS.uvh5' % obs)
     ss = SS()
 
     ss.read(testfile)
@@ -68,35 +68,12 @@ def test_apply_flags():
 
     # Read an INS in (no flags by default) and flag a channel, test if it applies correctly
     ins = INS(insfile)
-    ins.data_array.mask[:, 0] = True
+    ins.metric_array.mask[:, 0] = True
     ss.apply_flags(flag_choice='INS', INS=ins)
     assert np.all(ss.data_array.mask[:, 0, 0]), "Not all of the 0th channel was flagged."
+    print(np.where(ss.data_array.mask))
     assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
     assert ss.flag_choice is 'INS'
-
-
-def test_INS_prepare():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
-
-    ss = SS()
-    ss.read(testfile)
-
-    ss.INS_prepare()
-
-    # Mock the averaging method
-    new_shape = [ss.Ntimes, ss.Nbls, ss.Nfreqs, ss.Npols]
-    test_dat = np.mean(np.abs(ss.data_array).reshape(new_shape), axis=1)
-
-    # Mock the weights array
-    test_weights = np.sum(np.logical_not(ss.data_array.mask).reshape(new_shape), axis=1)
-
-    # Check that the data array averaged correctly
-    assert np.all(test_dat == ss.INS.metric_array), "Averaging did not work as intended."
-    # Check that the weights summed correctly
-    assert np.all(test_weights == ss.INS.weights_array), "Weights did not sum properly"
 
 
 def test_mixture_prob():
