@@ -17,8 +17,8 @@ class MF(object):
     to it in order to operate on it.
     """
 
-    def __init__(self, freq_array, sig_thresh, shape_dict={}, N_thresh=0, alpha=None,
-                 point=True, streak=True):
+    def __init__(self, freq_array, sig_thresh, shape_dict={}, N_samp_thresh=0,
+                 narrow=True, streak=True):
 
         """
         init function for match filter (MF) class. This function assigns some
@@ -38,10 +38,10 @@ class MF(object):
                                 lower frequency limits of the expected RFI
                                 (in hz).
 
-                    N_thresh:   Used in apply_samp_thresh_test(). If the number
-                                of unflagged samples for a shape or channel is
-                                less than N_thresh, then the entire observation
-                                will be flagged for that shape or channel.
+                    N_samp_thresh:   Used in apply_samp_thresh_test(). If the number
+                                     of unflagged samples for a shape or channel is
+                                     less than N_samp_thresh, then the entire observation
+                                     will be flagged for that shape or channel.
 
                     alpha:      Used in apply_chi_square_test(). If a shape or
                                 channel's histogram gives a chi-square of p-value
@@ -49,7 +49,7 @@ class MF(object):
                                 observation will be flagged for that shape
                                 or channel.
 
-                    point:      If this is true, single-point outliers will be
+                    narrow:      If this is true, single-channel outliers will be
                                 searched for along with whatever shapes are
                                 passed in the shape_dict.
 
@@ -57,23 +57,21 @@ class MF(object):
                                 band-limited will be sought along with whatever
                                 shapes are passed in the shape_dict.
         """
-        if (not shape_dict) and (not point) and (not streak):
-            raise ValueError("There are not shapes in the shape_dict and point/streak shapes are disabled. Check keywords.")
+        if (not shape_dict) and (not narrow) and (not streak):
+            raise ValueError("There are not shapes in the shape_dict and narrow/streak shapes are disabled. Check keywords.")
 
         self.freq_array = freq_array
         self.shape_dict = shape_dict
-        self.N_thresh = N_thresh
+        self.N_samp_thresh = N_samp_thresh
         self.sig_thresh = sig_thresh
-        if alpha is None:
-            self.alpha = erfc(self.sig_thresh / np.sqrt(2))
-        self.slice_dict = self.shape_slicer(point, streak)
+        self.slice_dict = self.shape_slicer(narrow, streak)
 
-    def shape_slicer(self, point, streak):
+    def shape_slicer(self, narrow, streak):
 
         """
         This function converts the frequency information in the shape_dict
         attribute to slice objects for the channel numbers of the spectrum.
-        The point and streak shapes require special slices.
+        The narrow and streak shapes require special slices.
         """
 
         slice_dict = {}
@@ -88,8 +86,8 @@ class MF(object):
                 if self.freq_array[0, max_chan] - max(self.shape_dict[shape]) < 0:
                     max_chan += 1
                 slice_dict[shape] = slice(min_chan, max_chan)
-        if point:
-            slice_dict['point'] = None
+        if narrow:
+            slice_dict['narrow'] = None
         if streak:
             slice_dict['streak'] = slice(None)
 
@@ -109,7 +107,7 @@ class MF(object):
         f_max = None
         shape_max = None
         for shape in self.slice_dict:
-            if shape is 'point':
+            if shape is 'narrow':
                 t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
                                            INS.metric_ms.shape)
                 R = np.absolute(INS.metric_ms[t, f, p] / self.sig_thresh)
@@ -128,7 +126,7 @@ class MF(object):
         return(t_max, f_max, R_max, shape_max)
 
     def apply_match_test(self, INS, es=None, event_record=False,
-                         apply_N_thresh=False):
+                         apply_samp_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -136,7 +134,7 @@ class MF(object):
         mean-subtracted spectrum is recalculated. This repeats
         until there are no more outliers greater than sig_thresh. Also can apply
         the samp_thresh test, which flags channels between match test iterations
-        if those channels have less than N_thresh unflagged samples left.
+        if those channels have less than N_samp_thresh unflagged samples left.
         """
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -153,7 +151,7 @@ class MF(object):
                 INS.metric_array[event[:-1]] = np.ma.masked
                 if event_record:
                     es.match_events.append(event)
-                if (apply_N_thresh and self.N_thresh):
+                if (apply_samp_thresh and self.N_samp_thresh):
                     self.apply_samp_thresh_test(INS, es=es, event_record=event_record)
                 if not np.all(INS.metric_array[:, f_max, 0].mask):
                     INS.metric_ms[:, f_max] = INS.mean_subtract(f=f_max)
@@ -173,15 +171,16 @@ class MF(object):
         will always lead to flagging the entire observation.
         """
 
-        if self.N_thresh > INS.metric_array.shape[0]:
-            raise ValueError("N_thresh parameter is set higher than "
+        if self.N_samp_thresh > INS.metric_array.shape[0]:
+            raise ValueError("N_samp_thresh parameter is set higher than "
                              "the number of time samples. This will "
                              "always result in flagging the entire "
                              "observation. Aborting flagging.")
-        good_chans = np.where(np.logical_not(np.all(INS.metric_array[:, 0, :, 0].mask, axis=0)))[0]
-        N_unflagged = INS.metric_array.shape[0] - np.count_nonzero(INS.metric_array.mask[:, 0, good_chans, 0], axis=0)
-        if np.any(N_unflagged < self.N_thresh):
-            chans = np.where(N_unflagged < self.N_thresh)[0]
+        good_chans = np.where(np.logical_not(np.all(INS.metric_array[:, :, 0].mask, axis=0)))[0]
+        N_unflagged = INS.metric_array.shape[0] - np.count_nonzero(INS.metric_array.mask[:, good_chans, 0], axis=0)
+        if np.any(N_unflagged < self.N_samp_thresh):
+            good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
             if event_record:
-                es.samp_thresh_events.append(good_chans[chans])
-            INS.data[:, 0, good_chans[chans]] = np.ma.masked
+                es.samp_thresh_events.append(good_chans[good_chan_ind])
+                print(good_chans[good_chan_ind])
+            INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked
