@@ -66,7 +66,7 @@ class ES:
                 """A list of histograms of chisq_event-averged mean-subtracted INS data"""
             else:
                 self.chisq_hists = chisq_hists
-            if self.samp_thresh_events is None:
+            if samp_thresh_events is None:
                 self.samp_thresh_events = []
                 """A list of events found by the samp_thresh_test"""
             else:
