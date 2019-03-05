@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import numpy as np
 from SSINS import util
+from SSINS.plot_lib import image_plot, hist_plot
 
 
 pol_dict_keys = np.arange(-8, 5)
@@ -16,10 +17,10 @@ pol_dict_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'pI', 'pQ', '
 pol_dict = dict(zip(pol_dict_keys, pol_dict_values))
 
 
-def INS_plot(INS, outdir, xticks=None, yticks=None, vmin=None, vmax=None,
+def INS_plot(INS, filename, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None, data_cmap=None,
-             xticklabels=None, yticklabels=None, aspect='auto', units='arbs',
-             file_ext='png', title=''):
+             xticklabels=None, yticklabels=None, aspect='auto', units='',
+             title=''):
 
     """Takes an INS and plots its relevant data products. Saves the plots out
     in INS.outpath
@@ -44,12 +45,14 @@ def INS_plot(INS, outdir, xticks=None, yticks=None, vmin=None, vmax=None,
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
+    name_ind = filename.rfind('/')
+    outdir = filename[:filename.rfind('/')]
+
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    if not INS.label:
-        raise ValueError("The INS object does not have a label. The plots will not "
-                         "be able to be saved. Aborting plotting.")
+    if data_cmap is None:
+        data_cmap = cm.viridis
 
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
@@ -68,34 +71,28 @@ def INS_plot(INS, outdir, xticks=None, yticks=None, vmin=None, vmax=None,
                     'vmin': ms_vmin,
                     'vmax': ms_vmax}]
 
-    fig, ax = plt.subplots(nrows=INS.metric_array.shape[3],
+    fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False)
     fig.suptitle('%s Incoherent Noise Spectrum' % INS.label)
     for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
-        for pol_ind in range(INS.metric_array.shape[3]):
-            ax.imshow(data, )
+        for pol_ind in range(INS.metric_array.shape[2]):
             image_plot(fig, ax[pol_ind, i],
-                       getattr(INS, 'metric_%s' % (string))[:, 0, :, pol_ind],
+                       getattr(INS, 'metric_%s' % data)[:, :, pol_ind],
                        title=pol_dict[INS.polarization_array[pol_ind]],
                        **im_kwargs)
-    fig.savefig('%s/%s_INS_data.%s' %
-                (outdir, INS.label, file_ext))
-    plt.close(fig)
-
-    fig, ax = plt.subplots()
-    x = INS.bins[:-1] + 0.5 * np.diff(INS.bins)
-    error_plot(fig, ax, x, INS.counts, xlabel='Deviation ($\hat{\sigma}$)',
-               title='%s Incoherent Noise Spectrum Histogram' % (INS.obs),
-               legend=False)
-    fig.savefig('%s/figs/%s_%s_INS_hist%s.png' % (INS.outpath, INS.obs, INS.flag_choice, tag))
+    fig.savefig(filename)
     plt.close(fig)
 
 
-def VDH_plot(SS, outpath, file_label, file_ext='.png', xlabel='',
-             xscale='linear', title='', bins='auto', legend=True, yscale='log',
-             ylim=None, density=False, pre_flag=True, post_flag=True,
-             pre_model=True, post_model=True):
+def VDH_plot(SS, filename, units='', xscale='linear', title='', bins='auto',
+             legend=True, yscale='log', ylim=None, density=False, pre_flag=True,
+             post_flag=True, pre_model=True, post_model=True):
+
+    import matplotlib.pyplot as plt
+
+    name_ind = filename.rfind('/')
+    outdir = filename[:filename.rfind('/')]
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -109,8 +106,9 @@ def VDH_plot(SS, outpath, file_label, file_ext='.png', xlabel='',
 
     if post_flag and SS.flag_choice is not None:
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
-                  bins=bins, legend=legend, model_function=model_func,
-                  yscale=yscale, ylim=ylim, density=density, label='Post Flag')
+                  bins=bins, legend=legend, model_func=model_func,
+                  yscale=yscale, ylim=ylim, density=density, label='Post Flag',
+                  xlabel='Amplitude %s' % units)
     if pre_flag and SS.flag_choice is not None:
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
@@ -119,12 +117,13 @@ def VDH_plot(SS, outpath, file_label, file_ext='.png', xlabel='',
             temp_choice = 'original'
         SS.apply_flags(flag_choice=None)
         hist_plot(fig, ax, np.abs(SS.data_array).flatten(), bins=bins,
-                  legend=legend, model_function=model_func, yscale=yscale,
-                  ylim=ylim, density=density, label='Pre Flag')
+                  legend=legend, model_func=model_func, yscale=yscale,
+                  ylim=ylim, density=density, label='Pre Flag',
+                  xlabel='Amplitude %s' % units)
         if temp_choice is 'original':
             SS.apply_flags(flag_choice='original')
         else:
             SS.apply_flags(flag_choice='custom', custom=temp_flags)
             SS.flag_choice = temp_choice
 
-    fig.savefig('%s/%s_VDG.%s' % (outdir, file_label, file_ext))
+    fig.savefig(filename)

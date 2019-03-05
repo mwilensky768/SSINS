@@ -84,7 +84,7 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
         ax.set_ylabel('Counts')
 
     if model_func is not None:
-        model_prob = model_function(bins)
+        model_prob = model_func(bins)
         if density:
             model_y = model_prob / np.diff(bins)
         else:

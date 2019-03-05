@@ -18,10 +18,8 @@ class ES:
     events that are caught by the match filter.
     """
 
-    def __init__(self, flag_choice=None, outpath=None, obs=None,
-                 read_paths={}, match_events=None,
-                 match_hists=None, chisq_events=None, chisq_hists=None,
-                 samp_thresh_events=None):
+    def __init__(self, flag_choice=None, outdir=None,
+                 read_paths={}, match_events=None, samp_thresh_events=None):
 
         """
         init function for ES class. Attributes can be read in from numpy loadable
@@ -42,8 +40,6 @@ class ES:
         """The choice of flagging in the SS object."""
         self.outpath = outpath
         """The directory to save outputs."""
-        self.obs = obs
-        """The obsid in question"""
 
         if not read_paths:
             if match_events is None:
@@ -51,21 +47,6 @@ class ES:
                 """A list of events caught by the match_test"""
             else:
                 self.match_events = match_events
-            if match_hists is None:
-                self.match_hists = []
-                """A list of histograms of match_event-averaged mean-subtracted INS data"""
-            else:
-                self.match_hists = match_hists
-            if chisq_events is None:
-                self.chisq_events = []
-                """A list of events caught by the chisq_test"""
-            else:
-                self.chisq_events = chisq_events
-            if chisq_hists is None:
-                self.chisq_hists = []
-                """A list of histograms of chisq_event-averged mean-subtracted INS data"""
-            else:
-                self.chisq_hists = chisq_hists
             if samp_thresh_events is None:
                 self.samp_thresh_events = []
                 """A list of events found by the samp_thresh_test"""
@@ -79,9 +60,6 @@ class ES:
         """
         Writes out the attributes of this class to ES.outpath using pickle.
         """
-        for attr in ['obs', 'outpath']:
-            if getattr(self, attr) is None:
-                raise TypeError("To save data, ES.%s should not be None" % attr)
 
         if self.flag_choice is None:
             warnings.warn("Saving data with ES.flag_choice as None.")
@@ -90,8 +68,7 @@ class ES:
         if not os.path.exists(path):
             os.makedirs(path)
 
-        attrs = ['match_events', 'match_hists', 'chisq_events', 'chisq_hists',
-                 'samp_thresh_events']
+        attrs = ['match_events', 'samp_thresh_events']
         for attr in attrs:
             with open('%s/%s_%s_%s.pik' % (path, obs, flag_choice, attr), 'wb') as file:
                 pickle.dump(getattr(self, attr), file)
@@ -106,8 +83,7 @@ class ES:
                                paths to files containing the information for
                                those attributes.
         """
-        attrs = ['match_events', 'match_hists', 'chisq_events', 'chisq_hists',
-                 'samp_thresh_events']
+        attrs = ['match_events', 'samp_thresh_events']
         for attr in attrs:
             if attr in read_paths:
                 with open(read_paths[attr], 'rb') as file:
