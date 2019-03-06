@@ -2,13 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 from SSINS.data import DATA_PATH
-from SSINS import SS
-from SSINS import INS
-from SSINS import VDH
-from SSINS import ES
-from SSINS import Catalog_Plot as cp
-from SSINS import plot_lib as pl
-from SSINS import util
+from SSINS import SS, INS
 import os
 import numpy as np
 from pyuvdata import UVData
@@ -42,7 +36,7 @@ def test_apply_flags():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.uvh5' % obs)
+    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     ss = SS()
 
     ss.read(testfile)

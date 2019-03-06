@@ -5,7 +5,7 @@ Match Filter class
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-from SSINS import util, ES
+from SSINS import util
 from scipy.special import erfc
 import time
 
@@ -125,8 +125,7 @@ class MF(object):
                     t_max, f_max, R_max, shape_max = (t, f, R, shape)
         return(t_max, f_max, R_max, shape_max)
 
-    def apply_match_test(self, INS, es=None, event_record=False,
-                         apply_samp_thresh=False):
+    def apply_match_test(self, INS, event_record=False, apply_samp_thresh=False):
 
         """
         Where match_test() is implemented. The champion from match_test() is
@@ -138,21 +137,18 @@ class MF(object):
         """
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
-        if event_record and (es is None):
-            es = ES()
-
         count = 1
         while count:
             count = 0
             t_max, f_max, R_max, shape_max = self.match_test(INS)
             if R_max > -np.inf:
                 count += 1
-                event = (t_max, f_max, shape_max)
-                INS.metric_array[event[:-1]] = np.ma.masked
+                event = (t_max, f_max, shape_max, R_max * self.sig_thresh)
+                INS.metric_array[event[:2]] = np.ma.masked
                 if event_record:
-                    es.match_events.append(event)
+                    INS.match_events.append(event)
                 if (apply_samp_thresh and self.N_samp_thresh):
-                    self.apply_samp_thresh_test(INS, es=es, event_record=event_record)
+                    self.apply_samp_thresh_test(INS, event_record=event_record)
                 if not np.all(INS.metric_array[:, f_max, 0].mask):
                     INS.metric_ms[:, f_max] = INS.mean_subtract(f=f_max)
                 else:
@@ -162,7 +158,7 @@ class MF(object):
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
-    def apply_samp_thresh_test(self, INS, es=None, event_record=False):
+    def apply_samp_thresh_test(self, INS, event_record=False):
         """
         The sample threshold test. This tests to see if any channels have fewer
         unflagged channels than a given threshold. If so, the entire channel is
@@ -181,6 +177,10 @@ class MF(object):
         if np.any(N_unflagged < self.N_samp_thresh):
             good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
             if event_record:
-                es.samp_thresh_events.append(good_chans[good_chan_ind])
-                print(good_chans[good_chan_ind])
+                for chan in good_chans[good_chan_ind]:
+                    event = (np.nonzero(INS.metric_array.mask[:, chan])[0][0],
+                             slice(chan, chan + 1),
+                             'samp_thresh',
+                             self.sig_thresh)
+                    INS.match_events.append(event)
             INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked

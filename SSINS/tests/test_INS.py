@@ -81,7 +81,7 @@ def test_write():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
-    outfile = os.path.join(DATA_PATH, '%s_SSINS_test.uvh5' % obs)
+    outfile = os.path.join(DATA_PATH, '%s_SSINS_test.h5' % obs)
 
     ss = SS()
     ss.read(testfile, flag_choice='original')

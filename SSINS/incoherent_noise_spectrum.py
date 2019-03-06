@@ -10,6 +10,7 @@ import os
 import warnings
 import pickle
 from hera_qm import UVFlag
+import yaml
 
 
 class INS(UVFlag):
@@ -17,7 +18,8 @@ class INS(UVFlag):
     Defines the incoherent noise spectrum (INS) class.
     """
 
-    def __init__(self, input, history='', label='', order=0):
+    def __init__(self, input, history='', label='', order=0, flag_file=None,
+                 match_events_file=None):
 
         """
         init function for the INS class. Can set the attributes manually, or
@@ -67,10 +69,18 @@ class INS(UVFlag):
             super(INS, self).to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
-            # Only mask elements initially if no baselines contributed
-            self.metric_array.mask = np.logical_not(self.weights_array)
-            if self.metric_array.mask is False:
-                self.metric_array.mask = np.zeros(self.metric_array.shape, dtype=bool)
+            if flag_file is None:
+                # Only mask elements initially if no baselines contributed
+                self.metric_array.mask = np.logical_not(self.weights_array)
+            else:
+                # Read in the flag array
+                flag_uvf = UVFlag(flag_file)
+                self.metric_array.mask = np.copy(flag_uvf.flag_array)
+                del flag_uvf
+        if match_events_file is None:
+            self.match_events = []
+        else:
+            self.match_events = self.match_events_read(match_events_file)
 
         self.order = order
         self.metric_ms = self.mean_subtract()
@@ -119,7 +129,44 @@ class INS(UVFlag):
 
         return(MS)
 
-    def write(self, filename, clobber=False, data_compression='lzf'):
-        self.metric_array = self.metric_array.data
-        super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
-        self.metric_array = np.ma.masked_where(self.metric_ms.mask, self.metric_array)
+    def write(self, filename, clobber=False, data_compression='lzf',
+              output_type='data'):
+
+        if output_type is 'data':
+            self.metric_array = self.metric_array.data
+            super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
+            self.metric_array = np.ma.masked_where(self.metric_ms.mask, self.metric_array)
+        elif output_type is 'flags':
+            flag_uvf = UVFlag(self)
+            flag_uvf.to_flag()
+            flag_uvf.flag_array = self.metric_array.mask
+            flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            del flag_uvf
+        elif output_type is 'match_events':
+            yaml_dict = {'time_ind': [],
+                         'freq_slice': [],
+                         'shape': [],
+                         'sig': []}
+            for event in self.match_events:
+                yaml_dict['time_ind'].append(event[0])
+                yaml_dict['freq_slice'].append(event[1].indices(len(self.freq_array[0])))
+                yaml_dict['shape'].append(event[2])
+                yaml_dict['sig'].append(event[3])
+            with open(filename, 'w') as outfile:
+                yaml.dump(yaml_dict, outfile, default_flow_style=False)
+        else:
+            raise ValueError("output_type is %s. Options are 'data', 'flags', and 'match_events'" % output_type)
+
+    def match_events_read(self, filename):
+
+        with open(filename, 'r') as infile:
+            yaml_dict = yaml.load(infile)
+
+        match_events = []
+        for i in range(len(yaml_dict['time_ind'])):
+            match_events.append((yaml_dict['time_ind'][i],
+                                 yaml_dict['freq_slice'][i],
+                                 yaml_dict['shape'][i],
+                                 yaml_dict['sig'][i]))
+
+        return(match_events)

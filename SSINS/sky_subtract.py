@@ -8,11 +8,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from pyuvdata import UVData
 import os
-from SSINS import util
-from SSINS import INS
-from SSINS import MF
-from SSINS import VDH
-from SSINS import ES
+from SSINS import util, INS, MF
 import scipy.stats
 import warnings
 import time
@@ -68,7 +64,7 @@ class SS(UVData):
         self.flag_choice = flag_choice
         self.MLE = None
         if flag_choice is 'original':
-            self.data_array.mask = self.flag_array
+            self.data_array.mask = np.copy(self.flag_array)
         elif flag_choice is 'INS':
             self.data_array.mask[:] = False
             ind = np.where(INS.metric_array.mask)
