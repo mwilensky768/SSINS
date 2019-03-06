@@ -41,18 +41,3 @@ def test_match_fraction():
     # Make the event_fraction dictionary
     event_frac = util.event_fraction(events, Nfreqs, Ntimes)
     nt.ok_(event_frac == {(0, 10): 2 / 5, (10, 20): 1 / 5})
-
-
-def test_chisq():
-    # Use bins that are typical in match_filter case
-    bins = np.arange(-4, 5)
-    # Make up some counts
-    counts = np.array([1, 2, 5, 10, 10, 5, 2, 1])
-    # Check default settings
-    stat, p = util.chisq(counts, bins)
-    # These happen to be the answers
-    nt.ok_(np.allclose((stat, p), (3.476106234440926, 0.06226107945215504)))
-    # Check expected counts weighting
-    stat, p = util.chisq(counts, bins, weight='exp', thresh=5)
-    # These happen to be the answers
-    nt.ok_(np.allclose((stat, p), (2.6882672697527807, 0.1010896885610924)))
