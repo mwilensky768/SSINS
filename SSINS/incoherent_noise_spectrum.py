@@ -69,14 +69,15 @@ class INS(UVFlag):
             super(INS, self).to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
-            if flag_file is None:
-                # Only mask elements initially if no baselines contributed
-                self.metric_array.mask = np.logical_not(self.weights_array)
-            else:
-                # Read in the flag array
-                flag_uvf = UVFlag(flag_file)
-                self.metric_array.mask = np.copy(flag_uvf.flag_array)
-                del flag_uvf
+        if flag_file is None:
+            # Only mask elements initially if no baselines contributed
+            self.metric_array.mask = self.weights_array == 0
+        else:
+            # Read in the flag array
+            flag_uvf = UVFlag(flag_file)
+            self.metric_array.mask = np.copy(flag_uvf.flag_array)
+            del flag_uvf
+
         if match_events_file is None:
             self.match_events = []
         else:
@@ -135,7 +136,7 @@ class INS(UVFlag):
         if output_type is 'data':
             self.metric_array = self.metric_array.data
             super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
-            self.metric_array = np.ma.masked_where(self.metric_ms.mask, self.metric_array)
+            self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
         elif output_type is 'flags':
             flag_uvf = UVFlag(self)
             flag_uvf.to_flag()
@@ -149,7 +150,7 @@ class INS(UVFlag):
                          'sig': []}
             for event in self.match_events:
                 yaml_dict['time_ind'].append(event[0])
-                yaml_dict['freq_slice'].append(event[1].indices(len(self.freq_array[0])))
+                yaml_dict['freq_slice'].append(event[1])
                 yaml_dict['shape'].append(event[2])
                 yaml_dict['sig'].append(event[3])
             with open(filename, 'w') as outfile:

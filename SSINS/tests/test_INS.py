@@ -76,7 +76,7 @@ def test_polyfit():
     assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
 
 
-def test_write():
+def test_write_data():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -93,5 +93,49 @@ def test_write():
     assert np.all(ins.metric_array == new_ins.metric_array), "Elements of the metric array were not equal"
     assert np.all(ins.weights_array == new_ins.weights_array), "Elements of the weights array were not equal"
     assert np.all(ins.metric_array.mask == new_ins.metric_array.mask), "Elements of the mask were not equal"
+
+    os.remove(outfile)
+
+
+def test_write_flags():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    outfile = os.path.join(DATA_PATH, '%s_SSINS_test_flags.h5' % obs)
+
+    ss = SS()
+    ss.read(testfile)
+
+    ins = INS(ss)
+    ins.metric_array[0, :] = np.ma.masked
+    ins.write(outfile, output_type='flags')
+
+    new_ins = INS(ss, flag_file=outfile)
+
+    assert np.all(new_ins.metric_array.mask == ins.metric_array.mask), "new and old masks are not equal"
+
+    os.remove(outfile)
+
+
+def test_write_match_events():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    outfile = os.path.join(DATA_PATH, '%s_SSINS_match_events.yml' % obs)
+
+    ss = SS()
+    ss.read(testfile)
+
+    ins = INS(ss)
+    # Mock some events
+    ins.match_events.append((0, slice(1, 3), 'shape', 5))
+    ins.match_events.append((1, slice(1, 3), 'shape', 5))
+    ins.write(outfile, output_type='match_events')
+
+    new_ins = INS(ss, match_events_file=outfile)
+
+    assert ins.match_events == new_ins.match_events, "new and old match_events are not equal"
 
     os.remove(outfile)

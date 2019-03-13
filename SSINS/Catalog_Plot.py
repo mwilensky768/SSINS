@@ -12,15 +12,17 @@ from SSINS.plot_lib import image_plot, hist_plot
 
 
 pol_dict_keys = np.arange(-8, 5)
-pol_dict_keys = np.delete(pol_dict_keys, 0)
+pol_dict_keys = np.delete(pol_dict_keys, 8)
 pol_dict_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'pI', 'pQ', 'pU', 'pV']
 pol_dict = dict(zip(pol_dict_keys, pol_dict_values))
+
 
 
 def INS_plot(INS, filename, xticks=None, yticks=None, vmin=None, vmax=None,
              events=False, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto', units='',
-             title=''):
+             title='', cbar_ticks=None, ms_cbar_ticks=None, cbar_label=None,
+             ms_cbar_label=None):
 
     """Takes an INS and plots its relevant data products. Saves the plots out
     in INS.outpath
@@ -60,16 +62,18 @@ def INS_plot(INS, filename, xticks=None, yticks=None, vmin=None, vmax=None,
                  'yticklabels': yticklabels,
                  'aspect': aspect}
 
-    data_kwargs = [{'cbar_label': 'Amplitude (%s)' % (units),
+    data_kwargs = [{'cbar_label': cbar_label,
                     'mask_color': 'white',
                     'vmin': vmin,
                     'vmax': vmax,
-                    'cmap': data_cmap},
-                   {'cbar_label': 'Deviation ($\hat{\sigma}$)',
+                    'cmap': data_cmap,
+                    'cbar_ticks': cbar_ticks},
+                   {'cbar_label': ms_cbar_label,
                     'mask_color': 'black',
                     'cmap': cm.coolwarm,
                     'vmin': ms_vmin,
-                    'vmax': ms_vmax}]
+                    'vmax': ms_vmax,
+                    'cbar_ticks': ms_cbar_ticks}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False)
@@ -81,13 +85,15 @@ def INS_plot(INS, filename, xticks=None, yticks=None, vmin=None, vmax=None,
                        getattr(INS, 'metric_%s' % data)[:, :, pol_ind],
                        title=pol_dict[INS.polarization_array[pol_ind]],
                        **im_kwargs)
+    plt.tight_layout(h_pad=1, w_pad=1)
     fig.savefig(filename)
     plt.close(fig)
 
 
 def VDH_plot(SS, filename, units='', xscale='linear', title='', bins='auto',
              legend=True, yscale='log', ylim=None, density=False, pre_flag=True,
-             post_flag=True, pre_model=True, post_model=True):
+             post_flag=True, pre_model=True, post_model=True, error_sig=0,
+             alpha=0.5):
 
     import matplotlib.pyplot as plt
 
@@ -108,8 +114,8 @@ def VDH_plot(SS, filename, units='', xscale='linear', title='', bins='auto',
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
                   bins=bins, legend=legend, model_func=model_func,
                   yscale=yscale, ylim=ylim, density=density, label='Post Flag',
-                  xlabel='Amplitude %s' % units)
-    if pre_flag and SS.flag_choice is not None:
+                  xlabel='Amplitude %s' % units, error_sig=error_sig, alpha=alpha)
+    if pre_flag:
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
             temp_choice = '%s' % SS.flag_choice
@@ -118,8 +124,8 @@ def VDH_plot(SS, filename, units='', xscale='linear', title='', bins='auto',
         SS.apply_flags(flag_choice=None)
         hist_plot(fig, ax, np.abs(SS.data_array).flatten(), bins=bins,
                   legend=legend, model_func=model_func, yscale=yscale,
-                  ylim=ylim, density=density, label='Pre Flag',
-                  xlabel='Amplitude %s' % units)
+                  ylim=ylim, density=density, label='Pre Flag', alpha=alpha,
+                  xlabel='Amplitude %s' % units, error_sig=error_sig)
         if temp_choice is 'original':
             SS.apply_flags(flag_choice='original')
         else:

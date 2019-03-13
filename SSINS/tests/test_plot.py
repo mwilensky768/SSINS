@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from SSINS import Catalog_Plot as cp
-from SSINS import SS, INS, ES, MF
+from SSINS import SS, INS, MF
 from SSINS.data import DATA_PATH
 import numpy as np
 import os
