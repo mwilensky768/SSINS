@@ -76,14 +76,14 @@ class MF(object):
 
         slice_dict = {}
         for shape in self.shape_dict:
-            if min(self.freq_array[0, :]) < min(self.shape_dict[shape]) or \
-               max(self.freq_array[0, :]) > max(self.shape_dict[shape]):
-                min_chan = np.argmin(np.abs(self.freq_array[0, :] - min(self.shape_dict[shape])))
-                max_chan = np.argmin(np.abs(self.freq_array[0, :] - max(self.shape_dict[shape])))
+            if min(self.freq_array) < min(self.shape_dict[shape]) or \
+               max(self.freq_array) > max(self.shape_dict[shape]):
+                min_chan = np.argmin(np.abs(self.freq_array - min(self.shape_dict[shape])))
+                max_chan = np.argmin(np.abs(self.freq_array - max(self.shape_dict[shape])))
                 # May have to extend the edges depending on if the shape extends beyond the min and max chan infinitesimally
-                if (self.freq_array[0, min_chan] - min(self.shape_dict[shape]) > 0) and (min_chan > 0):
+                if (self.freq_array[min_chan] - min(self.shape_dict[shape]) > 0) and (min_chan > 0):
                     min_chan -= 1
-                if self.freq_array[0, max_chan] - max(self.shape_dict[shape]) < 0:
+                if self.freq_array[max_chan] - max(self.shape_dict[shape]) < 0:
                     max_chan += 1
                 slice_dict[shape] = slice(min_chan, max_chan)
         if narrow:
@@ -154,8 +154,6 @@ class MF(object):
                 else:
                     INS.metric_ms[:, f_max] = np.ma.masked
 
-        return(es)
-
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
     def apply_samp_thresh_test(self, INS, event_record=False):
@@ -178,7 +176,7 @@ class MF(object):
             good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
             if event_record:
                 for chan in good_chans[good_chan_ind]:
-                    event = (np.nonzero(INS.metric_array.mask[:, chan])[0][0],
+                    event = (np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0][0],
                              slice(chan, chan + 1),
                              'samp_thresh',
                              self.sig_thresh)

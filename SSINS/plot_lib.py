@@ -10,15 +10,19 @@ import numpy as np
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xlabel='', ylabel='', midpoint=False, aspect='auto',
-               cbar_label=None, xticks=None, yticks=None,
-               xticklabels=None, yticklabels=None, mask_color='white'):
+               cbar_label=None, xticks=None, yticks=None, log=False,
+               xticklabels=None, yticklabels=None, mask_color='white',
+               cbar_ticks=None):
 
     """
     Plots 2-d images. The colormap cm.coolwarm invokes the MidpointNormalize()
     class.
     """
 
-    from matplotlib import colors
+    from matplotlib import colors, cm
+
+    if cmap is None:
+        cmap = cm.viridis
 
     class MidpointNormalize(colors.Normalize):
 
@@ -44,13 +48,17 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
             return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
 
     if midpoint:
-        cax = ax.imshow(data, cmap=cmap, aspect=aspect,
+        cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
+    elif log:
+        cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
+                        vmin=vmin, vmax=vmax, interpolation='none')
     else:
-        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect)
+        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
+                        interpolation='none')
 
     cmap.set_bad(color=mask_color)
-    cbar = fig.colorbar(cax, ax=ax)
+    cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks)
     cbar.set_label(cbar_label)
 
     ax.set_title(title)
@@ -69,7 +77,8 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
 def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
               label='', model_func=None, legend=True, title='', density=False,
-              xlabel='', ylim=None):
+              xlabel='', ylim=None, error_sig=0, alpha=0.5, model_label='',
+              **model_kwargs):
 
     counts, bins, _ = ax.hist(data, bins=bins, histtype='step', label=label,
                               density=density)
@@ -84,13 +93,21 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
         ax.set_ylabel('Counts')
 
     if model_func is not None:
-        model_prob = model_func(bins)
+        model_prob = model_func(bins, **model_kwargs)
         if density:
             model_y = model_prob / np.diff(bins)
         else:
             model_y = model_prob * np.sum(counts)
         model_y = np.append(model_y, 0)
-        ax.plot(bins, model_y, label='%s Model' % label, drawstyle='steps-post')
+        ax.plot(bins, model_y, label=model_label, drawstyle='steps-post')
+        if error_sig:
+            N = np.prod(data.shape)
+            yerr = np.sqrt(N * model_prob * (1 - model_prob))
+            if density:
+                yerr /= (N * np.diff(bins))
+            yerr = error_sig * np.append(yerr, 0)
+            ax.fill_between(bins, model_y - yerr, model_y + yerr, alpha=alpha,
+                            label='%s Error' % model_label, step='post')
 
     if legend:
         ax.legend()
