@@ -76,66 +76,66 @@ def test_polyfit():
     assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
 
 
-def test_write_data():
+def test_mask_to_flags():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile)
+
+    ins = INS(ss)
+    freq_inds_1 = np.arange(0, len(ins.freq_array), 2)
+    freq_inds_2 = np.arange(1, len(ins.freq_array), 2)
+    ins.metric_array[1, freq_inds_1] = np.ma.masked
+    ins.metric_array[3, freq_inds_1] = np.ma.masked
+    ins.metric_array[7, freq_inds_2] = np.ma.masked
+    ins.metric_array[-2, freq_inds_2] = np.ma.masked
+    flags = ins.mask_to_flags()
+
+    test_flags = np.zeros(flags.shape, dtype=bool)
+    test_flags[1:5, freq_inds_1] = True
+    test_flags[7, freq_inds_2] = True
+    test_flags[8, freq_inds_2] = True
+    test_flags[-3:-1, freq_inds_2] = True
+
+    assert np.all(flags == test_flags), "Test flags were not equal to calculated flags."
+
+
+def test_write():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
-    outfile = os.path.join(DATA_PATH, '%s_SSINS_test.h5' % obs)
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    data_outfile = '%s_SSINS_data.h5' % prefix
+    z_score_outfile = '%s_SSINS_z_score.h5' % prefix
+    flags_outfile = '%s_SSINS_flags.h5' % prefix
+    mask_outfile = '%s_SSINS_mask.h5' % prefix
+    match_outfile = '%s_SSINS_match_events.yml' % prefix
 
     ss = SS()
     ss.read(testfile, flag_choice='original')
 
     ins = INS(ss)
-    ins.write(outfile)
-
-    new_ins = INS(outfile)
-    assert np.all(ins.metric_array == new_ins.metric_array), "Elements of the metric array were not equal"
-    assert np.all(ins.weights_array == new_ins.weights_array), "Elements of the weights array were not equal"
-    assert np.all(ins.metric_array.mask == new_ins.metric_array.mask), "Elements of the mask were not equal"
-
-    os.remove(outfile)
-
-
-def test_write_flags():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
-    outfile = os.path.join(DATA_PATH, '%s_SSINS_test_flags.h5' % obs)
-
-    ss = SS()
-    ss.read(testfile)
-
-    ins = INS(ss)
-    ins.metric_array[0, :] = np.ma.masked
-    ins.write(outfile, output_type='flags')
-
-    new_ins = INS(ss, flag_file=outfile)
-
-    assert np.all(new_ins.metric_array.mask == ins.metric_array.mask), "new and old masks are not equal"
-
-    os.remove(outfile)
-
-
-def test_write_match_events():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
-    outfile = os.path.join(DATA_PATH, '%s_SSINS_match_events.yml' % obs)
-
-    ss = SS()
-    ss.read(testfile)
-
-    ins = INS(ss)
     # Mock some events
     ins.match_events.append((0, slice(1, 3), 'shape', 5))
     ins.match_events.append((1, slice(1, 3), 'shape', 5))
-    ins.write(outfile, output_type='match_events')
+    ins.metric_array[:2, 1:3] = np.ma.masked
+    ins.metric_ms = ins.mean_subtract()
 
-    new_ins = INS(ss, match_events_file=outfile)
+    ins.write(prefix, output_type='data')
+    ins.write(prefix, output_type='z_score')
+    ins.write(prefix, output_type='flags')
+    ins.write(prefix, output_type='mask')
+    ins.write(prefix, output_type='match_events')
 
-    assert ins.match_events == new_ins.match_events, "new and old match_events are not equal"
+    new_ins = INS(data_outfile, mask_file=mask_outfile, match_events_file=match_outfile)
+    assert np.all(ins.metric_array == new_ins.metric_array), "Elements of the metric array were not equal"
+    assert np.all(ins.weights_array == new_ins.weights_array), "Elements of the weights array were not equal"
+    assert np.all(ins.metric_array.mask == new_ins.metric_array.mask), "Elements of the mask were not equal"
+    assert np.all(ins.metric_ms == new_ins.metric_ms), "Elements of the metric_ms were not equal"
+    assert np.all(ins.match_events == new_ins.match_events), "Elements of the match_events were not equal"
 
-    os.remove(outfile)
+    for path in [data_outfile, z_score_outfile, flags_outfile, mask_outfile, match_outfile]:
+        os.remove(path)
