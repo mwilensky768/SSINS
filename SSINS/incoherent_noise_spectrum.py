@@ -11,6 +11,7 @@ import warnings
 import pickle
 from hera_qm import UVFlag
 import yaml
+from SSINS import version
 
 
 class INS(UVFlag):
@@ -18,7 +19,7 @@ class INS(UVFlag):
     Defines the incoherent noise spectrum (INS) class.
     """
 
-    def __init__(self, input, history='', label='', order=0, flag_file=None,
+    def __init__(self, input, history='', label='', order=0, mask_file=None,
                  match_events_file=None):
 
         """
@@ -69,12 +70,12 @@ class INS(UVFlag):
             super(INS, self).to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
-        if flag_file is None:
+        if mask_file is None:
             # Only mask elements initially if no baselines contributed
             self.metric_array.mask = self.weights_array == 0
         else:
             # Read in the flag array
-            flag_uvf = UVFlag(flag_file)
+            flag_uvf = UVFlag(mask_file)
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 
@@ -130,17 +131,43 @@ class INS(UVFlag):
 
         return(MS)
 
-    def write(self, filename, clobber=False, data_compression='lzf',
+    def mask_to_flags(self):
+        shape = list(self.metric_array.shape)
+        flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+        flags[:-1] = self.metric_array.mask
+        flags[1:] = np.logical_or(flags[1:], flags[:-1])
+
+        return(flags)
+
+    def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data'):
 
+        version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
+        version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
+        if output_type is not 'match_events':
+            filename = '%s_SSINS_%s.h5' % (prefix, output_type)
+        else:
+            filename = '%s_SSINS_%s.yml' % (prefix, output_type)
+        self.history += 'Wrote %s to %s using SSINS %s. ' % (filename, output_type, version_hist_substr)
         if output_type is 'data':
             self.metric_array = self.metric_array.data
             super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
             self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
+        elif output_type is 'z_score':
+            z_uvf = UVFlag(self)
+            z_uvf.metric_array = np.copy(self.metric_ms.data)
+            z_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            del z_uvf
+        elif output_type is 'mask':
+            mask_uvf = UVFlag(self)
+            mask_uvf.to_flag()
+            mask_uvf.flag_array = np.copy(self.metric_array.mask)
+            mask_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            del mask_uvf
         elif output_type is 'flags':
             flag_uvf = UVFlag(self)
             flag_uvf.to_flag()
-            flag_uvf.flag_array = self.metric_array.mask
+            flag_uvf.flag_array = self.mask_to_flags()
             flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
             del flag_uvf
         elif output_type is 'match_events':
@@ -156,7 +183,7 @@ class INS(UVFlag):
             with open(filename, 'w') as outfile:
                 yaml.dump(yaml_dict, outfile, default_flow_style=False)
         else:
-            raise ValueError("output_type is %s. Options are 'data', 'flags', and 'match_events'" % output_type)
+            raise ValueError("output_type is %s. Options are 'data', 'z_score', 'flags', 'mask', and 'match_events'" % output_type)
 
     def match_events_read(self, filename):
 

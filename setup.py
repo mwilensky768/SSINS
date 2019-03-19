@@ -1,5 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 from setuptools import setup
 import os
+
+from SSINS import version
 
 
 def package_files(package_dir, subdirectory):
@@ -28,7 +32,7 @@ setup_args = {
     'scripts': ['Scripts/Catalog_Gen.py', 'Scripts/Event_Brightness.py',
                 'Scripts/Match_Fraction_Dict_Gen.py',
                 'Scripts/Match_Fraction.py', 'Scripts/Read_INS.py'],
-    'version': '1.0',
+    'version': version.version,
     'package_data': {'SSINS': data_files},
     'install_requires': ['pyuvdata'],
     'zip_safe': False,
