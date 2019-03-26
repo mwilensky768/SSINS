@@ -73,7 +73,8 @@ def INS_plot(INS, filename, xticks=None, yticks=None, vmin=None, vmax=None,
                     'cmap': cm.coolwarm,
                     'vmin': ms_vmin,
                     'vmax': ms_vmax,
-                    'cbar_ticks': ms_cbar_ticks}]
+                    'cbar_ticks': ms_cbar_ticks,
+                    'midpoint': True}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False)
