@@ -16,49 +16,23 @@ from SSINS import version
 
 class INS(UVFlag):
     """
-    Defines the incoherent noise spectrum (INS) class.
+    Defines the incoherent noise spectrum (INS) class, which is a subclass of
+    the UVFlag class, a member of the pyuvdata software package.
     """
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
                  match_events_file=None):
 
         """
-        init function for the INS class. Can set the attributes manually, or
-        read some in using the read_paths dictionary. The keys for read_paths
-        are the attribute names as strings, while the values are paths to
-        numpy loadable binary files (pickle is used for masked arrays). The init
-        function will calculate the Calculated Attributes (see below).
+        init function for the INS class.
 
         Args:
-            data: The data which will be assigned to the data attribute. (Required)
-            Nbls: The number of baselines that went into each element of the
-                  data array. (Required)
-            freq_array: The frequencies (in hz) that describe the data, as found
-                        in a UVData object. (Required)
-            flag_choice: The flag choice used in the original SS object.
-            vis_units: The units for the visibilities.
-            obs: The obsid for the data.
-            outpath: The base directory for data outputs.
-            match_events: A list of events found by the filter in the MF class.
-                          Usually not assigned initially.
-            match_hists: Histograms describing the match_events.
-                         Usually not assigned initially.
-            chsq_events: Events found by the chisq_test in the MF class.
-                         Usually not assigned initially.
-            chisq_hists: Histograms describing the chisq events.
-                         Usually not assigned initially.
-            read_paths: A dictionary that can be used to read in a match filter,
-                        rather than passing attributes to init or constructing
-                        from an SS object. The keys are the attributes to be
-                        passed in, while the values are paths to files that
-                        contain the attribute data.
-            samp_thresh_events: Events using the samp_thresh_test in the MF class.
-                                Usually not assigned initially.
-            order: The order of polynomial fit for each frequency channel when
-                   calculating the mean-subtracted spectrum. Setting order=0
-                   just calculates the mean in each frequency channel.
-            coeff_write: An option to write out the coefficients of the polynomial
-                         fit to each frequency channel.
+            input: See UVFlag documentation
+            history: See UVFlag documentation
+            label: See UVFlag documentation
+            order: Sets the order parameter for the INS object
+            mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file: A path to a .yml file that has events caught by the match filter
         """
 
         super(INS, self).__init__(input, mode='metric', copy_flags=False,
@@ -66,7 +40,9 @@ class INS(UVFlag):
         if self.type is 'baseline':
             # Set the metric array to the data array without the spw axis
             self.metric_array = np.abs(input.data_array)
+            """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask)
+            """The number of baselines that contributed to each element of the metric_array"""
             super(INS, self).to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
@@ -81,19 +57,21 @@ class INS(UVFlag):
 
         if match_events_file is None:
             self.match_events = []
+            """A list of tuples that contain information about events caught during match filtering"""
         else:
             self.match_events = self.match_events_read(match_events_file)
 
         self.order = order
+        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         self.metric_ms = self.mean_subtract()
-        """The mean-subtracted data."""
+        """The incoherent noise spectrum, after mean-subtraction."""
 
     def mean_subtract(self, f=slice(None)):
 
         """
         A function which calculated the mean-subtracted spectrum from the
         regular spectrum. A spectrum made from a perfectly clean observation
-        will be standardized (written as a z-score) by this operation.
+        will be written as a z-score by this operation.
 
         Args:
             f: The frequency slice over which to do the calculation. Usually not
@@ -132,6 +110,13 @@ class INS(UVFlag):
         return(MS)
 
     def mask_to_flags(self):
+        """
+        A function that propagates a mask on sky-subtracted data to flags that
+        can be applied to the original data, pre-subtraction.
+
+        Returns:
+            flags: The final flag array obtained from the mask.
+        """
         shape = list(self.metric_array.shape)
         flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
         flags[:-1] = self.metric_array.mask
@@ -141,6 +126,22 @@ class INS(UVFlag):
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data'):
+
+        """
+        Writes attributes specified by output_type argument to appropriate files
+        with a prefix given by prefix argument.
+
+        Args:
+            prefix: The filepath prefix for the output file e.g. /analysis/SSINS_outdir/obsid
+            clobber: See UVFlag documentation
+            data_compression: See UVFlag documentation
+            output_type ('data', 'z_score', 'mask', 'flags', 'match_events'):
+                data - outputs the metric_array attribute into an h5 file
+                z_score - outputs the the metric_ms attribute into an h5 file
+                mask - outputs the mask for the metric_array attribute into an h5 file
+                flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
+                match_events - Writes the match_events attribute out to a human-readable yml file
+        """
 
         version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
@@ -186,6 +187,15 @@ class INS(UVFlag):
             raise ValueError("output_type is %s. Options are 'data', 'z_score', 'flags', 'mask', and 'match_events'" % output_type)
 
     def match_events_read(self, filename):
+        """
+        Reads match events from file specified by filename argument
+
+        Args:
+            filename: The yml file with the stored match_events
+
+        Returns:
+            match_events: The match_events in the yml file
+        """
 
         with open(filename, 'r') as infile:
             yaml_dict = yaml.load(infile)
