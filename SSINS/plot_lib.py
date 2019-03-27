@@ -112,6 +112,6 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
     if legend:
         ax.legend()
     if ylim is None:
-        ax.set_ylim([0.9, 10 * np.amax(data)])
+        ax.set_ylim([0.9 * np.amin(counts[counts > 0]), 10 * np.amax(counts)])
     else:
         ax.set_ylim(ylim)
