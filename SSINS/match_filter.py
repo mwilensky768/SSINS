@@ -13,65 +13,49 @@ import time
 class MF(object):
 
     """
-    Defines the Match Filter (MF) class. It requires an INS object to be passed
-    to it in order to operate on it.
+    Defines the Match Filter (MF) class.
     """
 
     def __init__(self, freq_array, sig_thresh, shape_dict={}, N_samp_thresh=0,
                  narrow=True, streak=True):
 
         """
-        init function for match filter (MF) class. This function assigns some
-        basic attributes and converts the frequencies in the shape_dict to
-        channel numbers (see shape_dict description below).
-
-        Parameters: sig_thresh: The outlier threshold in units of the estimated
-                                width of the thermal noise. A reasonable
-                                choice can be calculated from the size of the
-                                data set, by asking for the value beyond which
-                                less than 1 count is expected for a data set
-                                which is just noise (perfectly clean).
-
-                    shape_dict: This is used in apply_match_test(). The keys are
-                                used strictly internally, so they can be named
-                                arbitrarily. The values should be the upper and
-                                lower frequency limits of the expected RFI
-                                (in hz).
-
-                    N_samp_thresh:   Used in apply_samp_thresh_test(). If the number
-                                     of unflagged samples for a shape or channel is
-                                     less than N_samp_thresh, then the entire observation
-                                     will be flagged for that shape or channel.
-
-                    alpha:      Used in apply_chi_square_test(). If a shape or
-                                channel's histogram gives a chi-square of p-value
-                                less than or equal to alpha, the entire
-                                observation will be flagged for that shape
-                                or channel.
-
-                    narrow:      If this is true, single-channel outliers will be
-                                searched for along with whatever shapes are
-                                passed in the shape_dict.
-
-                    streak:     If this is true, broadband RFI which is not
-                                band-limited will be sought along with whatever
-                                shapes are passed in the shape_dict.
+        Args:
+            freq_array: Sets the freq_array attribute of the filter
+            sig_thresh (float): Sets the sig_thresh attribute of the filter
+            shape_dict (dict): Sets the preliminary shape_dict attribute of the filter
+            N_samp_thresh (int): Sets the N_samp_thresh attribute of the filter
+            narrow (bool): If True, search for narrowband (single channel) RFI
+            streak (bool): If True, search for broad RFI streaks that occupy the entire observing band
         """
         if (not shape_dict) and (not narrow) and (not streak):
             raise ValueError("There are not shapes in the shape_dict and narrow/streak shapes are disabled. Check keywords.")
 
         self.freq_array = freq_array
+        """A 1-d array of frequencies (in hz) for the filter to operate with"""
         self.shape_dict = shape_dict
-        self.N_samp_thresh = N_samp_thresh
+        """A dictionary of shapes. Keys are a shape name, values are the lower and upper frequency bounds in hz."""
         self.sig_thresh = sig_thresh
-        self.slice_dict = self.shape_slicer(narrow, streak)
+        """Significance threshold to flag. Any shape with a z-score higher than this will be identified by the filter."""
+        self.N_samp_thresh = N_samp_thresh
+        """The threshold for flagging an entire channel when some flags exist and apply_samp_thresh() is called.
+           See apply_samp_thresh() documentation for exact meaning."""
+        self.slice_dict = self._shape_slicer(narrow, streak)
+        """A dictionary whose keys are the same as shape_dict and whose values are corresponding slices into the freq_array attribute"""
 
-    def shape_slicer(self, narrow, streak):
+    def _shape_slicer(self, narrow, streak):
 
         """
         This function converts the frequency information in the shape_dict
         attribute to slice objects for the channel numbers of the spectrum.
         The narrow and streak shapes require special slices.
+
+        Args:
+            narrow (bool): If True, add the narrow shape to the dictionary
+            streak (bool): If True, add the streak shape to the dictionary
+
+        Returns:
+            slice_dict: See slice_dict attribute
         """
 
         slice_dict = {}
@@ -100,6 +84,15 @@ class MF(object):
         each shape is put forth and a champion among them is chosen. The time,
         frequencies, and outlier statistic and shape of this champion is
         returned to the stack.
+
+        Args:
+            INS: An INS to test
+
+        Returns:
+            t_max: The time index of the strongest outlier (None if no significant outliers)
+            f_max: The slice in the freq_array for the strongest outlier (None if no significant outliers)
+            R_max: The ratio of the z-score of the outlier to the sig_thresh (-np.inf if no significant outliers)
+            shape_max: The shape of the strongest outlier
         """
 
         R_max = -np.inf
@@ -125,15 +118,19 @@ class MF(object):
                     t_max, f_max, R_max, shape_max = (t, f, R, shape)
         return(t_max, f_max, R_max, shape_max)
 
-    def apply_match_test(self, INS, event_record=False, apply_samp_thresh=False):
+    def apply_match_test(self, INS, event_record=True, apply_samp_thresh=False):
 
         """
-        Where match_test() is implemented. The champion from match_test() is
-        flagged if its outlier statistic is greater than sig_thresh, and the
-        mean-subtracted spectrum is recalculated. This repeats
-        until there are no more outliers greater than sig_thresh. Also can apply
-        the samp_thresh test, which flags channels between match test iterations
-        if those channels have less than N_samp_thresh unflagged samples left.
+        A method that uses the match_test() method to flag RFI. The champion
+        from match_test() is flagged and the mean-subtracted spectrum is
+        recalculated. This repeats until there are no more outliers greater than sig_thresh.
+        Also can apply the samp_thresh_test in each iteration, which flags
+        highly occupied channels between match test iterations.
+
+        Args:
+            INS: The INS to flag
+            event_record (bool): If True, append events to INS.match_events
+            apply_samp_thresh (bool): If True, call apply_samp_thresh() between iterations. Note this will not execute if the N_samp_thresh parameter is 0.
         """
         print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -159,10 +156,14 @@ class MF(object):
     def apply_samp_thresh_test(self, INS, event_record=False):
         """
         The sample threshold test. This tests to see if any channels have fewer
-        unflagged channels than a given threshold. If so, the entire channel is
-        flagged. A ValueError is raised if the threshold parameter is greater
+        unflagged channels than the N_samp_thresh parameter. If so, the entire channel is
+        flagged. A ValueError is raised if the N_samp_thresh parameter is greater
         than the number of times in the observation, due to the fact that this
         will always lead to flagging the entire observation.
+
+        Args:
+            INS: An INS to test
+            event_record (bool): If true, append events to INS.match_events
         """
 
         if self.N_samp_thresh > INS.metric_array.shape[0]:
