@@ -15,8 +15,28 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                cbar_ticks=None):
 
     """
-    Plots 2-d images. The colormap cm.coolwarm invokes the MidpointNormalize()
-    class.
+    Plots 2-d images. Can do a midpoint normalize and log normalize.
+
+    Args:
+        fig: The fig object to modify
+        ax: The axis object to modify
+        data: The data to plot
+        cmap: A colormap from matplotlib.cm e.g. cm.coolwarm
+        vmin: The minimum value for the colormap
+        vmax: The maximum value for the colormap
+        title: The title for ax
+        xlabel: The horizontal axis label
+        ylabel: The vertical axis label
+        midpoint: Whether to set the midpoint of the colormap to zero (useful for diverging colormaps)
+        aspect: Adjusts aspect ratio, see ax.imshow documentation in Matplotlib
+        cbar_label: The label for the colorbar
+        xticks: The ticks for the horizontal axis
+        yticks: The ticks for the vertical axis
+        log: If True, set a logarithmic scale for the colormap
+        xticklabels: The labels for the xticks
+        yticklabels: The labels for the yticks
+        mask_color: The color for masked data values, if any
+        cbar_ticks: The tickmarks for the colorbar
     """
 
     from matplotlib import colors, cm
@@ -76,9 +96,33 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
 
 def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
-              label='', model_func=None, legend=True, title='', density=False,
-              xlabel='', ylim=None, error_sig=0, alpha=0.5, model_label='',
+              label='', legend=True, title='', xlabel='', ylim=None,
+              density=False, model_func=None, error_sig=0, alpha=0.5, model_label='',
               **model_kwargs):
+
+    """
+    A function that calculates and plots histograms. Can also make models using
+    the model_func argument, including error shading.
+
+    Args:
+        fig: The figure object to modify
+        ax: The axis object to modify
+        data: The data to be histogrammed
+        bins: The bins for the histogram. See numpy.histogram documentation
+        yscale ('log' or 'linear'): The scale for the vertical axis. Default is 'log'
+        xscale ('log' or 'linear'): The scale for the horizontal axis. Default is 'linear'
+        label: The legend label for the data
+        legend: If True, show the legend
+        title: The title for the plot
+        xlabel: The label for the horizontal axis
+        ylim: The limits for the vertical axis
+        density: If True, report probability density instead of counts
+        model_func: Default is None. Set to a callable function of the bin edges to make a model histogram.
+        error_sig: Default is 0. If greater than zero, draw error shades out to error_sig sigma (significance).
+        alpha: The transparency parameter for the error shades.
+        model_label: The legend label for the model
+        model_kwargs: Additional kwargs not included in the above list will be passed to model_func
+    """
 
     counts, bins, _ = ax.hist(data, bins=bins, histtype='step', label=label,
                               density=density)
