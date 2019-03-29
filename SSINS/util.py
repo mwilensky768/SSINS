@@ -27,33 +27,32 @@ def red_event_sort(match_events, shape_tuples):
             according to the priority in which the shapes are to be kept.
 
     Returns:
-        new_match_events: The filtered match_event list, with preserved ordering.
+        match_events: The filtered match_event list.
     """
 
-    keep_events = []
+    removal_events = []
     # Iterate over the redundancy sets
-    for shape_tup in enumerate(shape_tuples):
+    for shape_tup in shape_tuples:
         # Filter the shapes that are in the current shape tuple
         relevant_events = [event for event in match_events if event[-2] in shape_tup]
         all_times = [event[0] for event in relevant_events]
         # Generate an array of unique times and counts
         unique_times, counts = np.unique(all_times, return_counts=True)
-        # iterate over the times
-        for time, count in unique_times, counts:
+        # find times with redundancies
+        red_times = unique_times[counts > 1]
+        # iterate over the times with redundancies
+        for time in unique_times:
             # Collect relevant events that occurred at each time
             red_events = [event for event in relevant_events if event[0] == time]
-            # If there are redundancies
-            if count > 1:
-                # Sort them according to the priority in the shape tuple
-                sorted_red_events = sorted(red_events, key=lambda x: shape_tup.index(x[-2]))
-                # Keep the top event
-                keep_events.append(sorted_red_events[0])
-            # If there are no redundancies
-            else:
-                keep_events.append(red_events[0])
-    new_match_events = [event for event in match_events if event in keep_events]
+            # Sort them according to the priority in the shape tuple
+            sorted_red_events = sorted(red_events, key=lambda x: shape_tup.index(x[-2]))
+            # Add the tail of the list to the removal_list
+            removal_events += sorted_red_events[1:]
 
-    return(new_match_events)
+    for event in removal_events:
+        match_events.remove(event)
+
+    return(match_events)
 
 
 def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
