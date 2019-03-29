@@ -1,6 +1,7 @@
 """
 The sky_subtract (SS) class is defined here. This is the backbone of the analysis
-pipeline when working with raw datafiles or UVData objects.
+pipeline when working with raw datafiles. It is a subclass of UVData. See UVData
+documentation for attributes that are not listed here.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -23,12 +24,30 @@ class SS(UVData):
     def __init__(self):
 
         """
+        Initializes identically to a UVData object, except for one additional attribute.
         """
         super(SS, self).__init__()
         self.MLE = None
+        """Array of length Nfreqs that stores maximum likelihood estimators for
+        each frequency, calculated using the MLE_calc method"""
 
     def read(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
              **kwargs):
+
+        """
+        Reads in a file that is compatible with UVData object by first calling
+        UVData.read(). See UVData documentation for list of kwargs that can be
+        passed to UVData.read()
+
+        Args:
+            filename (str): The filepath to read in.
+            diff (bool): If True, and data was read in, then difference the visibilities in time
+            flag_choice: Sets flags for the data array on read using apply_flags method.
+            INS: An INS object for apply_flags()
+            custom: A custom flag array for apply_flags()
+            kwargs: Additional kwargs are passed to UVData.read()
+        """
+
         super(SS, self).read(filename, **kwargs)
         if (self.data_array is not None) and diff:
             self.diff()
@@ -37,29 +56,17 @@ class SS(UVData):
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
         A function which applies flags to the data via numpy masked arrays. Also
-        changes the SS.flag_choice attribute, which will affect saved outputs,
-        so it is convenient to change flags using this function.
+        changes the SS.flag_choice attribute.
 
-        keywords: choice: Options are None, 'original', 'INS', and 'custom'
-
-                          None: No flags are applied to the data
-
-                          'original': The "differenced flags" from the original
-                                      flag_array are applied to the data
-
-                          'custom': A custom flag array will be applied to the
-                                    data.
-
-                          'INS': A flag_array developed from an INS will be
-                                 applied to the data. All flags in the INS will
-                                 be extended across the baseline axis of the SS
-                                 data array.
-
-                  custom: The custom flags to be applied. Must be used in
-                          conjunction with choice='custom'
-
-                  INS: The INS whose flags will be applied. Must be used in
-                       conjunction with choice='INS'
+        Args:
+            flag_choice (None, 'original', 'INS', 'custom'):
+                Applies flags according to the choice. None unflags the data.
+                'original' applies flags based on the flag_array attribute.
+                'INS' applies flags from an INS object specified by the INS keyword.
+                'custom' applies a custom flag array specified by the custom keyword
+                - it must be the same shape as the data.
+            INS: An INS from which to apply flags - only used if flag_choice='INS'
+            custom: A custom flag array from which to apply flags - only used if flag_choice='custom'
         """
         self.flag_choice = flag_choice
         self.MLE = None
@@ -84,6 +91,17 @@ class SS(UVData):
 
     def diff(self):
 
+        """
+        Differences the visibilities in time. Only supported if all baselines
+        have the same integration time, all baselines report at each time, and
+        the baseline-time axis is in the same baseline ordering at each integration.
+        In other words, this is not yet functional with baseline dependent averaging.
+        The flags are propagated by taking the boolean OR of the entries that correspond
+        to the visibilities that are differenced from one another. Other metadata
+        attributes are also adjusted so that the resulting SS object passes
+        UVData.check()
+        """
+
         assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
         cond = np.all([self.baseline_array[:self.Nbls] == self.baseline_array[k * self.Nbls:(k + 1) * self.Nbls]
                        for k in range(1, self.Ntimes - 1)])
@@ -91,21 +109,33 @@ class SS(UVData):
 
         # Difference in time and OR the flags
         self.data_array = np.ma.masked_array(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls])
+        """The time-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
         self.flag_array = np.logical_or(self.flag_array[self.Nbls:], self.flag_array[:-self.Nbls])
+        """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
 
         # Adjust the UVData attributes.
         self.Nblts -= self.Nbls
+        """Number of baseline-times. For now, this must be equal to the number of baselines times the number of times."""
         self.ant_1_array = self.ant_1_array[:-self.Nbls]
         self.ant_2_array = self.ant_2_array[:-self.Nbls]
         self.baseline_array = self.baseline_array[:-self.Nbls]
         self.integration_time = self.integration_time[self.Nbls:] + self.integration_time[:-self.Nbls]
+        """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
         self.Ntimes -= 1
+        """Total number of integration times in the data. Equal to the original Ntimes-1."""
         self.nsample_array = 0.5 * (self.nsample_array[self.Nbls:] + self.nsample_array[:-self.Nbls])
+        """See pyuvdata documentation. Here we average the nsample_array of the visibilities that are differenced"""
         self.time_array = 0.5 * (self.time_array[self.Nbls:] + self.time_array[:-self.Nbls])
+        """The center time of the differenced visibilities. Length Nblts."""
         self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
         super(SS, self).set_lsts_from_time_array()
 
     def MLE_calc(self):
+
+        """
+        Calculates maximum likelihood estimators for Rayleigh fits at each
+        frequency. Used for developing a mixture fit.
+        """
 
         self.MLE = np.sqrt(0.5 * np.mean(np.absolute(self.data_array)**2, axis=(0, 1, -1)))
 
@@ -114,8 +144,10 @@ class SS(UVData):
         Calculates the probabilities of landing in each bin for a given set of
         bins.
 
-        args:
+        Args:
             bins: The bin edges of the bins to calculate the probabilities for.
+        Returns:
+            prob: The probability to land in each bin based on the maximum likelihood model
         """
 
         if self.MLE is None:
@@ -142,36 +174,58 @@ class SS(UVData):
 
     def rev_ind(self, band):
 
+        """
+        Reverse indexes sky-subtracted visibilities whose amplitudes are within
+        a band given by the band argument. Collapses along the baselines to
+        return a time-frequency waterfall per polarization. For example, setting
+        a band of [1e3, 1e4] reports the number of baselines at each
+        time/frequency/polarization whose sky-subtracted visibility amplitude
+        was between 1e3 and 1e4.
+
+        Args:
+            band: The minimum and maximum amplitudes to be sought
+        Returns:
+            rev_ind_hist:
+                A time-frequency waterfall per polarization counting the number
+                of baselines whose sky-subtracted visibility amplitude fell
+                within the band argument.
+
+        """
+
         where_band = np.logical_and(np.absolute(self.data_array) > min(band),
                                     np.absolute(self.data_array) < max(band))
         where_band_mask = np.logical_and(np.logical_not(self.data_array.mask),
                                          where_band)
         shape = [self.Ntimes, self.Nbls, self.Nfreqs, self.Npols]
-        return(np.sum(where_band_mask.reshape(shape), axis=1))
+        rev_ind_hist = np.sum(where_band_mask.reshape(shape), axis=1)
+        return(rev_ind_hist)
 
     def write(self, filename_out, file_type_out, UV=None, filename_in=None,
               read_kwargs={}, combine=True, nsample_default=1, write_kwargs={}):
 
         """
-        Lets one write out a newly flagged file. Data is recovered by reading
-        in the original file or using the original UV object. If passing a UV
-        object, be careful that the original UV object was not changed by any
-        operations due to typical confusing python binding issues. The operation
-        used to make "differenced flags" is actually not invertible in some
-        cases, so this just extends flags as much as possible.
+        Lets one write out the flags to a new file. This requires extending the
+        flags in time. The same convention is used as in INS.flags_to_mask().
+        The rest of the data for writing the file is pulled from an existing
+        UVData object passed using the UV keyword, or read in to a new UVData
+        object using the filename_in keyword. Due to how the nsample_array
+        and flag_array get combined into the weights when writing uvfits,
+        areas where the nsample_array == 0 are set to nsample_default so that
+        new flags can actually be propagated to those data in the new uvfits file.
 
-        Keywords: outpath: The name of the file to write out to.
-
-                  file_type_out: The file_type to write out to.
-
-                  UV: If using this, make sure it is the original UV object
-                      intended without any extra flagging or differencing or
-                      reshaped arrays.
-
-                  inpath: The file to read in to get the original data from.
-
-                  read_kwargs: The UVData.read keyword dict for the original
-                               UVData object
+        Args:
+            filename_out: The name of the file to write to. *Required*
+            file_type_out: The typle of file to write out. See pyuvdata documentation for options. *Required*
+            UV: A UVData object whose data and metadata to use to write the file.
+            filename_in: A file from which to read data in order to write the new file. Not used if UV is not None.
+            read_kwargs: A keyword dictionary for the UVData read method if reading from a file. See pyuvdata documentation for read keywords.
+            combine (bool): If True, combine the original flags with the new flags (OR them), else just use the new flags.
+            nsample_default:
+                Used for writing uvfits when elements of the nsample_array are 0.
+                This is necessary due to the way the nsample_array and flag_array
+                are combined into the weights when writing uvfits, otherwise
+                flags do not actually get propagated to the new file where nsample_array is 0.
+            write_kwargs: A keyword dictionary for the selected UVData write method. See pyuvdata documentation for write keywords.
         """
 
         if UV is None:

@@ -112,7 +112,10 @@ class INS(UVFlag):
     def mask_to_flags(self):
         """
         A function that propagates a mask on sky-subtracted data to flags that
-        can be applied to the original data, pre-subtraction.
+        can be applied to the original data, pre-subtraction. The flags are
+        propagated in such a way that if a time is flagged in the INS, then
+        both times that could have contributed to that time in the sky-subtraction
+        step are flagged.
 
         Returns:
             flags: The final flag array obtained from the mask.
