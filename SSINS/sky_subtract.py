@@ -180,7 +180,7 @@ class SS(UVData):
         return a time-frequency waterfall per polarization. For example, setting
         a band of [1e3, 1e4] reports the number of baselines at each
         time/frequency/polarization whose sky-subtracted visibility amplitude
-        was between 1e3 and 1e4.
+        was between 1e3 and 1e4. Includes flags.
 
         Args:
             band: The minimum and maximum amplitudes to be sought
