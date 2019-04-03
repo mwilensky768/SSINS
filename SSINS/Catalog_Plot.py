@@ -17,7 +17,7 @@ pol_dict_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'pI', 'pQ', '
 pol_dict = dict(zip(pol_dict_keys, pol_dict_values))
 
 
-def INS_plot(INS, prefix, file_ext='pdf' xticks=None, yticks=None, vmin=None,
+def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
@@ -44,8 +44,7 @@ def INS_plot(INS, prefix, file_ext='pdf' xticks=None, yticks=None, vmin=None,
     from matplotlib import cm
     import matplotlib.pyplot as plt
 
-    name_ind = filename.rfind('/')
-    outdir = filename[:filename.rfind('/')]
+    outdir = prefix[:prefix.rfind('/')]
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -88,7 +87,7 @@ def INS_plot(INS, prefix, file_ext='pdf' xticks=None, yticks=None, vmin=None,
     plt.close(fig)
 
 
-def VDH_plot(SS, prefix, file_ext='pdf', xlabel='' xscale='linear', yscale='log',
+def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log',
              bins='auto', legend=True, ylim=None, density=False, pre_flag=True,
              post_flag=True, pre_model=True, post_model=True, error_sig=0,
              alpha=0.5):
@@ -117,8 +116,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='' xscale='linear', yscale='log'
 
     import matplotlib.pyplot as plt
 
-    name_ind = filename.rfind('/')
-    outdir = filename[:filename.rfind('/')]
+    outdir = prefix[:prefix.rfind('/')]
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
