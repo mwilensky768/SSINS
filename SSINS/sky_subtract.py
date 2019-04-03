@@ -83,7 +83,8 @@ class SS(UVData):
             if custom is not None:
                 self.data_array[custom] = np.ma.masked
             else:
-                warnings.warn('Custom flags were chosen, but custom flags were None type. Not applying flags.')
+                warnings.warn('Custom flags were chosen, but custom flags were None type. Setting flags to None.')
+                self.flag_choice = None
         elif flag_choice is None:
             self.data_array.mask = np.zeros(self.data_array.shape, dtype=bool)
         else:
