@@ -95,7 +95,7 @@ class MF(object):
             shape_max: The shape of the strongest outlier
         """
 
-        R_max = -np.inf
+        sig_max = -np.inf
         t_max = None
         f_max = None
         shape_max = None
@@ -103,7 +103,7 @@ class MF(object):
             if shape is 'narrow':
                 t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
                                            INS.metric_ms.shape)
-                R = np.absolute(INS.metric_ms[t, f, p] / self.sig_thresh)
+                sig = np.absolute(INS.metric_ms[t, f, p])
                 f = slice(f, f + 1)
             else:
                 N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
@@ -112,11 +112,11 @@ class MF(object):
                 t, p = np.unravel_index((sliced_arr / self.sig_thresh).argmax(),
                                         sliced_arr.shape)
                 f = self.slice_dict[shape]
-                R = sliced_arr[t, p] / self.sig_thresh
-            if R > 1:
-                if R > R_max:
-                    t_max, f_max, R_max, shape_max = (t, f, R, shape)
-        return(t_max, f_max, R_max, shape_max)
+                sig = sliced_arr[t, p]
+            if sig > self.sig_thresh:
+                if sig > sig_max:
+                    t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
+        return(t_max, f_max, sig_max, shape_max)
 
     def apply_match_test(self, INS, event_record=True, apply_samp_thresh=False):
 
@@ -137,10 +137,10 @@ class MF(object):
         count = 1
         while count:
             count = 0
-            t_max, f_max, R_max, shape_max = self.match_test(INS)
-            if R_max > -np.inf:
+            t_max, f_max, sig_max, shape_max = self.match_test(INS)
+            if sig_max > -np.inf:
                 count += 1
-                event = (t_max, f_max, shape_max, R_max * self.sig_thresh)
+                event = (t_max, f_max, shape_max, sig_max)
                 INS.metric_array[event[:2]] = np.ma.masked
                 if event_record:
                     INS.match_events.append(event)
