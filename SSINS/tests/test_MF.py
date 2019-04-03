@@ -112,6 +112,14 @@ def test_apply_match_test():
 
     assert not np.any([ins.match_events[i][-1] < 5 for i in range(3)]), "Some significances were less than 5"
 
+    # Test a funny if block that is required when the last time in a shape is flagged
+    ins.metric_array[1:, 7:13] = np.ma.masked
+    ins.metric_ms[0, 7:13] = 10
+
+    mf.apply_match_test(ins, event_record=True)
+
+    assert np.all(ins.metric_ms.mask[:, 7:13]), "All the times were not flagged for the shape"
+
 
 def test_samp_thresh():
 
@@ -145,3 +153,8 @@ def test_samp_thresh():
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
         assert ins.match_events[i][:-1] == event, "The events weren't appended correctly"
+
+    # Test that exception is raised when N_samp_thresh is too high
+    with pytest.raises(ValueError):
+        mf = MF(ins.freq_array, 5, N_samp_thresh=100)
+        mf.apply_samp_thresh_test(ins)
