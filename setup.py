@@ -2,8 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 from setuptools import setup
 import os
+import json
 
 from SSINS import version
+
+# Make a GIT_INFO file on install
+data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
+with open(os.path.join('SSINS', 'GIT_INFO'), 'w') as outfile:
+    json.dump(data, outfile)
 
 
 def package_files(package_dir, subdirectory):

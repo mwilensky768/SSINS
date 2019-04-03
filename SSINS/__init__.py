@@ -15,3 +15,5 @@ from .incoherent_noise_spectrum import *
 from .plot_lib import *
 from .match_filter import *
 from .sky_subtract import *
+
+__version__ = version.version
