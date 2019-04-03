@@ -42,7 +42,7 @@ def test_VDH_plot():
 
     cp.VDH_plot(ss, prefix)
     # Test with density prefix and error bars
-    cp.VDH_plot(ss, dens_prefix, density=True, error_sig=1)
+    cp.VDH_plot(ss, dens_prefix, density=True, error_sig=1, ylim=[1e-5, 1e5])
 
     assert os.path.exists(outfile), "The first plot was not made"
     assert os.path.exists(dens_outfile), "The second plot was not made"
