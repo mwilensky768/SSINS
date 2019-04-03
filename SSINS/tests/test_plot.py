@@ -42,3 +42,21 @@ def test_VDH_plot():
 
     os.remove(outfile)
     os.rmdir(outdir)
+
+
+def test_VDH_no_model():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    outdir = os.path.join(DATA_PATH, 'test_plots')
+    prefix = '%s/%s' % (outdir, obs)
+    outfile = '%s_VDH.pdf' % prefix
+
+    ss = SS()
+    ss.read(testfile, flag_choice=None)
+
+    cp.VDH_plot(ss, prefix, pre_model=False, post_model=False)
+
+    assert os.path.exists(outfile), "The plot was not made"
+
+    os.remove(outfile)
+    os.rmdir(outdir)
