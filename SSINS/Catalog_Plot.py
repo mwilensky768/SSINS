@@ -49,9 +49,6 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    if data_cmap is None:
-        data_cmap = cm.viridis
-
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
                  'xticklabels': xticklabels,
