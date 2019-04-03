@@ -2,7 +2,6 @@ sudo: required
 dist: trusty
 language: python
 python:
-  # We don't actually use the Travis Python, but this keeps it organized.
   - "2.7"
   - "3.6"
 
@@ -30,8 +29,10 @@ install:
   - conda install numpy scipy astropy nose pip h5py six
   - conda install -c conda-forge healpy python-casacore pycodestyle coveralls pyuvdata
   - conda list
+  - pip install pytest
+  - pip install pytest-cov
 script:
-  - nosetests SSINS --with-coverage --cover-package=SSINS --nolog
+  - pytest --cov=SSINS SSINS/tests/
 
 after_success:
     - coveralls
