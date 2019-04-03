@@ -129,6 +129,8 @@ def test_write():
     ins.write(prefix, output_type='flags')
     ins.write(prefix, output_type='mask')
     ins.write(prefix, output_type='match_events')
+    with pytest.raises(ValueError):
+        ins.write(prefix, output_type='bad_label')
 
     new_ins = INS(data_outfile, mask_file=mask_outfile, match_events_file=match_outfile)
     assert np.all(ins.metric_array == new_ins.metric_array), "Elements of the metric array were not equal"
