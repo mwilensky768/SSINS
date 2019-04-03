@@ -21,7 +21,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
-             xlabel='', ylabel=''):
+             xlabel='', ylabel='', log=False):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -60,7 +60,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'vmin': vmin,
                     'vmax': vmax,
                     'cmap': data_cmap,
-                    'cbar_ticks': cbar_ticks},
+                    'cbar_ticks': cbar_ticks,
+                    'log': log},
                    {'cbar_label': 'Deviation $\hat{\sigma}$',
                     'mask_color': 'black',
                     'cmap': cm.coolwarm,
