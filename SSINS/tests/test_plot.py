@@ -11,7 +11,8 @@ def test_INS_plot():
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
-    prefix = os.path.join(DATA_PATH, obs)
+    outdir = os.path.join(DATA_PATH, 'test_plots')
+    prefix = '%s/%s' % (outdir, obs)
     outfile = '%s_SSINS.pdf' % prefix
 
     ins = INS(insfile)
@@ -21,13 +22,15 @@ def test_INS_plot():
     assert os.path.exists(outfile), "The plot was not made"
 
     os.remove(outfile)
+    os.rmdir(outdir)
 
 
 def test_VDH_plot():
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    prefix = os.path.join(DATA_PATH, obs)
+    outdir = os.path.join(DATA_PATH, 'test_plots')
+    prefix = '%s/%s' % (outdir, obs)
     outfile = '%s_VDH.pdf' % prefix
 
     ss = SS()
@@ -38,3 +41,4 @@ def test_VDH_plot():
     assert os.path.exists(outfile), "The plot was not made"
 
     os.remove(outfile)
+    os.rmdir(outdir)
