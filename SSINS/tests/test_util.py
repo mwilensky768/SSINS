@@ -43,12 +43,13 @@ def test_red_event_sort():
 
 def test_match_fraction():
     # Make up a simple event list belonging to some fictitious data with 5 times and 100 frequencies
-    events = np.array([(1, 0, slice(0, 10), 'shape_1', 10),
-                       (2, 0, slice(0, 10), 'shape_1', 10),
-                       (3, 0, slice(10, 20), 'shape_2', 10)])
+    events = np.array([(1, slice(0, 10), 'shape_1', 10),
+                       (2, slice(0, 10), 'shape_1', 10),
+                       (3, slice(10, 20), 'shape_2', 10),
+                       (4, slice(30, 30), 'narrow', 10)])
     Ntimes = 5
     Nfreqs = 100
     # Make the event_fraction dictionary
     event_frac = util.event_fraction(events, Ntimes, ['shape_1', 'shape_2'], Nfreqs)
 
-    assert event_frac == {'shape_1': 2 / 5, 'shape_2': 1 / 5}, "Event fraction not calculated correctly"
+    assert event_frac == {'shape_1': 2 / 5, 'shape_2': 1 / 5, 'narrow': 1 / (Ntimes * Nfreqs)}, "Event fraction not calculated correctly"

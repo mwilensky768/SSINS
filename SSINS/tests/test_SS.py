@@ -65,9 +65,16 @@ def test_apply_flags():
     ins.metric_array.mask[:, 0] = True
     ss.apply_flags(flag_choice='INS', INS=ins)
     assert np.all(ss.data_array.mask[:, 0, 0]), "Not all of the 0th channel was flagged."
-    print(np.where(ss.data_array.mask))
     assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
     assert ss.flag_choice is 'INS'
+
+    # Make flag_choice custom but do not provide array - should keep old flags
+    ss.apply_flags(flag_choice='custom', custom=None)
+    assert not np.any(ss.data_array.mask), "Some of the channels other than the 0th were flagged"
+    assert ss.flag_choice is None
+
+    with pytest.raises(ValueError):
+        ss.apply_flags(flag_choice='bad_choice')
 
 
 def test_mixture_prob():
