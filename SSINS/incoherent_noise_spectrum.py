@@ -9,7 +9,7 @@ from scipy.special import erfcinv
 import os
 import warnings
 import pickle
-from hera_qm import UVFlag
+from pyuvdata import UVFlag
 import yaml
 from SSINS import version
 
