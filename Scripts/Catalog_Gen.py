@@ -2,50 +2,34 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 from SSINS import Catalog_Plot as cp
-from SSINS import SS
+from SSINS import SS, INS, MF
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('obs', action='store', help='How the observation will be referred to')
-parser.add_argument('inpath', action='store', help='The path to the data file, and the file_type')
+parser.add_argument('obs', action='store', help='The observation ID')
+parser.add_argument('inpath', action='store', help='The path to the data file')
 parser.add_argument('outpath', action='store', help='The base directory for saving all outputs')
-parser.add_argument('-t', action='store', nargs='*', help='The desired catalogs.', required=True)
-parser.add_argument('--ft', action='store', help='The file type')
-parser.add_argument('--fc', action='store', help='Path to numpy loadable boolean array of frequencies to read in')
 args = parser.parse_args()
 
-# Here is a dictionary for the RFI class keywords
+ss = SS()
+ss.read(inpath, read_data=False)
+times = np.unique(ss.time_array)[1:-3]
+ss.read(inpath, times=times, ant_str='cross')
 
-data_kwargs = {'read_kwargs': {'file_type': args.ft, 'ant_str': 'cross'},
-               'obs': args.obs,
-               'inpath': args.inpath,
-               'outpath': args.outpath}
-
-if args.fc is not None:
-    data_kwargs['read_kwargs']['freq_chans'] = np.load(args.fc)
-
-catalog_data_kwargs = {'INS': {},
-                       'VDH': {},
-                       'MF': {'shape_dict': {'TV6': [1.74e8, 1.81e8],
-                                             'TV7': [1.81e8, 1.88e8],
-                                             'TV8': [1.88e8, 1.95e8]}},
-                       'ES': {}}
-
-catalog_plot_kwargs = {'INS': {'ms_vmin': -5, 'ms_vmax': 5},
-                       'VDH': {},
-                       'MF': {},
-                       'ES': {}}
-
-"""
-Do not edit things beneath this line!
-"""
-
-sky_sub = SS(**data_kwargs)
-sky_sub.apply_flags(choice='original')
+ins = INS(ss)
 
 
-for cat in args.t:
-    getattr(sky_sub, '%s_prepare' % (cat))(**catalog_data_kwargs[cat])
-    getattr(cp, '%s_plot' % (cat))(getattr(sky_sub, cat), **catalog_plot_kwargs[cat])
-sky_sub.save_data()
-sky_sub.save_meta()
+shape_dict = {'TV6': [1.74e8, 1.81e8],
+              'TV7': [1.81e8, 1.88e8],
+              'TV8': [1.88e8, 1.96e8],
+              'broad6': [1.72e8, 1.83e8],
+              'broad7': [1.79e8, 1.9e9],
+              'broad8': [1.86e8, 1.97e8]}
+
+mf = MF(ins.freq_array, 5, shape_dict=shape_dict, N_samp_thresh=15)
+mf.apply_match_test(ins, apply_samp_thresh=True)
+
+prefix = '%s/%s' % (args.outpath, args.obs)
+ins.write(prefix)
+ins.write(prefix, output_type='mask')
+ins.write(prefix, output_type='match_events')
