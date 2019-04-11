@@ -12,9 +12,9 @@ parser.add_argument('outpath', action='store', help='The base directory for savi
 args = parser.parse_args()
 
 ss = SS()
-ss.read(inpath, read_data=False)
+ss.read(args.inpath, read_data=False)
 times = np.unique(ss.time_array)[1:-3]
-ss.read(inpath, times=times, ant_str='cross')
+ss.read(args.inpath, times=times, ant_str='cross')
 
 ins = INS(ss)
 
