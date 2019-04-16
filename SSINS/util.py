@@ -70,13 +70,15 @@ def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
     Returns:
         match_event_frac: A dictionary with shapes for keys and occupancy fractions for values
     """
-    shapes, counts = np.unique(np.array(match_events)[:, -2], return_counts=True)
     match_event_frac = {shape: 0 for shape in shape_list}
-    for i, shape in enumerate(shapes):
-        if shape is 'narrow':
-            match_event_frac[shape] = counts[i] / (Ntimes * Nfreqs)
-        else:
-            match_event_frac[shape] = counts[i] / Ntimes
+
+    if match_events:
+        shapes, counts = np.unique(np.array(match_events)[:, -2], return_counts=True)
+        for i, shape in enumerate(shapes):
+            if shape is 'narrow':
+                match_event_frac[shape] = counts[i] / (Ntimes * Nfreqs)
+            else:
+                match_event_frac[shape] = counts[i] / Ntimes
 
     return(match_event_frac)
 
