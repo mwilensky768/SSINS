@@ -22,7 +22,7 @@ def rad_convert(lst, branch):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--shapes', nargs='*', help="The shapes to calculate occupency for")
+    parser.add_argument('-s', '--shapes', nargs='*', help="The shapes to calculate occupancy for")
     parser.add_argument('-f', '--filelist', help="The list of paths to the SSINS data files, in the same order as obslist")
     parser.add_argument('-r', '--rad_convert', action='store_true', help="Convert lst from radians to hours")
     parser.add_argument('-b', '--branch', action='store_true', help="Map lst from [-pi, pi] instead of [0, 2pi]")
@@ -33,7 +33,9 @@ if __name__ == "__main__":
     lsts = []
     occ_dict = {shape: [] for shape in args.shapes}
 
-    for path in enumerate(args.fukekust):
+    filelist = util.make_obslist(args.filelist)
+
+    for path in filelist:
         prefix = path[:path.rfind('_')]
         match_events_file = '%s_match_events.yml' % prefix
         mask_file = '%s_mask.h5' % prefix
@@ -49,8 +51,8 @@ if __name__ == "__main__":
                 lst -= 2 * np.pi
         lsts.append(lst)
 
-        occs = util.match_event_frac(ins.match_events, len(ins.time_array),
-                                     args.shapes, len(ins.freq_array))
+        occs = util.event_fraction(ins.match_events, len(ins.time_array),
+                                   args.shapes, len(ins.freq_array))
         for shape in args.shapes:
             occ_dict[shape].append(occs[shape])
 
