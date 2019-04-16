@@ -158,21 +158,21 @@ class INS(UVFlag):
             super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
             self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
         elif output_type is 'z_score':
-            z_uvf = UVFlag(self)
+            z_uvf = self.copy()
             z_uvf.metric_array = np.copy(self.metric_ms.data)
-            z_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            super(INS, z_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del z_uvf
         elif output_type is 'mask':
-            mask_uvf = UVFlag(self)
+            mask_uvf = self.copy()
             mask_uvf.to_flag()
             mask_uvf.flag_array = np.copy(self.metric_array.mask)
-            mask_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del mask_uvf
         elif output_type is 'flags':
-            flag_uvf = UVFlag(self)
+            flag_uvf = self.copy()
             flag_uvf.to_flag()
             flag_uvf.flag_array = self.mask_to_flags()
-            flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
+            super(INS, flag_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del flag_uvf
         elif output_type is 'match_events':
             yaml_dict = {'time_ind': [],
