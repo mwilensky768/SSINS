@@ -14,7 +14,7 @@ args = parser.parse_args()
 ss = SS()
 ss.read(args.inpath, read_data=False)
 times = np.unique(ss.time_array)[1:-3]
-ss.read(args.inpath, times=times, ant_str='cross')
+ss.read(args.inpath, times=times, ant_str='cross', flag_choice='original')
 
 ins = INS(ss)
 
