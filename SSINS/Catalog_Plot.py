@@ -88,7 +88,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
 def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log',
              bins='auto', legend=True, ylim=None, density=False, pre_flag=True,
              post_flag=True, pre_model=True, post_model=True, error_sig=0,
-             alpha=0.5):
+             alpha=0.5, pre_label='', post_label='', pre_model_label='',
+             post_model_label=''):
 
     """Plots a histogram of the amplitudes of the visibility differences that
     result from sky subtraction.
@@ -110,6 +111,10 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         post_model (bool): Plot a rayleigh-mixture fit made from data after applying flags
         error_sig (float): Plot error shades to specified number of sigma
         alpha (float): Specify alpha parameter for error shading
+        pre_label (str): The legend label for amplitudes made from data without flags applied.
+        post_label (str): The legend label for amplitudes made from data with flags applied.
+        pre_model_label (str): The legend label for a model made from data without flags applied.
+        post_model_label (str): The legend label for a model made from data with flags applied.
     """
 
     import matplotlib.pyplot as plt
@@ -129,8 +134,9 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
     if post_flag and SS.flag_choice is not None:
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
                   bins=bins, legend=legend, model_func=model_func,
-                  yscale=yscale, ylim=ylim, density=density, label='Post Flag',
-                  xlabel=xlabel, error_sig=error_sig, alpha=alpha)
+                  yscale=yscale, ylim=ylim, density=density, label=post_label,
+                  xlabel=xlabel, error_sig=error_sig, alpha=alpha,
+                  model_label=post_model_label)
     if pre_flag:
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
@@ -140,8 +146,8 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         SS.apply_flags(flag_choice=None)
         hist_plot(fig, ax, np.abs(SS.data_array).flatten(), bins=bins,
                   legend=legend, model_func=model_func, yscale=yscale,
-                  ylim=ylim, density=density, label='Pre Flag', alpha=alpha,
-                  xlabel=xlabel, error_sig=error_sig)
+                  ylim=ylim, density=density, label=pre_label, alpha=alpha,
+                  xlabel=xlabel, error_sig=error_sig, model_label=pre_model_label)
         if temp_choice is 'original':
             SS.apply_flags(flag_choice='original')
         else:
