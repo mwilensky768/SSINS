@@ -132,6 +132,7 @@ any mask that may have come from flagging.
 (a) Writing the three main data products
 ****************************************
 ::
+
   # We need to specify a prefix for the files
   >>> prefix = 'SSINS/data/tutorial_'
 
@@ -148,6 +149,7 @@ any mask that may have come from flagging.
 (b) Writing time-propagated flags
 *********************************
 ::
+
   # The time-propagated flags (extending them back across the time-difference)
   # are calculated using the mask_to_flags method
   >>> tp_flags = ins.mask_to_flags()
