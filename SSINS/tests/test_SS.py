@@ -1,239 +1,151 @@
 from __future__ import absolute_import, division, print_function
 
-import nose.tools as nt
+import pytest
 from SSINS.data import DATA_PATH
-from SSINS import SS
-from SSINS import INS
-from SSINS import VDH
-from SSINS import ES
-from SSINS import Catalog_Plot as cp
-from SSINS import plot_lib as pl
-from SSINS import util
-import shutil
+from SSINS import SS, INS
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+from pyuvdata import UVData
 
 """
 Tests the various capabilities of the sky_subtract class
 """
 
 
-def test_INS_construct_plot():
-    """
-    Construct an INS using the flags belonging to the uvfits file. Plot.
-    """
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    outpath = os.path.join(DATA_PATH, 'test_outputs/')
-    figpath = os.path.join(DATA_PATH, 'figs/')
-    file_type = 'uvfits'
-    flag_choice = 'original'
-    N_thresh = 15
-    shape_dict = {'TV6': [1.74e8, 1.81e8],
-                  'TV7': [1.81e8, 1.88e8],
-                  'TV8': [1.88e8, 1.95e8]}
-
-    ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
-    ss.INS_prepare()
-
-    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
-                                           exclude=['samp_thresh_events'])
-
-    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths, flag_choice=flag_choice)
-    for attr in ['pols', 'vis_units']:
-        nt.ok_(np.all(getattr(test_INS, attr) == getattr(ss.INS, attr)))
-    for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins', 'freq_array']:
-        nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5))
-    for attr in ['match_events', 'chisq_events']:
-        for i in range(len(getattr(ss.INS, attr))):
-            nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]))
-    for attr in ['match_hists', 'chisq_hists']:
-        for i in range(len(getattr(ss.INS, attr))):
-            for k in range(2):
-                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]))
-    nt.ok_(np.all(test_INS.samp_thresh_events == ss.INS.samp_thresh_events))
-
-    cp.INS_plot(ss.INS)
-    # Test that the plot saved
-
-    nt.ok_(os.path.exists('%s/figs/%s_%s_INS_data.png' %
-                          (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice)))
-    # Copy it for inspection
-    shutil.copy('%s/figs/%s_%s_INS_data.png' %
-                (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice),
-                '%s' % figpath)
-
-    ss.MF_prepare(N_thresh=N_thresh, shape_dict=shape_dict)
-    ss.MF.apply_match_test(apply_N_thresh=True)
-    ss.INS.save()
-
-    tags = ['match', 'chisq', 'samp_thresh']
-    tag = ''
-    for subtag in tags:
-        if len(getattr(ss.INS, '%s_events' % (subtag))):
-            tag += '_%s' % subtag
-
-    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'INS',
-                                           tag=tag)
-    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths, flag_choice=flag_choice)
-    for attr in ['pols', 'vis_units']:
-        nt.ok_(np.all(getattr(test_INS, attr) == getattr(ss.INS, attr)))
-    for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins', 'freq_array']:
-        nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5),
-               attr)
-    for attr in ['match_events', 'chisq_events', 'samp_thresh_events']:
-        for i in range(len(getattr(ss.INS, attr))):
-            nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]))
-    for attr in ['match_hists', 'chisq_hists']:
-        for i in range(len(getattr(ss.INS, attr))):
-            for k in range(2):
-                nt.ok_(np.all(getattr(test_INS, attr)[i][k] == getattr(ss.INS, attr)[i][k]),
-                       '%s %s' % (getattr(test_INS, attr)[i][k], getattr(ss.INS, attr)[i][k]))
-    cp.MF_plot(ss.MF)
-
-    nt.ok_(os.path.exists('%s/figs/%s_%s_INS_data%s.png' %
-                          (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice, tag)))
-    # Copy it for inspection
-    shutil.copy('%s/figs/%s_%s_INS_data%s.png' %
-                (ss.INS.outpath, ss.INS.obs, ss.INS.flag_choice, tag),
-                '%s' % figpath)
-
-    # shutil.rmtree(outpath)
-
-
-def test_VDH_construct_plot():
-    """
-    Construct a VDH with waterfall, plot it
-    """
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    outpath = os.path.join(DATA_PATH, 'test_outputs/')
-    figpath = os.path.join(DATA_PATH, 'figs/')
-    file_type = 'uvfits'
-    flag_choice = 'original'
-    fit_tags = ['All', 'Flags']
-    window = (1e3, 1e5)
-
-    ss = SS(obs=obs, outpath=outpath, inpath=testfile, flag_choice=flag_choice)
-    ss.VDH_prepare(fit_hist=True)
-    ss.VDH.rev_ind(ss.UV.data_array, window)
-
-    read_paths = util.read_paths_construct(DATA_PATH, flag_choice, obs, 'VDH')
-    for attr in ['counts', 'bins', 'fits', 'errors']:
-        rw_path = '%s/arrs/%s_%s_VDH_%s.npy' % (DATA_PATH, obs, ss.VDH.flag_choice, attr)
-        read_paths[attr] = rw_path
-    for attr in ['freq_array', 'pols', 'vis_units']:
-        rw_path = '%s/metadata/%s_%s.npy' % (DATA_PATH, obs, attr)
-        read_paths[attr] = rw_path
-    for attr in ['W_hist', 'MLEs']:
-        rw_path = '%s/arrs/%s_%s_VDH_%s.npym' % (DATA_PATH, obs, ss.VDH.flag_choice, attr)
-        read_paths[attr] = rw_path
-
-    test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
-    for attr in ['counts', 'bins', 'fits', 'errors']:
-        for i in range(len(test_VDH.counts)):
-            nt.ok_(np.allclose(getattr(test_VDH, attr)[i], getattr(ss.VDH, attr)[i], atol=1))
-    for attr in ['MLEs', 'W_hist']:
-        for i in range(len(test_VDH.MLEs)):
-            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
-    for attr in ['pols', 'vis_units', 'freq_array']:
-        nt.ok_(np.all(getattr(test_VDH, attr) == getattr(ss.VDH, attr)))
-
-    cp.VDH_plot(ss.VDH)
-    for i in range(1 + bool(ss.VDH.flag_choice)):
-        nt.ok_(os.path.exists('%s/figs/%s_%s_VDH.png' %
-                              (ss.VDH.outpath, obs, fit_tags[i])))
-        shutil.copy('%s/figs/%s_%s_VDH.png' %
-                    (ss.VDH.outpath, obs, fit_tags[i]), '%s' % figpath)
-    shutil.rmtree(outpath)
-
-
-def test_ES_construct_write():
-    """
-    Read in uvfits file to SS class, construct usual data products, save outputs,
-    read back in to assure saving went ok.
-    """
+def test_SS_read():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
-    outpath = os.path.join(DATA_PATH, 'test_outputs/')
-    shape_dict = {'TV7': np.array([1.81e+08, 1.88e+08]),
-                  'TV6': np.array([1.74e+08, 1.81e+08]),
-                  'TV8': np.array([1.88e+08, 1.95e+08])}
-    MC_iter = int(1e3)
-    np.random.seed(seed=1)
 
-    ss = SS(obs=obs, outpath=outpath, inpath=testfile)
-    ss.ES_prepare(MC_iter=MC_iter, shape_dict=shape_dict)
-    ss.save_data()
+    ss = SS()
 
-    cp.ES_plot(ss.ES)
+    # Test reading in only metadata skips if block
+    ss.read(testfile, read_data=False)
+    assert ss.data_array is None, "Data array is not None"
 
-    for i, event in enumerate(ss.ES.events):
-        nt.ok_(os.path.exists('%s/figs/%s_hist_%i.png' % (ss.ES.outpath, ss.ES.obs, i)))
-        nt.ok_(os.path.exists('%s/figs/%s_grid_%i.png' % (ss.ES.outpath, ss.ES.obs, i)))
+    # Test select on read and diff
+    ss.read(testfile, times=np.unique(ss.time_array)[1:10])
+    assert ss.Ntimes == 8, "Diff seems like it wasn't executed correctly"
 
-    tags = ['match', 'chisq', 'samp_thresh']
-    tag = ''
-    for subtag in tags:
-        if len(getattr(ss.INS, '%s_events' % (subtag))):
-            tag += '_%s' % subtag
-    read_paths = util.read_paths_construct(DATA_PATH, 'None', obs, 'INS',
-                                           tag=tag)
-
-    test_INS = INS(obs=obs, outpath=outpath, read_paths=read_paths)
-    for attr in ['pols', 'vis_units']:
-        nt.ok_(np.all(getattr(test_INS, attr) == getattr(ss.INS, attr)))
-    for attr in ['data', 'data_ms', 'Nbls', 'counts', 'bins', 'freq_array']:
-        nt.ok_(np.allclose(getattr(test_INS, attr), getattr(ss.INS, attr), atol=1e-5))
-    for attr in ['match_events', 'chisq_events']:
-        for i in range(len(getattr(ss.INS, attr))):
-            nt.ok_(np.all(getattr(test_INS, attr)[i] == getattr(ss.INS, attr)[i]),
-                   '%s, %s' % (getattr(test_INS, attr)[i], getattr(ss.INS, attr)[i]))
-    for attr in ['match_hists', 'chisq_hists']:
-        for i in range(len(getattr(ss.INS, attr))):
-            for k in range(2):
-                nt.ok_(np.allclose(getattr(test_INS, attr)[i][k], getattr(ss.INS, attr)[i][k]),
-                       '%s, %s, %s' % (attr,
-                                       getattr(test_INS, attr)[i][k],
-                                       getattr(ss.INS, attr)[i][k]))
-    nt.ok_(np.all(test_INS.samp_thresh_events == ss.INS.samp_thresh_events))
-
-    read_paths = util.read_paths_construct(DATA_PATH, 'INS', obs, 'VDH')
-
-    test_VDH = VDH(obs=obs, outpath=outpath, read_paths=read_paths)
-    for attr in ['counts', 'bins', 'fits', 'errors']:
-        for i in range(len(test_VDH.counts)):
-            nt.ok_(np.all(getattr(test_VDH, attr)[i] == getattr(ss.VDH, attr)[i]))
-    nt.ok_(np.all(test_VDH.MLEs == ss.VDH.MLEs),
-           '%s' % (test_VDH.MLEs - ss.VDH.MLEs))
-    nt.ok_(np.all(test_VDH.freq_array == ss.VDH.freq_array))
-    for attr in ['pols', 'vis_units']:
-        nt.ok_(np.all(getattr(test_VDH, attr) == getattr(ss.VDH, attr)))
-
-    read_paths = util.read_paths_construct(DATA_PATH, 'None', obs, 'ES')
-
-    test_ES = ES(obs=obs, outpath=outpath, read_paths=read_paths)
-    for attr in ['vis_units', 'pols', 'grid', 'freq_array']:
-        nt.ok_(np.all(getattr(test_ES, attr) == getattr(ss.ES, attr)))
-    for attr in ['counts', 'bins', 'exp_counts', 'exp_error', 'cutoffs', 'avgs', 'uv_grid']:
-        for i in range(len(test_ES.counts)):
-            nt.ok_(np.allclose(getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i], atol=1),
-                   '%s\n%s, %s' % (attr, getattr(test_ES, attr)[i], getattr(ss.ES, attr)[i]))
-
-    ss.apply_flags(choice='custom', custom=ss.ES.mask)
-    ss.write('%s/%s_ES_flag.uvfits' % (outpath, obs), file_type, inpath=testfile)
-    nt.ok_(os.path.exists('%s/%s_ES_flag.uvfits' % (outpath, obs)))
-
-    shutil.rmtree(outpath)
+    # See that it still passes UVData check
+    assert ss.check()
 
 
-def test_scatter():
+def test_apply_flags():
 
-    figpath = os.path.join(DATA_PATH, 'figs/')
-    data = np.load('%s/rand_gauss_multivariate.npy' % (DATA_PATH))
-    fig, ax = plt.subplots()
-    pl.scatter_plot_2d(fig, ax, data[:, 0], data[:, 1])
-    fig.savefig('%s/scatter_test.png' % figpath)
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    ss = SS()
+
+    ss.read(testfile)
+
+    # Make sure no flags are applied to start with
+    assert not np.any(ss.data_array.mask), "There are some flags to start with."
+
+    # Apply flags, test equality, test attribute change
+    ss.apply_flags(flag_choice='original')
+    assert np.all(ss.flag_array == ss.data_array.mask), "Flag arrays are not equal"
+    assert ss.flag_choice is 'original', "Flag choice attribute was not changed"
+
+    # Revert flags back, test equality, test attribute change
+    ss.apply_flags(flag_choice=None)
+    assert not np.any(ss.data_array.mask), "Flags did not revert back back"
+    assert ss.flag_choice is None, "Flag choice attribute did not revert back"
+
+    # Make a custom flag array where everything is flagged, check application
+    custom = np.ones_like(ss.flag_array)
+    ss.apply_flags(flag_choice='custom', custom=custom)
+    assert np.all(ss.data_array.mask), "The custom flag array was not applied"
+    assert ss.flag_choice is 'custom', "The flag choice attribute was not changed"
+
+    # Read an INS in (no flags by default) and flag a channel, test if it applies correctly
+    ins = INS(insfile)
+    ins.metric_array.mask[:, 0] = True
+    ss.apply_flags(flag_choice='INS', INS=ins)
+    assert np.all(ss.data_array.mask[:, 0, 0]), "Not all of the 0th channel was flagged."
+    assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
+    assert ss.flag_choice is 'INS'
+
+    # Make flag_choice custom but do not provide array - should keep old flags
+    ss.apply_flags(flag_choice='custom', custom=None)
+    assert not np.any(ss.data_array.mask), "Some of the channels other than the 0th were flagged"
+    assert ss.flag_choice is None
+
+    with pytest.raises(ValueError):
+        ss.apply_flags(flag_choice='bad_choice')
+
+
+def test_mixture_prob():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile)
+    ss.apply_flags('original')
+
+    # Generate the mixture probabilities
+    mixture_prob = ss.mixture_prob(bins='auto')
+
+    # Check that they sum to close to 1
+    assert np.isclose(np.sum(mixture_prob), 1), "Probabilities did not add up to close to 1"
+
+
+def test_rev_ind():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile)
+
+    # Make a band that will pick out only the largest value in the data
+    dat_sort = np.sort(np.abs(ss.data_array), axis=None)
+    band = [0.5 * (dat_sort[-2] + dat_sort[-1]), dat_sort[-1] + 1]
+
+    # Find the indices of this data point
+    ind = np.unravel_index(np.absolute(ss.data_array).argmax(), ss.data_array.shape)
+    # Convert the blt to a time index
+    t = ind[0] // ss.Nbls
+    f = ind[2]
+    p = ind[3]
+
+    # Make the waterfall histogram
+    wf_hist = ss.rev_ind(band)
+
+    # Check that it picked up that point
+    assert wf_hist[t, f, p] == 1, "The algorithm did not find the data point"
+
+    # Check no other points were picked up
+    assert np.count_nonzero(wf_hist) == 1, "The algorithm found other data"
+
+
+def test_write():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
+
+    ss = SS()
+    ss.read(testfile)
+
+    custom = np.zeros_like(ss.data_array.mask)
+    custom[:ss.Nbls] = 1
+
+    # Flags the first time and no others
+    ss.apply_flags(flag_choice='custom', custom=custom)
+
+    # Write this out without combining flags
+    ss.write(outfile, 'uvfits', filename_in=testfile, combine=False)
+
+    # Check if the flags propagated correctly
+    UV = UVData()
+    UV.read(outfile)
+    assert np.all(UV.flag_array[:2 * UV.Nbls]), "Not all expected flags were propagated"
+    assert not np.any(UV.flag_array[2 * UV.Nbls:]), "More flags were made than expected"
+    os.remove(outfile)

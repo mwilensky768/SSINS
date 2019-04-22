@@ -6,5 +6,3 @@ for RFI analysis in this package.
 
 .. autoclass:: SSINS.INS
   :members:
-
-  .. automethod:: __init__

@@ -7,269 +7,158 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
-from SSINS import image_plot, error_plot
 from SSINS import util
-from matplotlib import cm, use
-use('Agg')
-import matplotlib.pyplot as plt
+from SSINS.plot_lib import image_plot, hist_plot
 
 
-def INS_plot(INS, xticks=None, yticks=None, vmin=None, vmax=None,
-             events=False, ms_vmin=None, ms_vmax=None, data_cmap=cm.viridis,
-             xticklabels=None, yticklabels=None, zero_mask=False, aspect=None,
-             sig_thresh=None):
-    """Takes an INS and plots its relevant data products. Saves the plots out
-    in INS.outpath
+pol_dict_keys = np.arange(-8, 5)
+pol_dict_keys = np.delete(pol_dict_keys, 8)
+pol_dict_values = ['YX', 'XY', 'YY', 'XX', 'LR', 'RL', 'LL', 'RR', 'pI', 'pQ', 'pU', 'pV']
+pol_dict = dict(zip(pol_dict_keys, pol_dict_values))
+
+
+def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
+             vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
+             xticklabels=None, yticklabels=None, aspect='auto',
+             cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
+             xlabel='', ylabel='', log=False):
+
+    """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
     Args:
         INS (INS): The INS whose data is to be plotted. *Required*
+        prefix (str): A prefix for the output filepath e.g. "/outdir/plots/obsid" *Required*
+        file_ext (str): The type of image file to output
         xticks (sequence): The frequency channel indices to tick in INS waterfall plots.
         yticks (sequence): The time indices to tick in INS waterfall plots.
         vmin (float): The minimum of the colormap for the INS (non-mean-subtracted)
         vmax (float): The maximum of the colormap for the INS (non-mean-subtracted)
-        events (bool): Set to True to plot histograms of events between flagging iterations. Default is False.
         ms_vmin (float): The minimum of the colormap for the mean-subtracted INS
         ms_vmax (float): The maximum of the colormap for the mean-subtracted INS
         data_cmap (colormap): The colormap for the non-mean-subtracted data
         xticklabels (sequence of str): The labels for the frequency ticks
         yticklabels (sequence of str): The labels for the time ticks
-        zero_mask (bool): Set to True if zero'd data points ought to be masked. Default is False.
-        aspect (float or 'auto'): Set the aspect ratio of the waterfall plots.
-        sig_thresh (str): Used to tag the output plots with the sig_thresh used in flagging.
+        aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
     """
 
-    if not os.path.exists('%s/figs' % (INS.outpath)):
-        os.makedirs('%s/figs' % (INS.outpath))
+    from matplotlib import cm
+    import matplotlib.pyplot as plt
+
+    outdir = prefix[:prefix.rfind('/')]
+
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
 
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
                  'xticklabels': xticklabels,
                  'yticklabels': yticklabels,
-                 'zero_mask': zero_mask,
                  'aspect': aspect}
 
-    suptitles = ['%s Incoherent Noise Spectrum' % (INS.obs),
-                 '%s Mean-Subtracted Incoherent Noise Spectrum' % (INS.obs)]
-
-    data_kwargs = [{'cbar_label': 'Amplitude (%s)' % (INS.vis_units),
+    data_kwargs = [{'cbar_label': cbar_label,
                     'mask_color': 'white',
                     'vmin': vmin,
                     'vmax': vmax,
-                    'cmap': data_cmap},
-                   {'cbar_label': 'Deviation ($\hat{\sigma}$)',
+                    'cmap': data_cmap,
+                    'cbar_ticks': cbar_ticks,
+                    'log': log},
+                   {'cbar_label': 'Deviation $\hat{\sigma}$',
                     'mask_color': 'black',
                     'cmap': cm.coolwarm,
                     'vmin': ms_vmin,
-                    'vmax': ms_vmax}]
+                    'vmax': ms_vmax,
+                    'cbar_ticks': ms_cbar_ticks,
+                    'midpoint': True}]
 
-    tags = ['match', 'chisq', 'samp_thresh']
-    tag = ''
-    if sig_thresh is not None:
-        tag += '_%s' % sig_thresh
-    for subtag in tags:
-        if len(getattr(INS, '%s_events' % (subtag))):
-            tag += '_%s' % subtag
-
-    fig, ax = plt.subplots(figsize=(14, 8), nrows=INS.data.shape[3],
+    fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False)
-    fig.suptitle('%s Incoherent Noise Spectrum' % INS.obs)
-    for i, string in enumerate(['', '_ms']):
+
+    for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
-        for pol in range(INS.data.shape[3]):
-            image_plot(fig, ax[pol, i],
-                       getattr(INS, 'data%s' % (string))[:, 0, :, pol],
-                       title=INS.pols[pol], freq_array=INS.freq_array[0],
-                       **im_kwargs)
-    plt.tight_layout()
-    fig.savefig('%s/figs/%s_%s_INS_data%s.png' %
-                (INS.outpath, INS.obs, INS.flag_choice, tag))
+        for pol_ind in range(INS.metric_array.shape[2]):
+            image_plot(fig, ax[pol_ind, i],
+                       getattr(INS, 'metric_%s' % data)[:, :, pol_ind],
+                       title=pol_dict[INS.polarization_array[pol_ind]],
+                       xlabel=xlabel, ylabel=ylabel, **im_kwargs)
+    plt.tight_layout(h_pad=1, w_pad=1)
+    fig.savefig('%s_SSINS.%s' % (prefix, file_ext))
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(14, 8))
-    x = INS.bins[:-1] + 0.5 * np.diff(INS.bins)
-    error_plot(fig, ax, x, INS.counts, xlabel='Deviation ($\hat{\sigma}$)',
-               title='%s Incoherent Noise Spectrum Histogram' % (INS.obs),
-               legend=False)
-    fig.savefig('%s/figs/%s_%s_INS_hist%s.png' % (INS.outpath, INS.obs, INS.flag_choice, tag))
-    plt.close(fig)
 
-    if events:
-        for i, string in enumerate(['match_', 'chisq_']):
-            if len(getattr(INS, '%shists' % (string))):
-                for k, hist in enumerate(getattr(INS, '%shists' % string)):
-                    fig, ax = plt.subplots(figsize=(14, 8))
-                    exp, var = util.hist_fit(hist[0], hist[1])
-                    x = hist[1][:-1] + 0.5 * np.diff(hist[1])
-                    error_plot(fig, ax, x, hist[0],
-                               xlabel='Deviation ($\hat{\sigma}$)')
-                    error_plot(fig, ax, x, exp, yerr=np.sqrt(var),
-                               xlabel='Deviation ($\hat{\sigma}$)')
-                    fig.savefig('%s/figs/%s_f%i_f%i_%sevent_hist_%i.png' %
-                                (INS.outpath, INS.obs,
-                                 getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[0],
-                                 getattr(INS, '%sevents' % string)[0][2].indices(INS.data.shape[2])[1],
-                                 string, k))
-                    plt.close(fig)
+def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log',
+             bins='auto', legend=True, ylim=None, density=False, pre_flag=True,
+             post_flag=True, pre_model=True, post_model=True, error_sig=0,
+             alpha=0.5, pre_label='', post_label='', pre_model_label='',
+             post_model_label='', pre_color='black', post_color='blue',
+             pre_model_color='purple', post_model_color='green'):
 
-
-def MF_plot(MF, xticks=None, yticks=None, vmin=None, vmax=None, ms_vmin=None,
-            ms_vmax=None, xticklabels=None, yticklabels=None, zero_mask=False,
-            aspect=None, sig_thresh=None):
-
-    """A very thin wrapper around INS_plot. Just a convenience function for
-    iterating with getattr(). Args are identical, except that it takes a MF
-    instead of an INS.
-    """
-
-    INS_plot(MF.INS, xticks=xticks, yticks=yticks, vmin=vmin, vmax=vmax,
-             ms_vmin=ms_vmin, ms_vmax=ms_vmax, xticklabels=xticklabels,
-             yticklabels=yticklabels, zero_mask=zero_mask, aspect=aspect,
-             sig_thresh=sig_thresh)
-
-
-def VDH_plot(VDH, xticks=None, yticks=None, vmin=None, vmax=None,
-             xticklabels=None, yticklabels=None, aspect=None, xscale='log',
-             yscale='log', ylim=None, leg_size=None):
-
-    """A function for plotting the relevant data from a VDH. Saves plots at
-    VDH.outpath
+    """Plots a histogram of the amplitudes of the visibility differences that
+    result from sky subtraction.
 
     Args:
-        VDH (VDH): A VDH instance. Required argument.
-        xticks (sequence): The frequency channel indicies to be ticked in waterfall histograms.
-        yticks (sequence): The time indices to be ticked in waterfall histograms.
-        vmin (float): The minimum value for the colormap in waterfall histograms.
-        vmax (float): The maximum value for the colormap in waterfall histograms.
-        xticklabels (sequence): The labels for the ticked frequencies in the waterfall histograms.
-        yticklabels (sequence): The labels for the ticked time in the waterfall histograms.
-        aspect ('auto', 'equal', or float): The aspect ratio for the waterfall histograms.
-        xscale ('log', 'linear'): The scale for the x-axis of the 1-d histogram. Defaults to 'log'.
-        yscale ('log', 'linear'): The scale for the y-axis of the 1-d histogram. Defaults to 'log'.
-        ylim (sequence): The limits for the y-axis in the 1-d histogram.
-        leg_size (named fontsize): The size for the font in the legend.
+        SS (SS): An SS object whose data to plot *Required*
+        prefix (str): A prefix for the output filepath of the plot e.g. /outdir/plots/obsid *Required*
+        file_ext (str): The file extension for the plot. Determines the filetype of the image.
+        xlabel (str): The label for the horizontal axis of the histogram
+        xscale ('linear' or 'log'): The scale of the horizontal axis
+        yscale ('linear' or 'log'): The scale of the vertical axis
+        bins: See numpy.histogram() documentation
+        legend (bool): Whether or not to display a legend
+        ylim: Set the limits for the vertical axis
+        density (bool): Report a probability density instead of counts
+        pre_flag (bool): Plot the data without applying flags
+        post_flag (bool): Plot the data after applying flags
+        pre_model (bool): Plot a rayleigh-mixture fit made from data without applying flags
+        post_model (bool): Plot a rayleigh-mixture fit made from data after applying flags
+        error_sig (float): Plot error shades to specified number of sigma
+        alpha (float): Specify alpha parameter for error shading
+        pre_label (str): The legend label for amplitudes made from data without flags applied.
+        post_label (str): The legend label for amplitudes made from data with flags applied.
+        pre_model_label (str): The legend label for a model made from data without flags applied.
+        post_model_label (str): The legend label for a model made from data with flags applied.
+        pre_color (str): The color of the pre-flag histogram
+        post_color (str): The color of the post-flag histogram
+        pre_model_color (str): The color of the pre-flag model
+        post_model_color (str): The color of the post-flag model
     """
 
-    im_kwargs = {'xticks': xticks,
-                 'yticks': yticks,
-                 'vmin': vmin,
-                 'vmax': vmax,
-                 'xticklabels': xticklabels,
-                 'yticklabels': yticklabels,
-                 'aspect': aspect,
-                 'cbar_label': '# Baselines',
-                 'zero_mask': True,
-                 'mask_color': 'white'}
+    import matplotlib.pyplot as plt
 
-    hist_kwargs = {'counts': {},
-                   'fits': {}}
+    outdir = prefix[:prefix.rfind('/')]
 
-    labels = {'counts': ['All Measurements', 'Measurements, %s Flags' %
-                         (VDH.flag_choice)],
-              'fits': ['All Fit', 'Fit, %s Flags' % (VDH.flag_choice)]}
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
 
-    fit_tags = ['All', 'Flags']
+    fig, ax = plt.subplots()
 
-    for i in range(1 + bool(VDH.flag_choice)):
-        if hasattr(VDH, 'W_hist'):
-            fig, ax = plt.subplots(figsize=(14, 8), nrows=(1 + len(VDH.pols)))
-        else:
-            fig, ax = plt.subplots(figsize=(14, 8))
-            ax = [ax, ]
-        fig.suptitle('%s Visibility Difference Histogram, %s' %
-                     (VDH.obs, labels['counts'][i]))
-        x = []
-        for k in range(1 + bool(VDH.flag_choice)):
-            x = VDH.bins[k][:-1] + 0.5 * np.diff(VDH.bins[k])
-            for attr in ['counts', 'fits']:
-                if hasattr(VDH, attr) and getattr(VDH, attr)[k] is not None:
-                    if attr is 'fits':
-                        hist_kwargs['fits']['yerr'] = VDH.errors[k]
-                    error_plot(fig, ax[0], x, getattr(VDH, attr)[k],
-                               xscale=xscale, yscale=yscale,
-                               label=labels[attr][k],
-                               xlabel='Amplitude (%s)' % (VDH.vis_units),
-                               ylim=ylim, leg_size=leg_size,
-                               **hist_kwargs[attr])
-        if hasattr(VDH, 'W_hist'):
-            for m in range(2):
-                ax[0].axvline(x=VDH.window[m], color='black')
-            for pol in range(len(VDH.pols)):
-                image_plot(fig, ax[pol + 1], VDH.W_hist[i][:, 0, :, pol],
-                           title=VDH.pols[pol], freq_array=VDH.freq_array[0],
-                           **im_kwargs)
-        fig.savefig('%s/figs/%s_%s_VDH.png' %
-                    (VDH.outpath, VDH.obs, fit_tags[i]))
-        plt.close(fig)
-
-
-def ES_plot(ES, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
-            zero_mask=False, mask_color='white', aspect=None, vmin=None,
-            vmax=None, xscale='linear', yscale='log'):
-
-    """Plots relevant information contained in an ES instance. Saves them to
-    ES.outpath.
-
-    Args:
-        ES (ES): An ES instance to plot information of.
-        xticks (sequence): The u-indices to tick in the grid.
-        yticks (sequence): The v-indices to tick in the grid.
-        xticklabels (sequence): The labels for the ticked u-indices.
-        yticklabels (sequence): The labels for the v-indices.
-        zero_mask (bool): Whether or not to mask grid points with zero power. Default is False.
-        mask_color: The color of the mask.
-        aspect (float, 'equal', 'auto'): The aspect ratio for the grid plot.
-        vmin (float): The minimum value for the colorbar.
-        vmax (float): The maximum value for the colorbar.
-        xscale ('linear', 'log'): The scale for the x-axis in the event histograms. Default is 'linear'.
-        yscale ('linear', 'log'): The scale for the y-axis in the event histograms. Default is 'log'.
-    """
-
-    im_kwargs = {'vmin': vmin,
-                 'vmax': vmax,
-                 'xlabel': '$\lambda u$ (m)',
-                 'ylabel': '$\lambda v$ (m)',
-                 'cbar_label': 'Amplitude (%s)' % (ES.vis_units),
-                 'xticks': xticks,
-                 'yticks': yticks,
-                 'xticklabels': xticklabels,
-                 'yticklabels': yticklabels,
-                 'zero_mask': zero_mask,
-                 'mask_color': mask_color,
-                 'aspect': aspect,
-                 'grid': ES.grid}
-
-    hist_labels = ['Measurements', 'Fit']
-    fig_tags = ['hist', 'grid']
-
-    if ES.events is not None and len(ES.events):
-        for i, event in enumerate(ES.events):
-            title_tup = (ES.obs,
-                         ES.freq_array[0, event[2].indices(len(ES.freq_array[0]))[0]] * 10 ** (-6),
-                         ES.freq_array[0, event[2].indices(len(ES.freq_array[0]))[1] - 1] * 10 ** (-6),
-                         event[0])
-            yerr = [None, ES.exp_error[i]]
-            fig_hist, ax_hist = plt.subplots(figsize=(14, 8))
-            fig_im, ax_im = plt.subplots(figsize=(14, 8), nrows=len(ES.pols),
-                                         squeeze=False)
-            fig_im.suptitle('%s Event-Averaged Grid, f%.2f Mhz - f%.2f Mhz, t%i' %
-                            title_tup)
-            x = ES.bins[i][:-1] + 0.5 * np.diff(ES.bins[i])
-            for k, string in enumerate(['', 'exp_']):
-                error_plot(fig_hist, ax_hist, x, getattr(ES, '%scounts' % (string))[i],
-                           xlabel='Amplitude (%s)' % (ES.vis_units),
-                           label=hist_labels[k], yerr=yerr[k], xscale=xscale,
-                           yscale=yscale,
-                           title='%s Event-Averaged Histogram, f%.2f Mhz - f%.2f Mhz, t%i' %
-                           title_tup)
-            for cut in ES.cutoffs[i]:
-                ax_hist.axvline(x=cut, color='black')
-            for k in range(len(ES.pols)):
-                image_plot(fig_im, ax_im[k, 0], ES.uv_grid[i][k], title=ES.pols[k],
-                           **im_kwargs)
-
-            fig_hist.savefig('%s/figs/%s_hist_%i.png' % (ES.outpath, ES.obs, i))
-            fig_im.savefig('%s/figs/%s_grid_%i.png' % (ES.outpath, ES.obs, i))
-            plt.close(fig_hist)
-            plt.close(fig_im)
+    if pre_model or post_model:
+        model_func = SS.mixture_prob
     else:
-        print('No events in ES class. Not making plots.')
+        model_func = None
+
+    if post_flag and SS.flag_choice is not None:
+        hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
+                  bins=bins, legend=legend, model_func=model_func,
+                  yscale=yscale, ylim=ylim, density=density, label=post_label,
+                  xlabel=xlabel, error_sig=error_sig, alpha=alpha,
+                  model_label=post_model_label, color=post_color,
+                  model_color=post_model_color)
+    if pre_flag:
+        if SS.flag_choice is not 'original':
+            temp_flags = np.copy(SS.data_array.mask)
+            temp_choice = '%s' % SS.flag_choice
+        else:
+            temp_choice = 'original'
+        SS.apply_flags(flag_choice=None)
+        hist_plot(fig, ax, np.abs(SS.data_array).flatten(), bins=bins,
+                  legend=legend, model_func=model_func, yscale=yscale,
+                  ylim=ylim, density=density, label=pre_label, alpha=alpha,
+                  xlabel=xlabel, error_sig=error_sig, model_label=pre_model_label,
+                  color=pre_color, model_color=pre_model_color)
+        if temp_choice is 'original':
+            SS.apply_flags(flag_choice='original')
+        else:
+            SS.apply_flags(flag_choice='custom', custom=temp_flags)
+            SS.flag_choice = temp_choice
+
+    fig.savefig('%s_VDH.%s' % (prefix, file_ext))
