@@ -9,130 +9,73 @@ from scipy.special import erfcinv
 import os
 import warnings
 import pickle
+from pyuvdata import UVFlag
+import yaml
+from SSINS import version
 
 
-class INS(object):
+class INS(UVFlag):
     """
-    Defines the incoherent noise spectrum (INS) class.
+    Defines the incoherent noise spectrum (INS) class, which is a subclass of
+    the UVFlag class, a member of the pyuvdata software package.
     """
 
-    def __init__(self, data=None, Nbls=None, freq_array=None, pols=None,
-                 flag_choice=None, vis_units=None, obs=None, outpath=None,
-                 match_events=None, match_hists=None, chisq_events=None,
-                 chisq_hists=None, read_paths={}, samp_thresh_events=None,
-                 order=0, coeff_write=False):
+    def __init__(self, input, history='', label='', order=0, mask_file=None,
+                 match_events_file=None):
 
         """
-        init function for the INS class. Can set the attributes manually, or
-        read some in using the read_paths dictionary. The keys for read_paths
-        are the attribute names as strings, while the values are paths to
-        numpy loadable binary files (pickle is used for masked arrays). The init
-        function will calculate the Calculated Attributes (see below).
+        init function for the INS class.
 
         Args:
-            data: The data which will be assigned to the data attribute. (Required)
-            Nbls: The number of baselines that went into each element of the
-                  data array. (Required)
-            freq_array: The frequencies (in hz) that describe the data, as found
-                        in a UVData object. (Required)
-            pols: The polarizations present in the data, in the order of the data array.
-            flag_choice: The flag choice used in the original SS object.
-            vis_units: The units for the visibilities.
-            obs: The obsid for the data.
-            outpath: The base directory for data outputs.
-            match_events: A list of events found by the filter in the MF class.
-                          Usually not assigned initially.
-            match_hists: Histograms describing the match_events.
-                         Usually not assigned initially.
-            chsq_events: Events found by the chisq_test in the MF class.
-                         Usually not assigned initially.
-            chisq_hists: Histograms describing the chisq events.
-                         Usually not assigned initially.
-            read_paths: A dictionary that can be used to read in a match filter,
-                        rather than passing attributes to init or constructing
-                        from an SS object. The keys are the attributes to be
-                        passed in, while the values are paths to files that
-                        contain the attribute data.
-            samp_thresh_events: Events using the samp_thresh_test in the MF class.
-                                Usually not assigned initially.
-            order: The order of polynomial fit for each frequency channel when
-                   calculating the mean-subtracted spectrum. Setting order=0
-                   just calculates the mean in each frequency channel.
-            coeff_write: An option to write out the coefficients of the polynomial
-                         fit to each frequency channel.
+            input: See UVFlag documentation
+            history: See UVFlag documentation
+            label: See UVFlag documentation
+            order: Sets the order parameter for the INS object
+            mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file: A path to a .yml file that has events caught by the match filter
         """
 
-        opt_args = {'obs': obs, 'pols': pols, 'vis_units': vis_units,
-                    'outpath': outpath, 'flag_choice': flag_choice}
-        for attr in ['obs', 'outpath']:
-            if opt_args[attr] is None:
-                warnings.warn('%s%s' % ('In order to save outputs and use Catalog.py,',
-                                        'please supply %s attribute' % (attr)))
-            else:
-                setattr(self, attr, opt_args[attr])
-
-        if flag_choice is None:
-            warnings.warn('%s%s%s%s' % ('flag_choice is set to None. If this ',
-                                        'does not reflect the flag_choice of ',
-                                        'the original data, then saved arrays ',
-                                        'will be mislabled'))
-        self.flag_choice = flag_choice
-        """The flag choice for the original SS object."""
-
-        if not read_paths:
-            args = (data, Nbls, freq_array)
-            assert all([arg is not None for arg in args]),\
-                '%s%s%s' % ('Insufficient data given. You must supply a data',
-                            ' array, a Nbls array of matching shape, and a freq',
-                            '_array of matching sub-shape')
-            self.data = data
-            """The sky-subtracted visibilities averaged over the baselines.
-               Axes are (time, spw, freq, pol)."""
-            if not len(self.data.mask.shape):
-                self.data.mask = np.zeros(self.data.shape, dtype=bool)
-            self.Nbls = Nbls
-            """The number of baselines that went into each element of the data array."""
-            self.freq_array = freq_array
-            """The frequencies (in hz) describing the data."""
-
-            for attr in ['pols', 'vis_units']:
-                if opt_args[attr] is None:
-                    warnings.warn('%s%s%s' % ('In order to use Catalog_Plot.py',
-                                              ' with appropriate labels, please',
-                                              ' supply %s attribute' % (attr)))
-                else:
-                    setattr(self, attr, opt_args[attr])
-
-            kwargs = {'match_events': match_events, 'match_hists': match_hists,
-                      'chisq_events': chisq_events, 'chisq_hists': chisq_hists,
-                      'samp_thresh_events': samp_thresh_events}
-            for kwarg in kwargs:
-                if kwargs[kwarg] is None:
-                    setattr(self, kwarg, [])
-                else:
-                    setattr(self, kwarg, kwargs[kwarg])
+        super(INS, self).__init__(input, mode='metric', copy_flags=False,
+                                  waterfall=False, history='', label='')
+        if self.type is 'baseline':
+            # Set the metric array to the data array without the spw axis
+            self.metric_array = np.abs(input.data_array)
+            """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
+            self.weights_array = np.logical_not(input.data_array.mask)
+            """The number of baselines that contributed to each element of the metric_array"""
+            super(INS, self).to_waterfall(method='mean')
+        if not hasattr(self.metric_array, 'mask'):
+            self.metric_array = np.ma.masked_array(self.metric_array)
+        if mask_file is None:
+            # Only mask elements initially if no baselines contributed
+            self.metric_array.mask = self.weights_array == 0
         else:
-            self._read(read_paths)
+            # Read in the flag array
+            flag_uvf = UVFlag(mask_file)
+            self.metric_array.mask = np.copy(flag_uvf.flag_array)
+            del flag_uvf
 
-        self.data_ms = self.mean_subtract(order=order, coeff_write=coeff_write)
-        """The mean-subtracted data."""
-        self.counts, self.bins, self.sig_thresh = self.hist_make()
-        """Histogram data for the mean-subtracted data array."""
+        if match_events_file is None:
+            self.match_events = []
+            """A list of tuples that contain information about events caught during match filtering"""
+        else:
+            self.match_events = self.match_events_read(match_events_file)
 
-    def mean_subtract(self, f=slice(None), order=0, coeff_write=False):
+        self.order = order
+        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+        self.metric_ms = self.mean_subtract()
+        """The incoherent noise spectrum, after mean-subtraction."""
+
+    def mean_subtract(self, f=slice(None)):
 
         """
         A function which calculated the mean-subtracted spectrum from the
         regular spectrum. A spectrum made from a perfectly clean observation
-        will be standardized (written as a z-score) by this operation.
+        will be written as a z-score by this operation.
 
         Args:
             f: The frequency slice over which to do the calculation. Usually not
                set by the user.
-            order: The order of the polynomial fit for each frequency channel, by LLSE.
-                   Setting order=0 just calculates the mean.
-            coeff_write: Option to write out the polynomial fit coefficients for
-                         each frequency channel when this function is run.
 
         Returns:
             MS (masked array): The mean-subtracted data array.
@@ -141,14 +84,14 @@ class INS(object):
         # This constant is determined by the Rayleigh distribution, which
         # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
-        if not order:
-            MS = (self.data[:, :, f] / self.data[:, :, f].mean(axis=0) - 1) * np.sqrt(self.Nbls[:, :, f] / C)
+        if not self.order:
+            MS = (self.metric_array[:, f] / self.metric_array[:, f].mean(axis=0) - 1) * np.sqrt(self.weights_array[:, f] / C)
         else:
-            MS = np.zeros_like(self.data[:, :, f])
+            MS = np.zeros_like(self.metric_array[:, f])
             # Make sure x is not zero so that np.polyfit can proceed without nans
-            x = np.arange(1, self.data.shape[0] + 1)
-            for i in range(self.data.shape[-1]):
-                y = self.data[:, 0, f, i]
+            x = np.arange(1, self.metric_array.shape[0] + 1)
+            for i in range(self.metric_array.shape[-1]):
+                y = self.metric_array[:, f, i]
                 # Only iterate over channels that are not fully masked
                 good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
                 # Create a subarray mask of only those good channels
@@ -159,130 +102,112 @@ class INS(object):
                 for k in range(unique_masks.shape[1]):
                     # Channels which share a mask
                     chans = np.where(mask_inv == k)[0]
-                    coeff = np.ma.polyfit(x, good_data[:, chans], order)
-                    if coeff_write:
-                        with open('%s/%s_ms_poly_coeff_order_%i_%s.npy' %
-                                  (self.outpath, self.obs, order, self.pols[i]), 'wb') as file:
-                            pickle.dump(coeff, file)
-                    mu = np.sum([np.outer(x**(order - k), coeff[k]) for k in range(order + 1)],
+                    coeff = np.ma.polyfit(x, good_data[:, chans], self.order)
+                    mu = np.sum([np.outer(x**(self.order - k), coeff[k]) for k in range(self.order + 1)],
                                 axis=0)
-                    MS[:, 0, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.Nbls[:, 0, f, i][:, good_chans[chans]] / C)
+                    MS[:, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.weights_array[:, f, i][:, good_chans[chans]] / C)
 
         return(MS)
 
-    def hist_make(self, sig_thresh=None, event=None):
-
+    def mask_to_flags(self):
         """
-        A function which will make histograms of the mean-subtracted data.
-
-        Args:
-            sig_thresh: The significance threshold within which to make the
-                        primary bins. Bins are of unit width. Data outside the
-                        sig_thresh will be placed in a single outlier bin.
-                        Will calculate a reasonable one by default.
-            event: Used to histogram a single shape or frequency channel.
-                   Providing an event as found in the INS.match_events list
-                   will histogram the data corresponding to the shape for that
-                   event, where the data is averaged over that shape before
-                   histogramming.
+        A function that propagates a mask on sky-subtracted data to flags that
+        can be applied to the original data, pre-subtraction. The flags are
+        propagated in such a way that if a time is flagged in the INS, then
+        both times that could have contributed to that time in the sky-subtraction
+        step are flagged.
 
         Returns:
-            counts (array): The counts in each bin.
-            bins (array): The bin edges.
-            sig_thresh (float): The sig_thresh parameter. Will be the calculated value
-                                if sig_thresh is None, else it will be what sig_thresh
-                                was set to.
+            flags: The final flag array obtained from the mask.
         """
+        shape = list(self.metric_array.shape)
+        flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+        flags[:-1] = self.metric_array.mask
+        flags[1:] = np.logical_or(flags[1:], flags[:-1])
 
-        if sig_thresh is None:
-            sig_thresh = np.sqrt(2) * erfcinv(1. / np.prod(self.data.shape))
-        bins = np.linspace(-sig_thresh, sig_thresh,
-                           num=int(2 * np.ceil(2 * sig_thresh)))
-        if event is None:
-            dat = self.data_ms
-        else:
-            N = np.count_nonzero(np.logical_not(self.data_ms.mask[:, 0, event[2]]), axis=1)
-            dat = self.data_ms[:, 0, event[2]].mean(axis=1) * np.sqrt(N)
-        if dat.min() < -sig_thresh:
-            bins = np.insert(bins, 0, dat.min())
-        if dat.max() > sig_thresh:
-            bins = np.append(bins, dat.max())
-        counts, _ = np.histogram(dat[np.logical_not(dat.mask)],
-                                 bins=bins)
+        return(flags)
 
-        return(counts, bins, sig_thresh)
+    def write(self, prefix, clobber=False, data_compression='lzf',
+              output_type='data'):
 
-    def save(self, sig_thresh=None):
         """
-        Writes out relevant data products.
+        Writes attributes specified by output_type argument to appropriate files
+        with a prefix given by prefix argument.
 
         Args:
-            sig_thresh: Can give a little sig_thresh tag at the end of the
-                        filename if desired. (Technically this does not have
-                        to be an integer, so you can tag it however you want.)
+            prefix: The filepath prefix for the output file e.g. /analysis/SSINS_outdir/obsid
+            clobber: See UVFlag documentation
+            data_compression: See UVFlag documentation
+            output_type ('data', 'z_score', 'mask', 'flags', 'match_events'):
+                data - outputs the metric_array attribute into an h5 file
+                z_score - outputs the the metric_ms attribute into an h5 file
+                mask - outputs the mask for the metric_array attribute into an h5 file
+                flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
+                match_events - Writes the match_events attribute out to a human-readable yml file
         """
-        tags = ['match', 'chisq', 'samp_thresh']
-        tag = ''
-        if sig_thresh is not None:
-            tag += '_%s' % sig_thresh
-        for subtag in tags:
-            if len(getattr(self, '%s_events' % (subtag))):
-                tag += '_%s' % subtag
 
-        for string in ['arrs', 'metadata']:
-            if not os.path.exists('%s/%s' % (self.outpath, string)):
-                os.makedirs('%s/%s' % (self.outpath, string))
+        version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
+        version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
+        if output_type is not 'match_events':
+            filename = '%s_SSINS_%s.h5' % (prefix, output_type)
+        else:
+            filename = '%s_SSINS_%s.yml' % (prefix, output_type)
+        self.history += 'Wrote %s to %s using SSINS %s. ' % (filename, output_type, version_hist_substr)
+        if output_type is 'data':
+            self.metric_array = self.metric_array.data
+            super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
+            self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
+        elif output_type is 'z_score':
+            z_uvf = self.copy()
+            z_uvf.metric_array = np.copy(self.metric_ms.data)
+            super(INS, z_uvf).write(filename, clobber=clobber, data_compression=data_compression)
+            del z_uvf
+        elif output_type is 'mask':
+            mask_uvf = self.copy()
+            mask_uvf.to_flag()
+            mask_uvf.flag_array = np.copy(self.metric_array.mask)
+            super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
+            del mask_uvf
+        elif output_type is 'flags':
+            flag_uvf = self.copy()
+            flag_uvf.to_flag()
+            flag_uvf.flag_array = self.mask_to_flags()
+            super(INS, flag_uvf).write(filename, clobber=clobber, data_compression=data_compression)
+            del flag_uvf
+        elif output_type is 'match_events':
+            yaml_dict = {'time_ind': [],
+                         'freq_slice': [],
+                         'shape': [],
+                         'sig': []}
+            for event in self.match_events:
+                yaml_dict['time_ind'].append(event[0])
+                yaml_dict['freq_slice'].append(event[1])
+                yaml_dict['shape'].append(event[2])
+                yaml_dict['sig'].append(event[3])
+            with open(filename, 'w') as outfile:
+                yaml.dump(yaml_dict, outfile, default_flow_style=False)
+        else:
+            raise ValueError("output_type is %s. Options are 'data', 'z_score', 'flags', 'mask', and 'match_events'" % output_type)
 
-        for attr in ['data', 'data_ms', 'Nbls']:
-            with open('%s/arrs/%s_%s_INS_%s%s.npym' %
-                      (self.outpath, self.obs, self.flag_choice, attr, tag), 'wb') as f:
-                pickle.dump(getattr(self, attr), f)
-        for attr in ['counts', 'bins']:
-            np.save('%s/arrs/%s_%s_INS_%s%s.npy' %
-                    (self.outpath, self.obs, self.flag_choice, attr, tag),
-                    getattr(self, attr))
-        for attr in ['match_events', 'match_hists', 'chisq_events',
-                     'chisq_hists', 'samp_thresh_events']:
-            if len(getattr(self, attr)):
-                np.save('%s/arrs/%s_%s_INS_%s.npy' %
-                        (self.outpath, self.obs, self.flag_choice, attr),
-                        getattr(self, attr))
-
-        for attr in ['freq_array', 'pols', 'vis_units']:
-            if hasattr(self, attr):
-                np.save('%s/metadata/%s_%s.npy' % (self.outpath, self.obs, attr),
-                        getattr(self, attr))
-
-    def _read(self, read_paths):
+    def match_events_read(self, filename):
         """
-        Reads in attributes from numpy loadable (or depicklable) files.
+        Reads match events from file specified by filename argument
 
         Args:
-            read_paths: A dictionary whose keys are the attributes to be read in
-                        and whose values are paths to files where the attribute
-                        data is written.
+            filename: The yml file with the stored match_events
+
+        Returns:
+            match_events: The match_events in the yml file
         """
 
-        for arg in ['data', 'Nbls', 'freq_array']:
-            assert arg in read_paths,\
-                'You must supply a path to a numpy loadable %s file for read_paths entry' % (arg)
-            setattr(self, arg, np.load(read_paths[arg]))
-        if not len(self.data.mask.shape):
-            data.mask = np.zeros(self.data.shape, dtype=bool)
-        for attr in ['pols', 'vis_units']:
-            if attr not in read_paths:
-                warnings.warn('In order to use Catalog_Plot.py, please supply\
-                               path to numpy loadable %s attribute for read_paths entry' % (attr))
-            else:
-                setattr(self, attr, np.load(read_paths[attr]))
-        for attr in ['match', 'chisq']:
-            for subattr in ['events', 'hists']:
-                attribute = '%s_%s' % (attr, subattr)
-                if attribute in read_paths:
-                    setattr(self, attribute, list(np.load(read_paths[attribute])))
-                else:
-                    setattr(self, attribute, [])
-        if 'samp_thresh_events' in read_paths:
-            self.samp_thresh_events = list(np.load(read_paths['samp_thresh_events']))
-        else:
-            self.samp_thresh_events = []
+        with open(filename, 'r') as infile:
+            yaml_dict = yaml.load(infile)
+
+        match_events = []
+        for i in range(len(yaml_dict['time_ind'])):
+            match_events.append((yaml_dict['time_ind'][i],
+                                 yaml_dict['freq_slice'][i],
+                                 yaml_dict['shape'][i],
+                                 yaml_dict['sig'][i]))
+
+        return(match_events)
