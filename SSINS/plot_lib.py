@@ -12,7 +12,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xlabel='', ylabel='', midpoint=False, aspect='auto',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
-               cbar_ticks=None):
+               cbar_ticks=None, font_size='medium'):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -37,6 +37,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         yticklabels: The labels for the yticks
         mask_color: The color for masked data values, if any
         cbar_ticks: The tickmarks for the colorbar
+        font_size: Font size is set globally with this parameter.
     """
 
     from matplotlib import colors, cm
@@ -79,11 +80,11 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     cmap.set_bad(color=mask_color)
     cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks)
-    cbar.set_label(cbar_label)
+    cbar.set_label(cbar_label, fontsize=font_size)
 
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=font_size)
+    ax.set_xlabel(xlabel, fontsize=font_size)
+    ax.set_ylabel(ylabel, fontsize=font_size)
 
     if xticks is not None:
         ax.set_xticks(xticks)
@@ -93,12 +94,15 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
+    cbar.ax.tick_params(labelsize=font_size)
+    ax.tick_params(labelsize=font_size)
 
 
 def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
               label='', legend=True, title='', xlabel='', ylim=None,
-              density=False, model_func=None, error_sig=0, alpha=0.5, model_label='',
-              **model_kwargs):
+              density=False, model_func=None, error_sig=0, model_label='',
+              color='blue', model_color='orange', alpha=0.5,
+              font_size='medium', **model_kwargs):
 
     """
     A function that calculates and plots histograms. Can also make models using
@@ -119,22 +123,26 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
         density: If True, report probability density instead of counts
         model_func: Default is None. Set to a callable function of the bin edges to make a model histogram.
         error_sig: Default is 0. If greater than zero, draw error shades out to error_sig sigma (significance).
-        alpha: The transparency parameter for the error shades.
         model_label: The legend label for the model
+        color: The color of the drawn histogram
+        model_color: The color of the drawn model (and errors)
+        alpha: The transparency parameter for the error shades.
         model_kwargs: Additional kwargs not included in the above list will be passed to model_func
+        font_size: Fontsize is set globally here
     """
 
-    counts, bins, _ = ax.hist(data, bins=bins, histtype='step', label=label,
-                              density=density)
+    counts, bins = np.histogram(data, bins=bins, density=density)
+    counts = np.append(counts, 0)
+    ax.plot(bins, counts, label=label, drawstyle='steps-post', color=color)
 
     ax.set_xscale(xscale)
     ax.set_yscale(yscale)
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
+    ax.set_title(title, fontsize=font_size)
+    ax.set_xlabel(xlabel, fontsize=font_size)
     if density:
-        ax.set_ylabel('Probability Density')
+        ax.set_ylabel('Probability Density', fontsize=font_size)
     else:
-        ax.set_ylabel('Counts')
+        ax.set_ylabel('Counts', fontsize=font_size)
 
     if model_func is not None:
         model_prob = model_func(bins, **model_kwargs)
@@ -143,7 +151,6 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
         else:
             model_y = model_prob * np.sum(counts)
         model_y = np.append(model_y, 0)
-        ax.plot(bins, model_y, label=model_label, drawstyle='steps-post')
         if error_sig:
             N = np.prod(data.shape)
             yerr = np.sqrt(N * model_prob * (1 - model_prob))
@@ -151,11 +158,14 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
                 yerr /= (N * np.diff(bins))
             yerr = error_sig * np.append(yerr, 0)
             ax.fill_between(bins, model_y - yerr, model_y + yerr, alpha=alpha,
-                            label='%s Error' % model_label, step='post')
+                            step='post', color=model_color)
+            model_label += ' and %s$\sigma$ Uncertainty' % error_sig
+        ax.plot(bins, model_y, label=model_label, drawstyle='steps-post', color=model_color)
 
     if legend:
-        ax.legend()
+        ax.legend(fontsize=font_size)
     if ylim is None:
         ax.set_ylim([0.9 * np.amin(counts[counts > 0]), 10 * np.amax(counts)])
     else:
         ax.set_ylim(ylim)
+    ax.tick_params(labelsize=font_size)
