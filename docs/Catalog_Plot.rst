@@ -6,4 +6,3 @@ in the plot_lib module, whose functions are named according to the classes whose
 data they help plot.
 
 .. automodule:: SSINS.Catalog_Plot
-  :members:
