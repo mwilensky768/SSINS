@@ -76,7 +76,8 @@ exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
-MOCK_MODULES = ['pyuvdata.UVFlag']
+MOCK_MODULES = ['pyuvdata',
+                'pyuvdata.UVFlag']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
