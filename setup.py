@@ -40,7 +40,8 @@ setup_args = {
                 'Scripts/Brightness_Dict_Integrate.py'],
     'version': version.version,
     'package_data': {'SSINS': data_files},
-    'install_requires': ['pyuvdata'],
+    'install_requires': ['pyuvdata', 'h5py', 'pyyaml'],
+    'dependency_links': ['git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata'],
     'zip_safe': False,
 }
 
