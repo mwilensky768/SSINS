@@ -1,2 +1,2 @@
 conda:
-  environment: rtd-env.yml
+  environment: /docs/rtd-env.yml
