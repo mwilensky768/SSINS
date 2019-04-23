@@ -1,12 +1,2 @@
-# conda environment specification for Read the Docs
-name: rtd
-dependencies:
-  - python=2.7
-  - numpy
-  - scipy
-  - astropy
-  - conda-forge::pypandoc
-  - conda-forge::pyuvdata
-  - matplotlib
-  - pyyaml
-  - h5py
+conda:
+  environment: rtd-env.yml
