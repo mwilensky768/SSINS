@@ -14,15 +14,6 @@
 #
 import os
 import sys
-import mock
-
-MOCK_MODULES = ['pyuvdata',
-                'pyuvdata.UVFlag']
-
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
-
-autodoc_mock_imports = ['pyuvdata', 'pyuvdata.UVFlag']
 
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
