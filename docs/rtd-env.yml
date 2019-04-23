@@ -2,11 +2,8 @@
 name: rtd
 dependencies:
   - python=2.7
-  - numpy
-  - scipy
-  - astropy
-  - conda-forge::pypandoc
-  - conda-forge::pyuvdata
-  - matplotlib
-  - pyyaml
-  - h5py
+  - pip:
+    - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata
+    - matplotlib
+    - pyyaml
+    - h5py
