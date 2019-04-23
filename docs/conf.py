@@ -14,6 +14,7 @@
 #
 import os
 import sys
+import mock
 
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
@@ -74,6 +75,11 @@ exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
+
+MOCK_MODULES = ['pyuvdata.UVFlag']
+
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
 
 
 # -- Options for HTML output -------------------------------------------------
