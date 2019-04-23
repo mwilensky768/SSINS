@@ -6,6 +6,7 @@ dependencies:
   - scipy
   - astropy
   - conda-forge::pypandoc
-  - pyuvdata
+  - conda-forge::pyuvdata
   - matplotlib
   - pyyaml
+  - h5py
