@@ -8,3 +8,4 @@ dependencies:
   - conda-forge::pypandoc
   - h5py
   - pyyaml
+  - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata
