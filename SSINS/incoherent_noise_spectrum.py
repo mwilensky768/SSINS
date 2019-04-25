@@ -128,11 +128,13 @@ class INS(UVFlag):
         return(flags)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
-              output_type='data'):
+              output_type='data', gpstime=None, nchans=32, ):
 
         """
         Writes attributes specified by output_type argument to appropriate files
-        with a prefix given by prefix argument.
+        with a prefix given by prefix argument. Can write mwaf files if required
+        mwaf keywords arguments are provided. Required mwaf keywords are not
+        required for any other purpose.
 
         Args:
             prefix: The filepath prefix for the output file e.g. /analysis/SSINS_outdir/obsid
@@ -144,6 +146,10 @@ class INS(UVFlag):
                 mask - outputs the mask for the metric_array attribute into an h5 file
                 flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
                 match_events - Writes the match_events attribute out to a human-readable yml file
+                mwaf - Writes an mwaf file by converting mask to flags.
+            gpstime: Required mwaf keyword. The gpstime of the observation.
+            nchans: Required mwaf keyword. The number of fine frequency channels in a coarse channel.
+
         """
 
         version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
@@ -186,8 +192,20 @@ class INS(UVFlag):
                 yaml_dict['sig'].append(event[3])
             with open(filename, 'w') as outfile:
                 yaml.dump(yaml_dict, outfile, default_flow_style=False)
+        elif output_type is 'mwaf':
+            from astropy.io import fits
+            # flags on all pols are the same - mwafs have no pol axis
+            flags = self.mask_to_flags()[:, :, 0]
+            # Figure out how many fine channels per coarse channel
+            NCHANS = int(np.round(1.28e6 / self.freq_array[1] - self.freq_array[0]))
+            prim_hdu = fits.PrimaryHDU(None)
+            prim_hdu['GPSTIME'] = gpstime
+            prim_hdu['NCHANS'] = NCHANS
+            prim_hdu['NANT'] = self.Nants_telescope
+
+
         else:
-            raise ValueError("output_type is %s. Options are 'data', 'z_score', 'flags', 'mask', and 'match_events'" % output_type)
+            raise ValueError("output_type %s is invalid. See documentation for options." % output_type)
 
     def match_events_read(self, filename):
         """

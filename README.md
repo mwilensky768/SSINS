@@ -13,6 +13,7 @@ SSINS is a python package intended for radio frequency interference flagging in 
 ### Optional Dependencies
 
 **matplotlib** will be necessary if the user wants to use the Catalog_Plot and plot_lib libraries
+**astropy** will be necessary if desiring to write mwaf files
 
 ## Installation
 
