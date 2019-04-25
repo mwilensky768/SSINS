@@ -89,7 +89,7 @@ if __name__ == "__main__":
             event_shapes = copy.deepcopy(args.shapes)
             event_shapes.remove('total')
         else:
-            event_shapes = arg.shapes
+            event_shapes = args.shapes
         if event_shapes:
             if args.red_events:
                 match_events = util.red_event_sort(ins.match_events, red_events)
