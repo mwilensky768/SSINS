@@ -33,12 +33,20 @@ def total_occ(ins, good_chans=None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--shapes', nargs='*', help="The shapes to calculate occupancy for")
-    parser.add_argument('-f', '--filelist', help="The list of paths to the SSINS data files, in the same order as obslist")
-    parser.add_argument('-r', '--rad_convert', action='store_true', help="Convert lst from radians to hours")
-    parser.add_argument('-b', '--branch', action='store_true', help="Map lst from [-pi, pi] instead of [0, 2pi]")
-    parser.add_argument('-o', '--outdir', help="The output directory. Will be made if non-existant!")
-    parser.add_argument('-i', '--ch_ignore', help="Text file with channels to ignore")
+    parser.add_argument('-s', '--shapes', nargs='*',
+                        help="The shapes to calculate occupancy for")
+    parser.add_argument('-f', '--filelist',
+                        help="The list of paths to the SSINS data files, in the same order as obslist")
+    parser.add_argument('-r', '--rad_convert', action='store_true',
+                        help="Convert lst from radians to hours")
+    parser.add_argument('-b', '--branch', action='store_true',
+                        help="Map lst from [-pi, pi] instead of [0, 2pi]")
+    parser.add_argument('-o', '--outdir',
+                        help="The output directory. Will be made if non-existant!")
+    parser.add_argument('-i', '--ch_ignore',
+                        help="Text file with channels to ignore")
+    parser.add_argument('-e', '--red_events', nargs='*', action='append',
+                        help="Redundant events for red_event_sort")
     args = parser.parse_args()
 
     times = []
@@ -51,6 +59,9 @@ if __name__ == "__main__":
         ch_ignore = [int(ch) for ch in ch_ignore]
     else:
         ch_ignore = None
+
+    if args.red_events:
+        red_events = [tuple(lis) for lis in args.red_events]
 
     for path in filelist:
         prefix = path[:path.rfind('_')]
@@ -80,6 +91,10 @@ if __name__ == "__main__":
         else:
             event_shapes = arg.shapes
         if event_shapes:
+            if args.red_events:
+                match_events = util.red_event_sort(ins.match_events, red_events)
+            else:
+                match_events = ins.match_events
             occs = util.event_fraction(ins.match_events, len(ins.time_array),
                                        event_shapes, len(ins.freq_array))
             for shape in event_shapes:
