@@ -1,11 +1,11 @@
 # conda environment specification for Read the Docs
 name: rtd
 dependencies:
-  - python=3.6
+  - python=2.7
   - numpy
   - scipy
   - astropy
   - conda-forge::pypandoc
   - h5py
   - pyyaml
-  - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata
+  - pyuvdata
