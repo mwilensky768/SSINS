@@ -8,4 +8,4 @@ dependencies:
   - conda-forge::pypandoc
   - h5py
   - pyyaml
-  - pyuvdata
+  - conda-forge::pyuvdata
