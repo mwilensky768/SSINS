@@ -128,7 +128,7 @@ class INS(UVFlag):
         return(flags)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
-              output_type='data', gpstime=None, nchans=32, ):
+              output_type='data', mwaf_files=None, mwaf_method='add'):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -147,8 +147,6 @@ class INS(UVFlag):
                 flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
                 match_events - Writes the match_events attribute out to a human-readable yml file
                 mwaf - Writes an mwaf file by converting mask to flags.
-            gpstime: Required mwaf keyword. The gpstime of the observation.
-            nchans: Required mwaf keyword. The number of fine frequency channels in a coarse channel.
 
         """
 
@@ -193,15 +191,39 @@ class INS(UVFlag):
             with open(filename, 'w') as outfile:
                 yaml.dump(yaml_dict, outfile, default_flow_style=False)
         elif output_type is 'mwaf':
+            if mwaf_files is None:
+                raise ValueError("mwaf_files is set to None. This must be a sequence of existing mwaf filepaths.")
+
             from astropy.io import fits
-            # flags on all pols are the same - mwafs have no pol axis
             flags = self.mask_to_flags()[:, :, 0]
+            for path in mwaf_files:
+                if not os.path.exists(path):
+                    raise IOError("filepath %s was not found in system." % path)
+                path_ind = path.rfind('_') + 1
+                boxstr = path[path_ind:path_ind + 2]
+                boxint = int(boxstr)
+                mwaf_hdu = fits.open(path)
+                NCHANS = mwaf_hdu[0].header['NCHANS']
+                NSCANS = mwaf_hdu[0].header['NSCANS']
+                # 24 is the number of coarse channels in MWA data
+                assert, NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
+                assert, NSCANS == flags.shape[0], "Time resolution of mwaf input and INS do not match"
+                Nant = mwaf_hdu[0].header['NANTENNA']
+                Nbls = Nant * (Nant + 1) / 2
+                # This shape is on MWA wiki
+                new_flags = np.repeat(flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1).reshape((NSCANS * Nbls, NCHANS))
+                if mwaf_method is 'add':
+                    mwaf_hdu[1].data['FLAGS'] += new_flags
+                elif mwaf_method is 'replace':
+                    mwaf_hdu[1].data['FLAGS'] = new_flags
+                else:
+                    raise ValueError("mwaf_method is %s mwaf_method. Options are 'add' or 'replace'." % mwaf method)
+
+
+            # flags on all pols are the same - mwafs have no pol axis
+
             # Figure out how many fine channels per coarse channel
-            NCHANS = int(np.round(1.28e6 / self.freq_array[1] - self.freq_array[0]))
-            prim_hdu = fits.PrimaryHDU(None)
-            prim_hdu['GPSTIME'] = gpstime
-            prim_hdu['NCHANS'] = NCHANS
-            prim_hdu['NANT'] = self.Nants_telescope
+
 
 
         else:
