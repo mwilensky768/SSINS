@@ -10,9 +10,6 @@ Welcome to SSINS's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-.. autoclass:: SSINS.INS
-  :members:
-
 Indices and tables
 ==================
 
