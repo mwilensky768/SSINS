@@ -1,5 +1,7 @@
 # conda environment specification for Read the Docs
 name: rtd
+channels:
+  - conda-forge
 dependencies:
   - python=2.7
   - numpy
