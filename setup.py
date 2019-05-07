@@ -40,7 +40,7 @@ setup_args = {
                 'Scripts/Brightness_Dict_Integrate.py'],
     'version': version.version,
     'package_data': {'SSINS': data_files},
-    'install_requires': ['pyuvdata', 'h5py', 'pyyaml']
+    'install_requires': ['pyuvdata', 'h5py', 'pyyaml'],
     'zip_safe': False,
 }
 
