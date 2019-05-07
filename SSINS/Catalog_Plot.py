@@ -90,7 +90,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
              post_flag=True, pre_model=True, post_model=True, error_sig=0,
              alpha=0.5, pre_label='', post_label='', pre_model_label='',
              post_model_label='', pre_color='black', post_color='blue',
-             pre_model_color='purple', post_model_color='green'):
+             pre_model_color='purple', post_model_color='green', font_size='medium'):
 
     """Plots a histogram of the amplitudes of the visibility differences that
     result from sky subtraction.
@@ -120,6 +120,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         post_color (str): The color of the post-flag histogram
         pre_model_color (str): The color of the pre-flag model
         post_model_color (str): The color of the post-flag model
+        font_size (str): The font size for all labels
     """
 
     import matplotlib.pyplot as plt
@@ -142,7 +143,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
                   yscale=yscale, ylim=ylim, density=density, label=post_label,
                   xlabel=xlabel, error_sig=error_sig, alpha=alpha,
                   model_label=post_model_label, color=post_color,
-                  model_color=post_model_color)
+                  model_color=post_model_color, font_size=font_size)
     if pre_flag:
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
@@ -154,11 +155,11 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
                   legend=legend, model_func=model_func, yscale=yscale,
                   ylim=ylim, density=density, label=pre_label, alpha=alpha,
                   xlabel=xlabel, error_sig=error_sig, model_label=pre_model_label,
-                  color=pre_color, model_color=pre_model_color)
+                  color=pre_color, model_color=pre_model_color, font_size=font_size)
         if temp_choice is 'original':
             SS.apply_flags(flag_choice='original')
         else:
             SS.apply_flags(flag_choice='custom', custom=temp_flags)
             SS.flag_choice = temp_choice
 
-    fig.savefig('%s_VDH.%s' % (prefix, file_ext))
+    fig.savefig('%s_VDH.%s' % (prefix, file_ext), bbox_inches="tight")
