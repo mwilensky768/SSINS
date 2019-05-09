@@ -232,16 +232,9 @@ class INS(UVFlag):
                     mwaf_hdu[0].header['SSINSVER'] = version_hist_substr
 
                     filename = '%s_%s.mwaf' % (prefix, boxstr)
-                    if os.path.exists(filename):
-                        if not clobber:
-                            raise IOError("%s already exists and clobber is False. Not writing new file." % filename)
-                        else:
-                            warnings.warn("%s already exists and clobber is True. Clobbering." % filename)
 
-                            self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
-                    else:
-                        mwaf_hdu.writeto(filename)
-                        self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
+                    mwaf_hdu.writeto(filename, overwrite=clobber)
+                    self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
         else:
             raise ValueError("output_type %s is invalid. See documentation for options." % output_type)
 
