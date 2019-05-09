@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from SSINS import INS, SS
+from SSINS import INS, SS, version
 from SSINS.data import DATA_PATH
 import numpy as np
 import os
@@ -141,3 +141,37 @@ def test_write():
 
     for path in [data_outfile, z_score_outfile, flags_outfile, mask_outfile, match_outfile]:
         os.remove(path)
+
+
+def test_write_mwaf():
+    from astropy.io import fits
+
+    obs = '1061313128_99bl_1pol_half_time_SSINS'
+    testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    ins = INS(testfile)
+    mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
+    bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
+
+    # shape of that mwaf file
+    ins.metric_array = np.ma.ones(224, 768, 1)
+    ins.metric_array[100, :] = np.ma.masked
+
+    flags = ins.mask_to_flags()
+    new_flags = np.repeat(flags[:, np.newaxis, 32 * boxint: 32 * (boxint + 1)], Nbls, axis=1).reshape((224 * Nbls, 32))
+
+    with pytest.raises(IOError):
+        ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files)
+    with pytest.raises(IOError):
+        ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files,
+                  mwaf_method='bad_method')
+
+    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files)
+    ins.write('%s_replace' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
+              mwaf_method='replace')
+
+    with fits.open(mwaf_files[0] % prefix) as old_mwaf_hdu:
+        with fits.open('%s_add_12.mwaf' % prefix) as add_mwaf_hdu:
+            assert add_mwaf_hdu[1].data['FLAGS'] == old_mwaf_hdu[1].data['FLAGS'] + new_flags
+    with fits.open('%s_replace_12.mwaf' % prefix) as replace_mwaf_hdu:
+        assert replace_mwaf_hdu[1].data['FLAGS'] == new_flags
