@@ -147,37 +147,45 @@ class INS(UVFlag):
                 flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
                 match_events - Writes the match_events attribute out to a human-readable yml file
                 mwaf - Writes an mwaf file by converting mask to flags.
-
+            mwaf_files (seq): A list of paths to mwaf files to use as input for each coarse channel
+            mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags to current flags in input file or replace them entirely
         """
 
         version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
-        if output_type is not 'match_events':
-            filename = '%s_SSINS_%s.h5' % (prefix, output_type)
-        else:
+        if output_type is 'match_events':
             filename = '%s_SSINS_%s.yml' % (prefix, output_type)
-        self.history += 'Wrote %s to %s using SSINS %s. ' % (filename, output_type, version_hist_substr)
+        else:
+            filename = '%s_SSINS_%s.h5' % (prefix, output_type)
+
+        if output_type is not 'mwaf':
+            self.history += 'Wrote %s to %s using SSINS %s. ' % (output_type, filename, version_hist_substr)
+
         if output_type is 'data':
             self.metric_array = self.metric_array.data
             super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
             self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
+
         elif output_type is 'z_score':
             z_uvf = self.copy()
             z_uvf.metric_array = np.copy(self.metric_ms.data)
             super(INS, z_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del z_uvf
+
         elif output_type is 'mask':
             mask_uvf = self.copy()
             mask_uvf.to_flag()
             mask_uvf.flag_array = np.copy(self.metric_array.mask)
             super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del mask_uvf
+
         elif output_type is 'flags':
             flag_uvf = self.copy()
             flag_uvf.to_flag()
             flag_uvf.flag_array = self.mask_to_flags()
             super(INS, flag_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del flag_uvf
+
         elif output_type is 'match_events':
             yaml_dict = {'time_ind': [],
                          'freq_slice': [],
@@ -190,6 +198,7 @@ class INS(UVFlag):
                 yaml_dict['sig'].append(event[3])
             with open(filename, 'w') as outfile:
                 yaml.dump(yaml_dict, outfile, default_flow_style=False)
+
         elif output_type is 'mwaf':
             if mwaf_files is None:
                 raise ValueError("mwaf_files is set to None. This must be a sequence of existing mwaf filepaths.")
@@ -198,34 +207,41 @@ class INS(UVFlag):
             flags = self.mask_to_flags()[:, :, 0]
             for path in mwaf_files:
                 if not os.path.exists(path):
-                    raise IOError("filepath %s was not found in system." % path)
+                    raise IOError("filepath %s in mwaf_files was not found in system." % path)
                 path_ind = path.rfind('_') + 1
                 boxstr = path[path_ind:path_ind + 2]
                 boxint = int(boxstr)
-                mwaf_hdu = fits.open(path)
-                NCHANS = mwaf_hdu[0].header['NCHANS']
-                NSCANS = mwaf_hdu[0].header['NSCANS']
-                # 24 is the number of coarse channels in MWA data
-                assert, NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
-                assert, NSCANS == flags.shape[0], "Time resolution of mwaf input and INS do not match"
-                Nant = mwaf_hdu[0].header['NANTENNA']
-                Nbls = Nant * (Nant + 1) / 2
-                # This shape is on MWA wiki
-                new_flags = np.repeat(flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1).reshape((NSCANS * Nbls, NCHANS))
-                if mwaf_method is 'add':
-                    mwaf_hdu[1].data['FLAGS'] += new_flags
-                elif mwaf_method is 'replace':
-                    mwaf_hdu[1].data['FLAGS'] = new_flags
-                else:
-                    raise ValueError("mwaf_method is %s mwaf_method. Options are 'add' or 'replace'." % mwaf method)
+                with fits.open(path) as mwaf_hdu:
+                    NCHANS = mwaf_hdu[0].header['NCHANS']
+                    NSCANS = mwaf_hdu[0].header['NSCANS']
+                    # 24 is the number of coarse channels in MWA data
+                    assert, NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
+                    assert, NSCANS == flags.shape[0], "Time axes of mwaf input and INS flags do not match"
+                    Nant = mwaf_hdu[0].header['NANTENNA']
+                    Nbls = Nant * (Nant + 1) / 2
 
+                    # This shape is on MWA wiki
+                    new_flags = np.repeat(flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1).reshape((NSCANS * Nbls, NCHANS))
+                    if mwaf_method is 'add':
+                        mwaf_hdu[1].data['FLAGS'][new_flags] = 1
+                    elif mwaf_method is 'replace':
+                        mwaf_hdu[1].data['FLAGS'] = new_flags
+                    else:
+                        raise ValueError("mwaf_method is %s mwaf_method. Options are 'add' or 'replace'." % mwaf method)
 
-            # flags on all pols are the same - mwafs have no pol axis
+                    mwaf_hdu[0].header['SSINSVER'] = version_hist_substr
 
-            # Figure out how many fine channels per coarse channel
+                    filename = '%s_%s.mwaf' % (prefix, boxstr)
+                    if os.path.exists(filename):
+                        if not clobber:
+                            raise IOError("%s already exists and clobber is False. Not writing new file." % filename)
+                        else:
+                            warnings.warn("%s already exists and clobber is True. Clobbering." % filename)
 
-
-
+                            self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
+                    else:
+                        mwaf_hdu.writeto(filename)
+                        self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
         else:
             raise ValueError("output_type %s is invalid. See documentation for options." % output_type)
 
