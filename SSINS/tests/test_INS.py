@@ -154,24 +154,30 @@ def test_write_mwaf():
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
 
     # shape of that mwaf file
-    ins.metric_array = np.ma.ones(224, 768, 1)
-    ins.metric_array[100, :] = np.ma.masked
+    ins.metric_array = np.ma.ones([223, 768, 1])
+    ins.metric_array[100, 32 * 11: 32 * (11 + 1)] = np.ma.masked
 
     flags = ins.mask_to_flags()
-    new_flags = np.repeat(flags[:, np.newaxis, 32 * boxint: 32 * (boxint + 1)], Nbls, axis=1).reshape((224 * Nbls, 32))
+    new_flags = np.repeat(flags[:, np.newaxis, 32 * 11: 32 * (11 + 1)], 8256, axis=1).reshape((224 * 8256, 32))
 
+    # Test some defensive errors
     with pytest.raises(IOError):
         ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files)
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files,
                   mwaf_method='bad_method')
+    with pytest.raises(ValueError):
+        ins.write(prefix, output_type='mwaf', mwaf_files=None)
 
     ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files)
     ins.write('%s_replace' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
               mwaf_method='replace')
 
-    with fits.open(mwaf_files[0] % prefix) as old_mwaf_hdu:
+    with fits.open(mwaf_files[0]) as old_mwaf_hdu:
         with fits.open('%s_add_12.mwaf' % prefix) as add_mwaf_hdu:
-            assert add_mwaf_hdu[1].data['FLAGS'] == old_mwaf_hdu[1].data['FLAGS'] + new_flags
+            assert np.all(add_mwaf_hdu[1].data['FLAGS'] == old_mwaf_hdu[1].data['FLAGS'] + new_flags)
     with fits.open('%s_replace_12.mwaf' % prefix) as replace_mwaf_hdu:
-        assert replace_mwaf_hdu[1].data['FLAGS'] == new_flags
+        assert np.all(replace_mwaf_hdu[1].data['FLAGS'] == new_flags)
+
+    for path in ['%s_add_12.mwaf' % prefix, '%s_replace_12.mwaf' % prefix]:
+        os.remove(path)
