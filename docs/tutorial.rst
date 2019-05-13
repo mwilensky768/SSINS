@@ -37,15 +37,14 @@ Initializing the sky_subtract class by using pyuvdata
 
   >>> from SSINS import SS
   >>> inpath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
-  >>> obs = '1061313128_99bl_1pol_half_time'
-  >>> read_kwargs = {'ant_str': 'cross'}
 
   # The SSINS package utilizes numpy masked arrays for a number of purposes.
   # This allows us to work with an additional set of flags along with the original flag array.
   # We can apply the original flags (propagated through differencing) on read in the following way.
 
   >>> ss = SS()
-  >>> ss.read(inpath, flag_choice='original')
+  # This omits the  autocorrelations on read - they have very different statistics than the cross correlations
+  >>> ss.read(inpath, flag_choice='original', ant_str='cross')
   >>> np.all(ss.UV.data_array.mask == ss.UV.flag_array)
   True
 
