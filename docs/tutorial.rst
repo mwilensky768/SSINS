@@ -164,6 +164,7 @@ any mask that may have come from flagging.
 (c) Writing an mwaf file
 ************************
 ::
+
   # An mwaf file is a special fits file for storing flags of raw MWA data
   # A special keyword option in ins.write() helps write them
   # You must supply a list of existing mwaf files from which to gather the header data
@@ -185,7 +186,6 @@ any mask that may have come from flagging.
 
   # Be sure to set clobber=False (default) if using the same prefix
   # as the original file and you don't want to overwrite
-
 
 incoherent_noise_spectrum: Using the mean_subtract() Method
 -----------------------------------------------------------
