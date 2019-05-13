@@ -210,15 +210,15 @@ class INS(UVFlag):
                     raise IOError("filepath %s in mwaf_files was not found in system." % path)
                 path_ind = path.rfind('_') + 1
                 boxstr = path[path_ind:path_ind + 2]
-                boxint = int(boxstr)
+                boxint = int(boxstr) - 1
                 with fits.open(path) as mwaf_hdu:
                     NCHANS = mwaf_hdu[0].header['NCHANS']
                     NSCANS = mwaf_hdu[0].header['NSCANS']
                     # 24 is the number of coarse channels in MWA data
-                    assert, NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
-                    assert, NSCANS == flags.shape[0], "Time axes of mwaf input and INS flags do not match"
+                    assert NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
+                    assert NSCANS == flags.shape[0], "Time axes of mwaf input and INS flags do not match"
                     Nant = mwaf_hdu[0].header['NANTENNA']
-                    Nbls = Nant * (Nant + 1) / 2
+                    Nbls = Nant * (Nant + 1) // 2
 
                     # This shape is on MWA wiki
                     new_flags = np.repeat(flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1).reshape((NSCANS * Nbls, NCHANS))
@@ -227,7 +227,7 @@ class INS(UVFlag):
                     elif mwaf_method is 'replace':
                         mwaf_hdu[1].data['FLAGS'] = new_flags
                     else:
-                        raise ValueError("mwaf_method is %s mwaf_method. Options are 'add' or 'replace'." % mwaf method)
+                        raise ValueError("mwaf_method is %s. Options are 'add' or 'replace'." % mwaf_method)
 
                     mwaf_hdu[0].header['SSINSVER'] = version_hist_substr
 
