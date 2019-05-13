@@ -26,11 +26,9 @@ install:
   - conda info -a
 
   # create environment and install dependencies
-  - conda install numpy scipy astropy nose pip h5py six
-  - conda install -c conda-forge healpy python-casacore pycodestyle coveralls pyuvdata
+  - conda install numpy scipy astropy nose pip h5py six matplotlib pyyaml pytest
+  - conda install -c conda-forge healpy python-casacore pycodestyle coveralls pytest-cov pyuvdata
   - conda list
-  - pip install pytest
-  - pip install pytest-cov
 script:
   - python setup.py install
   - pytest --cov=SSINS SSINS/tests/
