@@ -1,0 +1,11 @@
+# Don't build any extra formats
+formats:
+    - none
+conda:
+    file: docs/rtd-env.yml
+build:
+    image: latest
+python:
+   version: 2.7
+python:
+   setup_py_install: true

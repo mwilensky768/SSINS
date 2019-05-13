@@ -14,7 +14,10 @@
 #
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -24,7 +27,7 @@ copyright = u'2018, Michael Wilensky'
 author = u'Michael Wilensky'
 
 # The short X.Y version
-version = u''
+version = u'1.1'
 # The full version, including alpha/beta/rc tags
 release = u''
 
@@ -154,7 +157,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'SSINS', u'SSINS Documentation',
-     author, 'SSINS', 'One line description of project.',
+     author, 'SSINS', 'Ultra-faint RFI Flagging Software.',
      'Miscellaneous'),
 ]
 
