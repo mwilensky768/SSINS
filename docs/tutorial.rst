@@ -85,12 +85,12 @@ visibility amplitudes. We cover that procedure here.
   # We use the VDH_plot (Visibility Difference Histogram) function from Catalog_Plot
   # We need a prefix for the output file onto which will be attached a tag saying what the plot is
 
-  prefix = 'SSINS/data/tutorial_'
+  >>> prefix = 'SSINS/data/tutorial_'
 
   # Let's save a png, plot in log-log, only plot data that is not flagged, and
   # generate a model for the thermal background
-  cp.VDH_plot(ss, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
-              yscale='log', pre_flag=False, post_model=True)
+  >>> cp.VDH_plot(ss, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
+                  yscale='log', pre_flag=False, post_model=True)
 
   # Check for the file SSINS/data/tutorial_VDH.png. The obs we used earlier in
   # the tutorial has DTV RFI in it which will have contaminated the maximumum
@@ -132,6 +132,7 @@ any mask that may have come from flagging.
 (a) Writing the three main data products
 ****************************************
 ::
+
   # We need to specify a prefix for the files
   >>> prefix = 'SSINS/data/tutorial_'
 
@@ -148,6 +149,7 @@ any mask that may have come from flagging.
 (b) Writing time-propagated flags
 *********************************
 ::
+
   # The time-propagated flags (extending them back across the time-difference)
   # are calculated using the mask_to_flags method
   >>> tp_flags = ins.mask_to_flags()
@@ -217,8 +219,8 @@ the repo contained in Catalog_Plot.
   # We clip all data above 150 and all z-scores whose absolute value is greater than 5
   # We also prescribe a colormap for the data
   >>> cp.INS_plot(ins, prefix, data_cmap=cm.plasma, vmin=0, vmax=150, ms_vmin=-5,
-                  ms_vmax=5, xticks=xticks, xticklabels=xticklabels,
-                  xlabel='Frequency (Mhz)')
+  >>>             ms_vmax=5, xticks=xticks, xticklabels=xticklabels,
+  >>>             xlabel='Frequency (Mhz)')
 
   # If using the original data in the above tutorials with no flags applied to
   # make the INS, there should be some DTV visible in the middle of the plot

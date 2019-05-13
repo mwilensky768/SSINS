@@ -10,16 +10,14 @@ Welcome to SSINS's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
-
 Indices and tables
 ==================
 
-`Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
-`INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html?highlight=INS>`_
-`MF class <https://ssins.readthedocs.io/en/latest/match_filter.html?highlight=MF>`_
-`SS class <https://ssins.readthedocs.io/en/latest/sky_subtract.html?highlight=SS>`_
-`util <https://ssins.readthedocs.io/en/latest/util.html?highlight=util>`_
+`Tutorials <https://ssins.readthedocs.io/en/doc_writing_refactor/tutorial.html?highlight=tutorial>`_
+`INS class <https://ssins.readthedocs.io/en/doc_writing_refactor/incoherent_noise_spectrum.html>`_
+`MF class <https://ssins.readthedocs.io/en/doc_writing_refactor/match_filter.html>`_
+`SS class <https://ssins.readthedocs.io/en/doc_writing_refactor/sky_subtract.html>`_
+`util <https://ssins.readthedocs.io/en/doc_writing_refactor/util.html>`_
 
 * :ref:`genindex`
 * :ref:`modindex`
