@@ -141,11 +141,17 @@ class INS(UVFlag):
             clobber: See UVFlag documentation
             data_compression: See UVFlag documentation
             output_type ('data', 'z_score', 'mask', 'flags', 'match_events'):
+
                 data - outputs the metric_array attribute into an h5 file
+                
                 z_score - outputs the the metric_ms attribute into an h5 file
+                
                 mask - outputs the mask for the metric_array attribute into an h5 file
+                
                 flags - converts mask to flag using mask_to_flag() method and writes to an h5 file readable by UVFlag
+                
                 match_events - Writes the match_events attribute out to a human-readable yml file
+                
                 mwaf - Writes an mwaf file by converting mask to flags.
             mwaf_files (seq): A list of paths to mwaf files to use as input for each coarse channel
             mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags to current flags in input file or replace them entirely
