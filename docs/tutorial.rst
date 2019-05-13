@@ -161,6 +161,31 @@ any mask that may have come from flagging.
   # It automatically calls this method when writing flags (different than writing mask)
   >>> ins.write(data_output='flags')
 
+(c) Writing an mwaf file
+************************
+::
+  # An mwaf file is a special fits file for storing flags of raw MWA data
+  # A special keyword option in ins.write() helps write them
+  # You must supply a list of existing mwaf files from which to gather the header data
+  # Currently you must flag at the same time/freq resolution as the data in the existing mwaf_files
+
+  # For instance if you wanted to flag just the first two coarse bands for an obsid
+  >>> mwaf_files = ['/path/to/obsid_01.mwaf', '/path/to/obsid/obsid_02.mwaf']
+
+
+
+  # As usual you must supply a prefix for the file.
+  # You can choose to add flags to the file from SSINS flagging, or totally replace them
+  >>> prefix_add = '/path/to/obsid_SSINS_add'
+  >>> prefix_replace = '/path/to/obsid_SSINS_replace'
+  >>> ins.write(prefix_add, output_type='mwaf', mwaf_files=mwaf_files,
+                mwaf_method='add')
+  >>> ins.write(prefix_replace, output_type='mwaf', mwaf_files=mwaf_files,
+                mwaf_method='replace')
+
+  # Be sure to set clobber=False (default) if using the same prefix
+  # as the original file and you don't want to overwrite
+
 
 incoherent_noise_spectrum: Using the mean_subtract() Method
 -----------------------------------------------------------
