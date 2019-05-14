@@ -43,6 +43,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     """
 
     from matplotlib import cm, use
+    use('Agg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
@@ -124,6 +125,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         font_size (str): The font size for all labels
     """
     from matplotlib import use
+    use('Agg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
