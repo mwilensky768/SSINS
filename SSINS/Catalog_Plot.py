@@ -43,7 +43,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     """
 
     from matplotlib import cm, use
-    if platform.system('Darwin'):
+    if platform.system() is 'Darwin':
         use('TkAgg')
     import matplotlib.pyplot as plt
 
@@ -126,7 +126,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         font_size (str): The font size for all labels
     """
     from matplotlib import use
-    if platform.system('Darwin'):
+    if platform.system() is 'Darwin':
         use('TkAgg')
     import matplotlib.pyplot as plt
 
