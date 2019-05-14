@@ -12,8 +12,6 @@ env:
     - PYTHON_VERSION=3.7
 
 install:
-  # ensure that we have the full tag information available for version.py
-  - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
