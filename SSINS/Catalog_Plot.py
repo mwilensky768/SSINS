@@ -9,6 +9,7 @@ import os
 import numpy as np
 from SSINS import util
 from SSINS.plot_lib import image_plot, hist_plot
+import platform
 
 
 pol_dict_keys = np.arange(-8, 5)
@@ -42,7 +43,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     """
 
     from matplotlib import cm, use
-    use('TkAgg')
+    if platform.system('Darwin'):
+        use('TkAgg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
@@ -124,7 +126,8 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         font_size (str): The font size for all labels
     """
     from matplotlib import use
-    use('TkAgg')
+    if platform.system('Darwin'):
+        use('TkAgg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
