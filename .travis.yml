@@ -32,15 +32,17 @@ install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
-  - conda install -y 'libgfortran =3.0.0'
+#  - conda install -y 'libgfortran =3.0.0'
   - conda config --add channels conda-forge
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
 
+  # test conda can install pyuvdata and python
+  - conda install pyuvdata=1.3.8 python="$PYTHON_VERSION"
   # create environment and install dependencies
   - conda install nose pip h5py six matplotlib pyyaml pytest
-    healpy python-casacore pycodestyle coveralls pytest-cov pyuvdata=1.3.8 python="$PYTHON_VERSION"
+    pycodestyle coveralls pytest-cov pyuvdata=1.3.8 python="$PYTHON_VERSION"
   - conda list
   - python --version
   # check that the python version matches the desired one; exit immediately if not
