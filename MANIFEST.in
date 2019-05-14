@@ -1,8 +1,7 @@
 include *.md
 include LICENSE
-include pyuvdata/VERSION
-include pyuvdata/GIT_INFO
-include pyuvdata/src/*
+include SSINS/VERSION
+include SSINS/GIT_INFO
 recursive-include SSINS/data *
 recursive-include docs *
 exclude docs/.DS_Store
