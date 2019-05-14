@@ -9,6 +9,7 @@ import os
 import numpy as np
 from SSINS import util
 from SSINS.plot_lib import image_plot, hist_plot
+import platform
 
 
 pol_dict_keys = np.arange(-8, 5)
@@ -41,7 +42,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
     """
 
-    from matplotlib import cm
+    from matplotlib import cm, use
+    use('Agg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
@@ -122,7 +124,8 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         post_model_color (str): The color of the post-flag model
         font_size (str): The font size for all labels
     """
-
+    from matplotlib import use
+    use('Agg')
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
