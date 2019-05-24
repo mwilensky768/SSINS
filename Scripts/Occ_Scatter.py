@@ -120,5 +120,5 @@ if __name__ == "__main__":
         ax.set_xlabel('LST (hours)')
         ax.set_ylabel('JD (days)')
         ax.set_title('Total RFI Occupancy')
-        fig.colorbar(cax, ax=ax, extend='min')
+        fig.colorbar(cax, ax=ax, extend='min', label='Occupancy Fraction')
         fig.savefig('%s/%s_occ_scatter.pdf' % (args.outdir, shape))

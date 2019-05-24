@@ -88,8 +88,8 @@ visibility amplitudes. We cover that procedure here.
 
   # Let's save a png, plot in log-log, only plot data that is not flagged, and
   # generate a model for the thermal background
-  >>> cp.VDH_plot(ss, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
-                  yscale='log', pre_flag=False, post_model=True)
+  >>> cp.VDH_plot(ss, prefix, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
+  >>>             yscale='log', pre_flag=False, post_model=True)
 
   # Check for the file SSINS/data/tutorial_VDH.png. The obs we used earlier in
   # the tutorial has DTV RFI in it which will have contaminated the maximumum
@@ -111,7 +111,7 @@ saved INS.
   >>> from SSINS import INS
 
   # Simply pass the SS object from which the INS will be made
-  ins = INS(ss)
+  >>> ins = INS(ss)
 
 (b) From a saved file
 *********************
@@ -305,11 +305,11 @@ match_filter: initialization
   >>> sig_thresh = 5
 
   # The single-frequency and broadband streak flaggers can be turned off (default on)
-  >>> point = False
+  >>> narrow = False
   >>> streak = False
 
   # An frequency array is required for initialization (typically taken from an INS to be flagged)
-  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, point=point, streak=streak)
+  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, narrow=narrow, streak=streak)
 
 match_filter: Applying Tests
 ----------------------------
