@@ -73,7 +73,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'midpoint': True}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
-                           ncols=2, squeeze=False)
+                           ncols=2, squeeze=False, figsize=(16, 9))
 
     for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
