@@ -12,19 +12,21 @@ parser.add_argument('outpath', action='store', help='The base directory for savi
 args = parser.parse_args()
 
 ss = SS()
-ss.read(args.inpath, read_data=False)
-times = np.unique(ss.time_array)[1:-3]
-ss.read(args.inpath, times=times, ant_str='cross', flag_choice='original')
+ss.read(args.inpath, ant_str='cross')
 
 ins = INS(ss)
+ins.metric_array[:, :82] = np.ma.masked
+ins.metric_array[:, :-21] = np.ma.masked
+ins.order = 1
+ins.metric_ms = ins.mean_subtract()
 
-
-shape_dict = {'TV6': [1.74e8, 1.81e8],
-              'TV7': [1.81e8, 1.88e8],
-              'TV8': [1.88e8, 1.95e8],
-              'broad6': [1.72e8, 1.83e8],
-              'broad7': [1.79e8, 1.9e9],
-              'broad8': [1.86e8, 1.97e8]}
+shape_dict = {'TV4': [1.74e8, 1.82e8],
+              'TV5': [1.82e8, 1.9e8],
+              'TV6': [1.9e8, 1.98e8],
+              'dig1': [1.125e8, 1.15625e8],
+              'dig2': [1.375e8, 1.40625e8],
+              'dig3': [1.625e8, 1.65625e8],
+              'dig4': [1.875e8, 1.90625e8]}
 
 mf = MF(ins.freq_array, 5, shape_dict=shape_dict, N_samp_thresh=15)
 mf.apply_match_test(ins, apply_samp_thresh=True)
