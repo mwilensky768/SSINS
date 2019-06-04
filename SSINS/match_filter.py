@@ -147,7 +147,7 @@ class MF(object):
                 if (apply_samp_thresh and self.N_samp_thresh):
                     self.apply_samp_thresh_test(INS, event_record=event_record)
                 if not np.all(INS.metric_array[:, f_max, 0].mask):
-                    INS.metric_ms[:, f_max] = INS.mean_subtract(f=f_max)
+                    INS.metric_ms[:, f_max] = INS.mean_subtract(freq_slice=f_max)
                 else:
                     INS.metric_ms[:, f_max] = np.ma.masked
 
