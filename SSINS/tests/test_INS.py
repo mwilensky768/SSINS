@@ -79,6 +79,10 @@ def test_polyfit():
     assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
 
+    ins.metric_array[:] = np.ma.masked
+    ins.metric_ms = ins.mean_subtract()
+    assert np.all(ins.metric_ms.mask), "The metric_ms array was not all masked"
+
 
 def test_mask_to_flags():
     obs = '1061313128_99bl_1pol_half_time'
