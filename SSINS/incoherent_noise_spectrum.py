@@ -99,25 +99,29 @@ class INS(UVFlag):
             # Find which channels are not fully masked (only want to iterate over those)
             # This gives an array of channel indexes into the freq_slice
             good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
-            # Want to group things by unique mask for fastest implementation
-            # mask_inv tells us which channels have the same mask (indexed into good_chans)
-            unique_masks, mask_inv = np.unique(y_0[:, good_chans].mask, axis=1,
-                                               return_inverse=True)
-            # np.ma.polyfit only takes 2d args, so have to iterate over pols
-            for pol_ind in range(self.metric_array.shape[-1]):
-                good_data = self.metric_array[:, freq_slice, pol_ind][:, good_chans]
-                # Iterate over the unique masks grouping channels for fastest implementation
-                for mask_ind in range(unique_masks.shape[1]):
-                    # Channels which share a mask (indexed into good_chans)
-                    chans = np.where(mask_inv == mask_ind)[0]
-                    y = good_data[:, chans]
-                    coeff = np.ma.polyfit(x, y, self.order)
-                    coeffs[:, good_chans[chans], pol_ind] = coeff
-                    # Make the fit spectrum
-                    mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
-                                 for poly_ind in range(self.order + 1)],
-                                axis=0)
-                    MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * np.sqrt(self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]] / C)
+            # Only do this if there are unmasked channels
+            if len(good_chans) > 0:
+                # Want to group things by unique mask for fastest implementation
+                # mask_inv tells us which channels have the same mask (indexed into good_chans)
+                unique_masks, mask_inv = np.unique(y_0[:, good_chans].mask, axis=1,
+                                                   return_inverse=True)
+                # np.ma.polyfit only takes 2d args, so have to iterate over pols
+                for pol_ind in range(self.metric_array.shape[-1]):
+                    good_data = self.metric_array[:, freq_slice, pol_ind][:, good_chans]
+                    # Iterate over the unique masks grouping channels for fastest implementation
+                    for mask_ind in range(unique_masks.shape[1]):
+                        # Channels which share a mask (indexed into good_chans)
+                        chans = np.where(mask_inv == mask_ind)[0]
+                        y = good_data[:, chans]
+                        coeff = np.ma.polyfit(x, y, self.order)
+                        coeffs[:, good_chans[chans], pol_ind] = coeff
+                        # Make the fit spectrum
+                        mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
+                                     for poly_ind in range(self.order + 1)],
+                                    axis=0)
+                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * np.sqrt(self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]] / C)
+            else:
+                MS[:] = np.ma.masked
 
         if return_coeffs:
             return(MS, coeffs)
