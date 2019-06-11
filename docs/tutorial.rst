@@ -345,3 +345,11 @@ match_filter: Applying Tests
 
   # One must simply set the apply_N_thresh keyword for the apply_match_test() method
   >>> mf.apply_match_test(ins, apply_samp_thresh=True)
+
+(c) Calculating the fraction of flagged data:
+*********************************************
+::
+
+  # The mask on the INS object keeps track of which data is flagged
+  # The total fraction of flagged data is given by
+  >>> print(np.mean(ins.metric_array.mask))
