@@ -36,7 +36,7 @@ setup_args = {
     'packages': ['SSINS'],
     'include_package_data': True,
     'scripts': ['Scripts/Catalog_Gen.py', 'Scripts/Event_Brightness.py',
-                'Scripts/Occ_Scatter.py',
+                'Scripts/Occ_Scatter.py', 'Scripts/MWA_EoR_High_uvfits_write.py',
                 'Scripts/Brightness_Dict_Integrate.py'],
     'version': version.version,
     'package_data': {'SSINS': data_files},
