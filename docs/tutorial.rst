@@ -59,7 +59,8 @@ Initializing the sky_subtract class by using pyuvdata
   >>> ss.apply_flags(flag_choice='custom', custom=custom)
 
   # This flagged everything in the zeroth frequency channel.
-  # We can also apply masks from a flagged INS as follows (see INS and MF tutorials for details)
+  # We can also apply masks from a flagged INS as follows
+  # Before running this line, see how to make/flag an INS down below
   >>> ss.apply_flags(flag_choice='custom', INS=ins)
 
   # The following lines unflag the data.
