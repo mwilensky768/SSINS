@@ -36,6 +36,7 @@ Initializing the sky_subtract class by using pyuvdata
 ::
 
   >>> from SSINS import SS
+  >>> import numpy as np
   >>> inpath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
 
   # The SSINS package utilizes numpy masked arrays for a number of purposes.
