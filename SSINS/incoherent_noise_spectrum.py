@@ -67,7 +67,7 @@ class INS(UVFlag):
         self.metric_ms = self.mean_subtract()
         """The incoherent noise spectrum, after mean-subtraction."""
 
-    def mean_subtract(self, f=slice(None)):
+    def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
 
         """
         A function which calculated the mean-subtracted spectrum from the
@@ -75,8 +75,9 @@ class INS(UVFlag):
         will be written as a z-score by this operation.
 
         Args:
-            f: The frequency slice over which to do the calculation. Usually not
+            freq_slice: The frequency slice over which to do the calculation. Usually not
                set by the user.
+            return_coeffs: Whether or not to return the mean/polynomial coefficients
 
         Returns:
             MS (masked array): The mean-subtracted data array.
@@ -86,29 +87,46 @@ class INS(UVFlag):
         # describes the ratio of its rms to its mean
         C = 4 / np.pi - 1
         if not self.order:
-            MS = (self.metric_array[:, f] / self.metric_array[:, f].mean(axis=0) - 1) * np.sqrt(self.weights_array[:, f] / C)
+            coeffs = self.metric_array[:, freq_slice].mean(axis=0)
+            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
         else:
-            MS = np.zeros_like(self.metric_array[:, f])
+            MS = np.zeros_like(self.metric_array[:, freq_slice])
+            coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
             # Make sure x is not zero so that np.polyfit can proceed without nans
             x = np.arange(1, self.metric_array.shape[0] + 1)
-            for i in range(self.metric_array.shape[-1]):
-                y = self.metric_array[:, f, i]
-                # Only iterate over channels that are not fully masked
-                good_chans = np.where(np.logical_not(np.all(y.mask, axis=0)))[0]
-                # Create a subarray mask of only those good channels
-                good_data = y[:, good_chans]
-                # Find the set of unique masks so that we can iterate over only those
-                unique_masks, mask_inv = np.unique(good_data.mask, axis=1,
+            # We want to iterate over only a subset of the frequencies, so we need to investigate
+            y_0 = self.metric_array[:, freq_slice, 0]
+            # Find which channels are not fully masked (only want to iterate over those)
+            # This gives an array of channel indexes into the freq_slice
+            good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
+            # Only do this if there are unmasked channels
+            if len(good_chans) > 0:
+                # Want to group things by unique mask for fastest implementation
+                # mask_inv tells us which channels have the same mask (indexed into good_chans)
+                unique_masks, mask_inv = np.unique(y_0[:, good_chans].mask, axis=1,
                                                    return_inverse=True)
-                for k in range(unique_masks.shape[1]):
-                    # Channels which share a mask
-                    chans = np.where(mask_inv == k)[0]
-                    coeff = np.ma.polyfit(x, good_data[:, chans], self.order)
-                    mu = np.sum([np.outer(x**(self.order - k), coeff[k]) for k in range(self.order + 1)],
-                                axis=0)
-                    MS[:, good_chans[chans], i] = (good_data[:, chans] / mu - 1) * np.sqrt(self.weights_array[:, f, i][:, good_chans[chans]] / C)
+                # np.ma.polyfit only takes 2d args, so have to iterate over pols
+                for pol_ind in range(self.metric_array.shape[-1]):
+                    good_data = self.metric_array[:, freq_slice, pol_ind][:, good_chans]
+                    # Iterate over the unique masks grouping channels for fastest implementation
+                    for mask_ind in range(unique_masks.shape[1]):
+                        # Channels which share a mask (indexed into good_chans)
+                        chans = np.where(mask_inv == mask_ind)[0]
+                        y = good_data[:, chans]
+                        coeff = np.ma.polyfit(x, y, self.order)
+                        coeffs[:, good_chans[chans], pol_ind] = coeff
+                        # Make the fit spectrum
+                        mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
+                                     for poly_ind in range(self.order + 1)],
+                                    axis=0)
+                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * np.sqrt(self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]] / C)
+            else:
+                MS[:] = np.ma.masked
 
-        return(MS)
+        if return_coeffs:
+            return(MS, coeffs)
+        else:
+            return(MS)
 
     def mask_to_flags(self):
         """
