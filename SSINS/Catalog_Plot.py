@@ -10,6 +10,7 @@ import numpy as np
 from SSINS import util
 from SSINS.plot_lib import image_plot, hist_plot
 import platform
+import warnings
 
 
 pol_dict_keys = np.arange(-8, 5)
@@ -135,12 +136,13 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
 
     fig, ax = plt.subplots()
 
-    if pre_model or post_model:
-        model_func = SS.mixture_prob
-    else:
-        model_func = None
-
-    if post_flag and SS.flag_choice is not None:
+    if post_flag:
+        if SS.flag_choice is None:
+            warnings.warn("Asking to plot post-flagging data, but SS.flag_choice is None. This is identical to plotting pre-flagging data")
+        if post_model:
+            model_func = SS.mixture_prob
+        else:
+            model_func = None
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
                   bins=bins, legend=legend, model_func=model_func,
                   yscale=yscale, ylim=ylim, density=density, label=post_label,
@@ -148,6 +150,10 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
                   model_label=post_model_label, color=post_color,
                   model_color=post_model_color, font_size=font_size)
     if pre_flag:
+        if pre_model:
+            model_func = SS.mixture_prob
+        else:
+            model_func = None
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
             temp_choice = '%s' % SS.flag_choice
