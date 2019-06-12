@@ -48,7 +48,7 @@ def test_mean_subtract():
     ins.metric_array[0, :5] = np.ma.masked
 
     # Calculate the new mean-subtracted spectrum only over the first few masked frequencies
-    ins.metric_ms[:, :5] = ins.mean_subtract(f=slice(0, 5))
+    ins.metric_ms[:, :5] = ins.mean_subtract(freq_slice=slice(0, 5))
 
     # See if a new mean was calculated over the first five frequencies
     assert not np.all(old_dat[1:, :5] == ins.metric_ms[1:, :5]), "All elements of the ms array are still equal"
@@ -71,9 +71,17 @@ def test_polyfit():
     ins.metric_array.mask = np.zeros(ins.metric_array.shape, dtype=bool)
     ins.metric_array = np.swapaxes(ins.metric_array, 0, 2)
     ins.weights_array = np.ones(ins.metric_array.shape)
-    ins.metric_ms = ins.mean_subtract()
+    ins.metric_ms, coeffs = ins.mean_subtract(return_coeffs=True)
+    test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
+    test_coeffs[0, :] = 3
+    test_coeffs[1, :] = 5
 
     assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
+    assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
+
+    ins.metric_array[:] = np.ma.masked
+    ins.metric_ms = ins.mean_subtract()
+    assert np.all(ins.metric_ms.mask), "The metric_ms array was not all masked"
 
 
 def test_mask_to_flags():
