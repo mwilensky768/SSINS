@@ -63,7 +63,7 @@ Initializing the sky_subtract class by using pyuvdata
   # Before running this line, see how to make/flag an INS down below
   >>> ss.apply_flags(flag_choice='custom', INS=ins)
 
-  # The following lines unflag the data.
+  # The following line unflags the data.
   >>> ss.apply_flags(flag_choice=None)
   >>> np.any(ss.data_array.mask)
   False
@@ -201,8 +201,8 @@ incoherent_noise_spectrum: Using the mean_subtract() Method
 
   # A slice of the array can be calculated by using the f keyword (f for frequencies)
   # Set up a slice object for frequency channels 100 to 199 inclusive
-  >>> f = slice(100, 200)
-  >>> ins.data_ms[:, :, f] = ins.mean_subtract(f=f)
+  >>> freq_slice = slice(100, 200)
+  >>> ins.data_ms[:, f] = ins.mean_subtract(freq_slice=freq_slice)
 
 (b) Using the order Parameter
 *****************************
@@ -211,7 +211,7 @@ incoherent_noise_spectrum: Using the mean_subtract() Method
   # Sometimes the mean appears to drift in time to linear or higher order
   # A polynomial fit to each channel can be constructed using the order parameter
   >>> ins.order = 2
-  >>> ins.data_ms = ins.mean_subtract(order=2)
+  >>> ins.data_ms = ins.mean_subtract()
 
   # That made a quadratic fit for each channel
 
@@ -270,7 +270,7 @@ the repo contained in Catalog_Plot.
 
   >>> for i in range(2):
   ...     ins.ms = ins.mean_subtract(order=i)
-  ...     plot_lib.image_plot(fig, ax[i], ins.metric_ms[:, 0, :, 0],
+  ...     plot_lib.image_plot(fig, ax[i], ins.metric_ms[:, :, 0],
   ...                         cmap=cm.coolwarm, freq_array=ins.freq_array[0],
   ...                         title='order = %i' % i, vmin=-5, vmax=5)
   >>> fig.savefig('%s/tutorial_order_compare.png' % (prefix, ins.obs))
