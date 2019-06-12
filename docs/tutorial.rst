@@ -46,7 +46,7 @@ Initializing the sky_subtract class by using pyuvdata
   >>> ss = SS()
   # This omits the  autocorrelations on read - they have very different statistics than the cross correlations
   >>> ss.read(inpath, flag_choice='original', ant_str='cross')
-  >>> np.all(ss.UV.data_array.mask == ss.UV.flag_array)
+  >>> np.all(ss.data_array.mask == ss.flag_array)
   True
 
   # There are multiple ways to change the flags on the data, but the proper way
