@@ -135,12 +135,11 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
 
     fig, ax = plt.subplots()
 
-    if not (pre_model or post_model):
-        model_func = None
-
     if post_flag and SS.flag_choice is not None:
         if post_model:
             model_func = SS.mixture_prob
+        else:
+            model_func = None
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
                   bins=bins, legend=legend, model_func=model_func,
                   yscale=yscale, ylim=ylim, density=density, label=post_label,
@@ -150,6 +149,8 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
     if pre_flag:
         if pre_model:
             model_func = SS.mixture_prob
+        else:
+            model_func = None
         if SS.flag_choice is not 'original':
             temp_flags = np.copy(SS.data_array.mask)
             temp_choice = '%s' % SS.flag_choice
