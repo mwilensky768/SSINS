@@ -54,7 +54,7 @@ Initializing the sky_subtract class by using pyuvdata
   # This leaves the flag_array attribute untouched, and simply changes the mask
   # on the data.
 
-  >>> custom = np.zeros_like(ss.UV.flag_array)
+  >>> custom = np.zeros_like(ss.flag_array)
   >>> custom[:, 0, 0, :] = 1
   >>> ss.apply_flags(flag_choice='custom', custom=custom)
 
@@ -65,7 +65,7 @@ Initializing the sky_subtract class by using pyuvdata
 
   # The following lines unflag the data.
   >>> ss.apply_flags(flag_choice=None)
-  >>> np.any(ss.UV.data_array.mask)
+  >>> np.any(ss.data_array.mask)
   False
 
   # apply_flags() is called on read (default choice is None), so any flag
