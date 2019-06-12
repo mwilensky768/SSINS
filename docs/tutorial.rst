@@ -91,7 +91,7 @@ visibility amplitudes. We cover that procedure here.
   # Let's save a png, plot in log-log, only plot data that is not flagged, and
   # generate a model for the thermal background
   >>> cp.VDH_plot(ss, prefix, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
-  >>>             yscale='log', pre_flag=False, post_model=True)
+  >>>             yscale='log', pre_flag=True, post_model=True)
 
   # Check for the file SSINS/data/tutorial_VDH.png. The obs we used earlier in
   # the tutorial has DTV RFI in it which will have contaminated the maximumum

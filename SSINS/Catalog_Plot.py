@@ -91,7 +91,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
              bins='auto', legend=True, ylim=None, density=False, pre_flag=True,
              post_flag=True, pre_model=True, post_model=True, error_sig=0,
              alpha=0.5, pre_label='', post_label='', pre_model_label='',
-             post_model_label='', pre_color='black', post_color='blue',
+             post_model_label='', pre_color='orange', post_color='blue',
              pre_model_color='purple', post_model_color='green', font_size='medium'):
 
     """Plots a histogram of the amplitudes of the visibility differences that
