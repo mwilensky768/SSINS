@@ -160,7 +160,7 @@ any mask that may have come from flagging.
 
   # We can write these flags out (readable by UVFlag!)
   # It automatically calls this method when writing flags (different than writing mask)
-  >>> ins.write(data_output='flags')
+  >>> ins.write(prefix, output_type='flags')
 
 (c) Writing an mwaf file
 ************************
