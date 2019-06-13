@@ -269,11 +269,12 @@ the repo contained in Catalog_Plot.
   # polarization with different order parameters
 
   >>> for i in range(2):
-  ...     ins.ms = ins.mean_subtract(order=i)
+  ...     ins.order = i
+  ...     ins.metric_ms = ins.mean_subtract(order=i)
   ...     plot_lib.image_plot(fig, ax[i], ins.metric_ms[:, :, 0],
-  ...                         cmap=cm.coolwarm, freq_array=ins.freq_array[0],
+  ...                         cmap=cm.coolwarm,
   ...                         title='order = %i' % i, vmin=-5, vmax=5)
-  >>> fig.savefig('%s/tutorial_order_compare.png' % (prefix, ins.obs))
+  >>> fig.savefig('%s/tutorial_order_compare.png' % prefix)
 
   # This particular example is useful when the overall noise level appears to be
   # drifting over the course of the observation and you want to ignore that drift
