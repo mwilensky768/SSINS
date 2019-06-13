@@ -27,7 +27,7 @@ Initializing the sky_subtract class by using pyuvdata
   >>> ss.read('SSINS/data/1061313128_99bl_1pol_half_time.uvfits', ant_str='cross')
 
   # We time-difference the visibilities during initialization.
-  # We adjust the attributes during differencing to ensure the SS object is still a UVData object
+  # We adjust the attributes during differencing to ensure the SS object is still a proper UVData object
   >>> ss.check()
   True
 
@@ -52,7 +52,7 @@ Initializing the sky_subtract class by using pyuvdata
   # There are multiple ways to change the flags on the data, but the proper way
   # is to use the apply_flags method. Custom flag masks can be applied.
   # This leaves the flag_array attribute untouched, and simply changes the mask
-  # on the data.
+  # on the data to be equal to the custom array.
 
   >>> custom = np.zeros_like(ss.flag_array)
   >>> custom[:, 0, 0, :] = 1
@@ -115,11 +115,11 @@ saved INS.
   # Simply pass the SS object from which the INS will be made
   >>> ins = INS(ss)
 
-(b) From a saved file
-*********************
+(b) From a saved h5 file
+************************
 ::
 
-  # This will read in a saved INS specified by inpath
+  # This will read in a saved INS specified by inpath (must be an h5 file)
   >>> inpath = 'SSINS/data/1061313128_99_bl_1pol_half_time_SSINS.h5'
   >>> ins = INS(inpath)
 
