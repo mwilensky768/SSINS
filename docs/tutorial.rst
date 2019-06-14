@@ -4,355 +4,342 @@ Tutorial
 .. testsetup::
    from __future__ import absolute_import, division, print_function
 
---
-SS
---
+------------------------
+Basic SSINS Construction
+------------------------
+There are three main classes in the software: SS (sky_subtract),
+INS (incoherent_noise_spectrum), and MF (match_filter). We will use these
+classes to navigate the various steps in the SSINS process detailed in the
+paper (https://arxiv.org/abs/1906.01093).
 
-sky_subtract: Initializing
---------------------------
-Initializing the sky_subtract class by using pyuvdata
+Generating the sky-subtracted visibilities
+------------------------------------------
 
-(a) Initializing an SS object
-*****************************
+(a) Initializing an SS object and reading in raw data
+*****************************************************
 ::
-
   >>> from SSINS import SS
 
-  # The SS object is a subclass of a UVData object and is initialized in an identical way
+  >>> # The SS object is a subclass of a UVData object, and therefore has all of its attributes and methods
+  >>> # We initialize it identically
+  >>> # See UVData documentation on https://pyuvdata.readthedocs.io/en/latest/
   >>> ss = SS()
 
-  # This is an MWA uvfits file trimmed to a single pol, 99 baselines, and only
-  # half of the observing time. We can pass the same keywords for UVData.read to SS.read.
-  # For instance, we read in only cross correlations here.
-  >>> ss.read('SSINS/data/1061313128_99bl_1pol_half_time.uvfits', ant_str='cross')
+  >>> # Read data by specifying a filepath as an argument to the read method
+  >>> filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
+  >>> # By default, the visibilities are differenced in time on read (see paper)
+  >>> ss.read(filepath)
+  >>> # Setting diff=False saves the differencing for later (not useful in most situations)
 
-  # We time-difference the visibilities during initialization.
-  # We adjust the attributes during differencing to ensure the SS object is still a proper UVData object
-  >>> ss.check()
-  True
-
-(b) Applying Flags
-**********************************************
+(b) Passing keyword arguments to SS.read
+****************************************
 ::
-
-  >>> from SSINS import SS
-  >>> import numpy as np
-  >>> inpath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
-
-  # The SSINS package utilizes numpy masked arrays for a number of purposes.
-  # This allows us to work with an additional set of flags along with the original flag array.
-  # We can apply the original flags (propagated through differencing) on read in the following way.
-
+  >>> # SS.read is actually a small wrapper around UVData.read; they share keywords
+  >>> # In particular, select on read and reading only metadata function as usual (see UVData.select documentation)
   >>> ss = SS()
-  # This omits the  autocorrelations on read - they have very different statistics than the cross correlations
-  >>> ss.read(inpath, flag_choice='original', ant_str='cross')
-  >>> np.all(ss.data_array.mask == ss.flag_array)
-  True
+  >>> ss.read(filepath, read_data=False)
 
-  # There are multiple ways to change the flags on the data, but the proper way
-  # is to use the apply_flags method. Custom flag masks can be applied.
-  # This leaves the flag_array attribute untouched, and simply changes the mask
-  # on the data to be equal to the custom array.
+  >>> # The following lines make use of the time_array attribute (metadata) to
+  >>> # read in all but the first and last integrations
+  >>> times = np.unique(ss.time_array)[1:-1]
+  >>> ss.read(filepath, read_data=True, times=times)
 
-  >>> custom = np.zeros_like(ss.flag_array)
-  >>> custom[:, 0, 0, :] = 1
+(c) Applying flags
+******************
+::
+  >>> # SS.data_array is a numpy masked array. To "apply flags" is to change the mask of the data_array.
+  >>> # The proper way to apply flags to the sky-subtracted data is to use the apply_flags method
+  >>> # To apply the original flags in the raw data file, make the following call
+  >>> ss.apply_flags(flag_choice='original')
+  >>> # Note that the original flags are always stored in the flag_array attribute
+  >>> # The flag_choice keyword is stored in an attribute
+  >>> print(ss.flag_choice)
+  'original'
+
+  >>> # You can apply flags from a custom flag array that is the same shape as the data
+  >>> custom = np.zeros(ss.data_array.shape, dtype=bool)
+  >>> # Let us make it so that only the first frequency channel is flagged and nothing else
+  >>> custom[:, 0, 0, :] = True
+  >>> # Apply these flags in the following way
   >>> ss.apply_flags(flag_choice='custom', custom=custom)
+  >>> print(ss.flag_choice)
+  'custom'
 
-  # This flagged everything in the zeroth frequency channel.
-  # We can also apply masks from a flagged INS as follows
-  # Before running this line, see how to make/flag an INS down below
-  >>> ss.apply_flags(flag_choice='custom', INS=ins)
-
-  # The following line unflags the data.
+  >>> # Unflag the data by setting flag_choice=None (note this is actually the default!!)
   >>> ss.apply_flags(flag_choice=None)
-  >>> np.any(ss.data_array.mask)
+  >>> # Check if anything is flagged, for demonstration purposes
+  >>> print(np.any(ss.data_array.mask))
   False
 
-  # apply_flags() is called on read (default choice is None), so any flag
-  # manipulation can be done on read or later as is fit for the situation
-
-sky_subtract: Plotting
-----------------------
-A useful preliminary diagnostic plot is a histogram of the sky-subtracted
-visibility amplitudes. We cover that procedure here.
-
-(a) Invoking Catalog_Plot
-*************************
+(c) Plotting using Catalog_Plot
+*******************************
 ::
-
   >>> from SSINS import Catalog_Plot as cp
   >>> import os
 
-  # We use the VDH_plot (Visibility Difference Histogram) function from Catalog_Plot
-  # We need a prefix for the output file onto which will be attached a tag saying what the plot is
+  >>> # The Catalog_Plot library contains wrappers around plot_lib functions for basic plotting needs
+  >>> # See the documentation: https://ssins.readthedocs.io/en/latest/Catalog_Plot.html
+  >>> # Each function in Catalog_Plot requires a class instance and a filename prefix as arguments (a suffix is appended by the wrapper)
+  >>> # Whatever unique identifying information for the plot should be specified in the prefix
+  >>> prefix = 'SSINS/data/test_data'
 
-  >>> prefix = 'SSINS/data/tutorial_'
+  >>> # To make a Histogram of the Visibility Differences (a VDH, figure 1 of paper), and save it as a pdf, do the following
+  >>> # This also plots a fit estimated from the data
+  >>> cp.VDH_plot(ss, prefix, file_ext='pdf', post_flag=False)
+  >>> # Check to see that the file exists
+  >>> print(os.path.exists('%s_VDH.pdf' % (prefix)))
+  True
 
-  # Let's save a png, plot in log-log, plot all data, and
-  # estimate a model for the thermal background from the data
-  >>> cp.VDH_plot(ss, prefix, file_ext='png', xlabel='Amplitude (~Jy)', xscale='log',
-  >>>             yscale='log', pre_flag=True, pre_model=True)
+  >>> # Let's apply flags and plot the flagged data alongside the unflagged data, without fits
+  >>> ss.apply_flags('original')
+  >>> new_prefix = '%s_flag_unflag_nofits' % prefix
+  >>> cp.VDH_plot(ss, new_prefix, file_ext='pdf', pre_flag=True,
+  ...             post_flag=True, pre_model=False, post_model=False)
+  >>> print(os.path.exists('%s_VDH.pdf' % (new_prefix)))
+  True
 
-  # Check for the file SSINS/data/tutorial_VDH.png. The obs we used earlier in
-  # the tutorial has DTV RFI in it which will have contaminated the maximumum
-  # likelihood estimate for the model, so the thermal model may look a little funny
-
----
-INS
----
-
-incoherent_noise_spectrum: Initializing
----------------------------------------
-An INS can be initialized from an SS object, as well as from a previously
-saved INS.
-
-(a) From an SS object
-*********************
-::
-
-  >>> from SSINS import INS
-
-  # Simply pass the SS object from which the INS will be made
-  >>> ins = INS(ss)
-
-(b) From a saved h5 file
-************************
-::
-
-  # This will read in a saved INS specified by inpath (must be an h5 file)
-  >>> inpath = 'SSINS/data/1061313128_99_bl_1pol_half_time_SSINS.h5'
-  >>> ins = INS(inpath)
-
-incoherent_noise_spectrum: Writing
-----------------------------------
-We can write the information from an INS out to h5 files using the write method.
-There are three main data products to write out: (1) The baseline averaged
-visibility difference amplitudes, (2) The z-scores from mean-subtraction, and (3)
-any mask that may have come from flagging.
-
-(a) Writing the three main data products
-****************************************
-::
-
-  # We need to specify a prefix for the files
-  >>> prefix = 'SSINS/data/tutorial_'
-
-  # Now lets write the data
-  >>> ins.write(prefix, output_type='data')
-  # And lets write the z-scores
-  >>> ins.write(prefix, output_type='z_score')
-
-  # We detail how to use the match_filter to flag an INS in the match_filter section
-  # This will apply masks to the data, which we write as follows
-  >>> ins.write(prefix, output_type='mask')
-  # We can apply these on read from the output file using the mask_file keyword on init
-
-(b) Writing time-propagated flags
-*********************************
-::
-
-  # The time-propagated flags (extending them back across the time-difference)
-  # are calculated using the mask_to_flags method
-  >>> tp_flags = ins.mask_to_flags()
-
-  # This generates a flag array of the original length of the data where
-  # any samples that would have contributed to a flagged difference are flagged
-
-  # We can write these flags out (readable by UVFlag!)
-  # It automatically calls this method when writing flags (different than writing mask)
-  >>> ins.write(prefix, output_type='flags')
-
-(c) Writing an mwaf file
-************************
-::
-
-  # An mwaf file is a special fits file for storing flags of raw MWA data
-  # A special keyword option in ins.write() helps write them
-  # You must supply a list of existing mwaf files from which to gather the header data
-  # Currently you must flag at the same time/freq resolution as the data in the existing mwaf_files
-
-  # For instance if you wanted to flag just the first two coarse bands for an obsid
-  >>> mwaf_files = ['/path/to/obsid_01.mwaf', '/path/to/obsid/obsid_02.mwaf']
-
-
-
-  # As usual you must supply a prefix for the file.
-  # You can choose to add flags to the file from SSINS flagging, or totally replace them
-  >>> prefix_add = '/path/to/obsid_SSINS_add'
-  >>> prefix_replace = '/path/to/obsid_SSINS_replace'
-  >>> ins.write(prefix_add, output_type='mwaf', mwaf_files=mwaf_files,
-                mwaf_method='add')
-  >>> ins.write(prefix_replace, output_type='mwaf', mwaf_files=mwaf_files,
-                mwaf_method='replace')
-
-  # Be sure to set clobber=False (default) if using the same prefix
-  # as the original file and you don't want to overwrite
-
-incoherent_noise_spectrum: Using the mean_subtract() Method
------------------------------------------------------------
-
-(a) Basic Use
-*************
-::
-
-  # The method does not automatically set the data_ms attribute, so the assignment
-  # must be done manually
-  >>> ins.data_ms = ins.mean_subtract()
-
-  # A slice of the array can be calculated by using the f keyword (f for frequencies)
-  # Set up a slice object for frequency channels 100 to 199 inclusive
-  >>> freq_slice = slice(100, 200)
-  >>> ins.data_ms[:, f] = ins.mean_subtract(freq_slice=freq_slice)
-
-(b) Using the order Parameter
-*****************************
-::
-
-  # Sometimes the mean appears to drift in time to linear or higher order
-  # A polynomial fit to each channel can be constructed using the order parameter
-  >>> ins.order = 2
-  >>> ins.data_ms = ins.mean_subtract()
-
-  # That made a quadratic fit for each channel
-
-  # This can also be done on initialization in the same way
-  >>> ins = INS(inpath, order=1)
-
-  # That made a linear fit
-  # The order parameter defaults to 0 (just take a mean)
-
-
-incoherent_noise_spectrum: Plotting
+Making and writing an incoherent noise spectrum
 -----------------------------------
 
-There exists a small plotting library in the repo called plot_lib which exists
-for the sake of convenience. There are some wrappers around these functions in
-the repo contained in Catalog_Plot.
-
-(a) Using Catalog_Plot
-**********************
+(a) Making an incoherent noise spectrum from sky-subtracted data
+****************************************************************
 ::
+  >>> from SSINS import INS
 
-  >>> from SSINS import Catalog_Plot as cp
-  >>> from matplotlib import cm
+  >>> # Making an INS from sky-subtracted data is as simple as passing an SS instance as an argument
+  >>> ins = INS(ss)
+  >>> # This averages the amplitudes of the sky-subtracted data over the baselines, taking into account flags that were applied
 
-  # Let's make ticklabels (in Mhz) using the frequency array
-  >>> prefix = 'SSINS/data/tutorial_'
+(b) Plotting using Catalog_Plot
+*******************************
+::
+  >>> # Plotting INS is similar to plotting a VDH, just with a different function
+  >>> # This plots all polarizations present in the file separately
+  >>> # The first column are the baseline-averaged amplitudes, while the second column shows the mean-subtracted data (z-scores)
+  >>> cp.INS_plot(ins, prefix, file_ext='pdf')
+  >>> print(os.path.exists('%s_SSINS.pdf' % prefix))
+  True
+
+  >>> # You can specify various plotting nuances with keywords
+  >>> # Let's set some frequency ticks every 50 channels
   >>> xticks = np.arange(0, len(ins.freq_array), 50)
-  >>> xticklabels = ['%.1f' % (ins.freq_array[tick] * 10 ** (-6)) for tick in xticks]
+  >>> xticklabels = ['%.1f' % (ins.freq_array[tick]* 10 ** (-6)) for tick in xticks]
+  >>> tick_prefix = '%s_ticks'
+  >>> cp.INS_plot(ins, tickprefix, file_ext='pdf', xticks=xticks, xticklabels=xticklabels)
+  >>> print(os.path.exists('%s_SSINS.pdf' % tick_prefix))
+  True
 
-  # We will plot images of the data and the z-scores as png's (default is pdf)
-  # We clip all data above 150 and all z-scores whose absolute value is greater than 5
-  # We also prescribe a colormap for the data
-  >>> cp.INS_plot(ins, prefix, data_cmap=cm.plasma, vmin=0, vmax=150, ms_vmin=-5,
-  >>>             ms_vmax=5, xticks=xticks, xticklabels=xticklabels,
-  >>>             xlabel='Frequency (Mhz)')
-
-  # If using the original data in the above tutorials with no flags applied to
-  # make the INS, there should be some DTV visible in the middle of the plot
-  # in all polarizations in the output file.
-
-(b) Using plot_lib
-******************
+(c) Plotting using the plot_lib library
+***************************************
 ::
-
-  # Finer control over which plots come out can be obtained without the
-  # Catalog_Plot wrapper using just plot_lib
-  >>> from SSINS import plot_lib
-  >>> from matplotlib import cm
   >>> import matplotlib.pyplot as plt
+  >>> from matplotlib import cm
+  >>> import plot_lib
+  >>> # Let's plot the first polarization data and z-scores
+  >>> fig, ax = plt.subplots(nrows=2, figsize=(16, 9))
+  >>> # The averaged amplitudes are stored in the metric_array parameter
+  >>> plot_lib.image_plot(fig, ax[0], ins.metric_array[:, :, 0],
+  ...                     title='XX Amplitudes', xticks=xticks,
+  ...                     xticklabels=xticklabels)
+  >>> # The z-scores are stored in the metric_ms parameter.
+  >>> # Let's choose a diverging colorbar and center it on zero using the cmap and midpoint keywords.
+  >>> plot_lib.image_plot(fig, ax[1], ins.metric_ms[:, :, 0],
+  ...                     title='XX z-scores', xticks=xticks,
+  ...                     xticklabels=xticklabels, cmap=cm.coolwarm,
+  ...                     midpoint=True)
+  >>> fig.savefig('%s_plot_lib_SSINS.pdf' % prefix)
+  >>> print(os.path.exists('%s_plot_lib_SSINS.pdf' % prefix))
+  True
 
-  >>> fig, ax = plt.subplots(nrows=2)
-  >>> prefix = 'SSINS/data/figs/tutorial_order_compare'
-
-  # Here we take an INS and plot its mean-subtracted data in the first
-  # polarization with different order parameters
-
-  >>> for i in range(2):
-  ...     ins.order = i
-  ...     ins.metric_ms = ins.mean_subtract(order=i)
-  ...     plot_lib.image_plot(fig, ax[i], ins.metric_ms[:, :, 0],
-  ...                         cmap=cm.coolwarm,
-  ...                         title='order = %i' % i, vmin=-5, vmax=5)
-  >>> fig.savefig('%s/tutorial_order_compare.png' % prefix)
-
-  # This particular example is useful when the overall noise level appears to be
-  # drifting over the course of the observation and you want to ignore that drift
-  # If using the usual tutorial file from above, this may appear to
-  # spread the DTV contamination in time - it can still be flagged reasonably
-  # since the match_filter is iterative
-
---
-MF
---
-
-match_filter: initialization
-----------------------------
-
-(a) Initializing
-****************
+(d) Saving out and reading in a spectrum
+****************************************
 ::
+  >>> # The INS.write method saves out h5 files that can be read both by INS objects and UVFlag objects
+  >>> # By default it saves out the metric_array in the file, z-scores must be saved separately
+  >>> # Set clobber=True to overwrite files with the same prefix (default is False)
+  >>> ins.write(prefix, clobber=True)
+  >>> ins.write(prefix, output_type='z_score', clobber=True)
+  >>> print(os.path.exists('%s_SSINS_data.h5' % prefix))
+  True
+  >>> print(os.path.exists('%s_SSINS_z_score.h5' % prefix))
+  True
 
+  >>> # This file can later be read upon instantiation of a new object
+  >>> # The z-scores will be recalculated on instantiation, so no need to read in the z-scores
+  >>> new_ins = INS('%s_SSINS_data.h5' % prefix)
+  >>> # Check equality
+  >>> print(np.all(ins.metric_array == new_ins.metric_array))
+  True
+
+Flagging an INS using a match_filter (MF)
+-----------------------------------------
+
+(a) Constructing a filter with no additional sub-bands
+************************************************
+::
   >>> from SSINS import MF
 
-  # Initialization involves setting desired parameters (reasonable defaults exist)
-  # RFI shapes are passed with a dictionary (this example is digital TV in
-  # Western Australia, where the MWA is located)
+  >>> # The MF class requires a frequency array and significance threshold as positional arguments
+  >>> # We will disable searching for broadband streaks and provide no additional sub-bands for the filter
+  >>> mf = MF(ins.freq_array, 5, streak=False)
+
+(b) Constructing a filter for streaks and Western Australian DTV in MWA EoR Highband
+************************************************************************************
+::
+  >>> # Use the shape_dict keyword to provide custom sub-bands to search over during flagging
+  >>> # The input should be a dictionary, where the key is the name of the shape and the value are the lower/upper frequencies in hz
   >>> shape_dict = {'TV6': [1.74e8, 1.81e8],
-                    'TV7': [1.81e8, 1.88e8],
-                    'TV8': [1.88e8, 1.96e8]}
+  ...               'TV7': [1.81e8, 1.88e8],
+  ...               'TV8': [1.88e8, 1.95e8]}
+  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
-  # sig_thresh governs the maximal strength of outlier to leave unflagged
-  # A reasonable value can be estimated from the size of the data,
-  # as detailed in the paper, section (section): (arxiv link)
-  >>> sig_thresh = 5
-
-  # The single-frequency and broadband streak flaggers can be turned off (default on)
-  >>> narrow = False
-  >>> streak = False
-
-  # An frequency array is required for initialization (typically taken from an INS to be flagged)
-  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, narrow=narrow, streak=streak)
-
-match_filter: Applying Tests
-----------------------------
-
-(a) Basic Match-Shape Test:
-***************************
+(c) Constructing a filter for streaks and South African DTV in HERA below 200 Mhz
+*********************************************************************************
 ::
+  >>> # Use the shape_dict keyword to provide custom sub-bands to search over during flagging
+  >>> # The input should be a dictionary, where the key is the name of the shape and the value are the lower/upper frequencies in hz
+  >>> shape_dict = {'TV4': [1.74e8, 1.82e8],
+  ...               'TV5': [1.82e8, 1.9e8],
+  ...               'TV6': [1.9e8, 1.98e8]}
+  >>> # Technically 2 Mhz of channel 7 should appear, but we omit that in this example
+  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
-  >>> from SSINS import Catalog_Plot as cp
-
-  # Here, the shapes in the shape_dictionary are tested for
-  # This method will automatically apply flags to samples which match the flagging criterion
-  # We will also append events to the ins.match_events attribute
-  >>> mf.apply_match_test(ins, event_record=True)
-
-  # We can plot the results for the INS and the mask will be applied to the plot automatically
-  >>> cp.INS_plot(ins, prefix, ms_vmin=-mf.sig_thresh, ms_vmax=mf.sig_thresh)
-
-  # We can write the match_events out to a yml file
-  >>> ins.write(prefix, output_type='match_events')
-  # We can read these back in from the output file on initializing an INS using
-  # the match_events_file keyword
-
-(b) Flagging All Times for Highly Contaminated Channels:
-********************************************************
+(d) Using the filter to flag the noise spectrum
+***********************************************
 ::
+  >>> # Construct the filter that you want to use.
+  >>> # For the test data we will use the MWA DTV example above
+  >>> shape_dict = {'TV6': [1.74e8, 1.81e8],
+  ...               'TV7': [1.81e8, 1.88e8],
+  ...               'TV8': [1.88e8, 1.95e8]}
+  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
-  >>> from SSINS import MF
+  # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
+  >>> mf.apply_match_test(ins)
 
-  # the N_thresh parameter must be set on initialization
-  # If a channel has less than N_thresh clean samples remaining, all times will be flagged
-  >>> mf = MF(ins.freq_array, sig_thresh=5, N_samp_thresh=20)
+(e) Applying INS flags to an SS object and writing a new raw data file
+**********************************************************************
+::
+  >>> # We can use the apply_flags method to apply flags from an INS object
+  >>> ss.apply_flags(flag_choice='INS', INS=ins)
 
-  # One must simply set the apply_N_thresh keyword for the apply_match_test() method
+  >>> # We write these to a file using the write method. An input file is necessary.
+  >>> # This is extremely memory intensive since two opened raw data files must exist in memory
+  >>> # You can also supply it with an existing UVData object if one is already in memory outside of the SS class
+  >>> filename_out = '%s_raw.uvfits' % prefix
+  >>> filename_in = filepath
+
+  >>> # See docs for required arguments, behavior of the combine keyword, and propagating flags in time
+  >>> # We need to make sure the read_kwargs for the filename_in match how we made the original SS object
+  >>> # Here it needs a keyword dictionary.
+  >>> # This will issue a warning about nsample_default. See the docs for SS.write.
+  >>> ss.write(filename_out, 'uvfits', filename_in=filename_in, combine=True,
+  ...          read_kwargs={'times': times})
+  >>> print(os.path.exists(filename_out))
+  True
+
+(f) Saving the INS mask out to an h5 file
+*****************************************
+::
+  >>> # Just use the write method as above, with the right output_type
+  >>> ins.write(prefix, output_type='mask', clobber=True)
+  >>> print(os.path.exists('%s_SSINS_mask.h5' % prefix))
+  True
+
+(g) Getting time propagated flags from the INS mask
+***************************************************
+::
+  >>> # Each integration in the SSINS is a result of a difference of paired integrations
+  >>> # To get flags for the raw data, we have to propagate flagged INS samples in time to all possible contributing times
+  >>> # The mask_to_flags method returns an array where we have done this. This is useful for comparing to other UVFlag objects
+  >>> flags = ins.mask_to_flags()
+
+  >>> # We can write these out to an h5 file as well
+  >>> ins.write(prefix, output_type='flags', clobber=True)
+  >>> print(os.path.exists('%s_SSINS_flags.h5') % prefix)
+  True
+
+(h) Writing flags to an mwaf file
+*********************************
+::
+  >>> # We can add or replace flags from an existing mwaf file
+  >>> # An mwaf file is a special fits file for storing flags of raw MWA data
+  >>> # A special keyword option in ins.write() helps write them
+  >>> # You must supply a list of existing mwaf files from which to gather the header data
+  >>> # Currently you must flag at the same time/freq resolution as the data in the existing mwaf_files
+
+  >>> # For instance if you wanted to flag just the first two coarse bands for an obsid
+  >>> mwaf_files = ['/path/to/obsid_01.mwaf', '/path/to/obsid/obsid_02.mwaf'] # doctest: +SKIP
+
+
+
+  >>> # As usual you must supply a prefix for the file.
+  >>> # You can choose to add flags to the file from SSINS flagging, or totally replace them
+  >>> prefix_add = '/path/to/obsid_SSINS_add' # doctest: +SKIP
+  >>> prefix_replace = '/path/to/obsid_SSINS_replace' # doctest: +SKIP
+  >>> ins.write(prefix_add, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
+  ...           mwaf_method='add') # doctest: +SKIP
+  >>> ins.write(prefix_replace, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
+  ...           mwaf_method='replace') # doctest: +SKIP
+
+  >>> # Be sure to set clobber=False (default) if using the same prefix
+  >>> # as the original file and you don't want to overwrite
+
+-------------------
+Advanced Techniques
+-------------------
+The techniques below are for users who are already familiar with the basic tutorials above.
+
+Using INS.mean_subtract
+-----------------------
+
+(a) Basic functionality
+***********************
+::
+  >>> from SSINS import INS
+  >>> ins = INS('SSINS/data/1061313128_99_bl_1pol_half_time_SSINS.h5')
+
+  >>> # The mean_subtract method returns the result of mean_subtraction
+  >>> # It does NOT automatically change the metric_ms attribute
+  >>> ms_arr = ins.mean_subtract()
+
+  >>> # You can do mean subtraction on just a subset of the frequencies to get a smaller output
+  >>> # This functionality is used to speed up match filtering
+  >>> # Let's just do the first ten frequency channels
+  >>> ms_arr = ins.mean_subtract(freq_slice=slice(0, 10))
+
+(b) Subtracting a polynomial fit instead of the mean
+****************************************************
+::
+  >>> # If the noise levels are expected to change over the course of the obs (due to a refrigeration cycle for instance)
+  >>> # then may want to subtract a polynomial fit that describes the drift
+  >>> # The mean_subtract method uses INS.order to determine what degree of polynomial to subtract
+  >>> # Default order is 0, which just does mean subtraction
+  >>> ins.order = 1
+  >>> ms_arr_ord_1 = ins.mean_subtract()
+  >>> ins.order = 0
+  >>> ms_arr_ord_0 = ins.mean_subtract()
+
+  >>> # Can ask for the fit coefficients on a per-frequency basis
+  >>> ins.order = 2
+  >>> ms_arr_ord_2, coeffs_ord_2 = ins.mean_subtract(return_coeffs=True)
+  >>> # The shape is (INS.order + 1, Nfreqs, Npols) where Nfreqs is the number of frequencies in the slice
+  >>> # It goes from higher degree coefficients to lower degree
+
+Extra Flagging Bits
+-------------------
+
+(a) Flagging all times for highly contaminated channels
+*******************************************************
+::
+  >>> # Suppose you want to flag all times with fewer than 20 clean channels remaining
+  >>> # Construct a MF as follows
+  >>> mf = MF(ins.freq_array, 5, N_samp_thresh=20)
   >>> mf.apply_match_test(ins, apply_samp_thresh=True)
 
-(c) Calculating the fraction of flagged data:
-*********************************************
-::
 
-  # The mask on the INS object keeps track of which data is flagged
-  # The total fraction of flagged data is given by
-  >>> print(np.mean(ins.metric_array.mask))
+(b) Calculating occupancy
+*************************
+::
+  >>> # The total occupancy can be calculated from the flag mask with a one-liner
+  >>> occ = np.mean(ins.metric_array.mask)

@@ -23,7 +23,7 @@ Indices and tables
 ======================================================================
 `util <https://ssins.readthedocs.io/en/latest/util.html>`_
 ==========================================================
-`Catalog_Plot <https://ssins.readthedocs.io/en/latest/util.html>`_
+`Catalog_Plot <https://ssins.readthedocs.io/en/latest/Catalog_Plot.html>`_
 ==================================================================
 
 * :ref:`genindex`
