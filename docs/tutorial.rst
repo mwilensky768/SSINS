@@ -34,6 +34,8 @@ Generating the sky-subtracted visibilities
 (b) Passing keyword arguments to SS.read
 ****************************************
 ::
+  >>> import numpy as np
+
   >>> # SS.read is actually a small wrapper around UVData.read; they share keywords
   >>> # In particular, select on read and reading only metadata function as usual (see UVData.select documentation)
   >>> ss = SS()
@@ -54,7 +56,7 @@ Generating the sky-subtracted visibilities
   >>> # Note that the original flags are always stored in the flag_array attribute
   >>> # The flag_choice keyword is stored in an attribute
   >>> print(ss.flag_choice)
-  'original'
+  original
 
   >>> # You can apply flags from a custom flag array that is the same shape as the data
   >>> custom = np.zeros(ss.data_array.shape, dtype=bool)
@@ -63,7 +65,7 @@ Generating the sky-subtracted visibilities
   >>> # Apply these flags in the following way
   >>> ss.apply_flags(flag_choice='custom', custom=custom)
   >>> print(ss.flag_choice)
-  'custom'
+  custom
 
   >>> # Unflag the data by setting flag_choice=None (note this is actually the default!!)
   >>> ss.apply_flags(flag_choice=None)
@@ -91,10 +93,13 @@ Generating the sky-subtracted visibilities
   True
 
   >>> # Let's apply flags and plot the flagged data alongside the unflagged data, without fits
+  >>> # We also want legend labels and a legend
   >>> ss.apply_flags('original')
   >>> new_prefix = '%s_flag_unflag_nofits' % prefix
   >>> cp.VDH_plot(ss, new_prefix, file_ext='pdf', pre_flag=True,
-  ...             post_flag=True, pre_model=False, post_model=False)
+  ...             post_flag=True, pre_model=False, post_model=False,
+  ...             post_label='Post-Flag Data', pre_label='Pre-Flag Data',
+  ...             legend=True)
   >>> print(os.path.exists('%s_VDH.pdf' % (new_prefix)))
   True
 
@@ -124,8 +129,8 @@ Making and writing an incoherent noise spectrum
   >>> # Let's set some frequency ticks every 50 channels
   >>> xticks = np.arange(0, len(ins.freq_array), 50)
   >>> xticklabels = ['%.1f' % (ins.freq_array[tick]* 10 ** (-6)) for tick in xticks]
-  >>> tick_prefix = '%s_ticks'
-  >>> cp.INS_plot(ins, tickprefix, file_ext='pdf', xticks=xticks, xticklabels=xticklabels)
+  >>> tick_prefix = '%s_ticks' % prefix
+  >>> cp.INS_plot(ins, tick_prefix, file_ext='pdf', xticks=xticks, xticklabels=xticklabels)
   >>> print(os.path.exists('%s_SSINS.pdf' % tick_prefix))
   True
 
@@ -134,7 +139,7 @@ Making and writing an incoherent noise spectrum
 ::
   >>> import matplotlib.pyplot as plt
   >>> from matplotlib import cm
-  >>> import plot_lib
+  >>> from SSINS import plot_lib
   >>> # Let's plot the first polarization data and z-scores
   >>> fig, ax = plt.subplots(nrows=2, figsize=(16, 9))
   >>> # The averaged amplitudes are stored in the metric_array parameter
@@ -215,7 +220,7 @@ Flagging an INS using a match_filter (MF)
   >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
   # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
-  >>> mf.apply_match_test(ins)
+  >>> mf.apply_match_test(ins) # doctest: +SKIP
 
 (e) Applying INS flags to an SS object and writing a new raw data file
 **********************************************************************
@@ -256,7 +261,7 @@ Flagging an INS using a match_filter (MF)
 
   >>> # We can write these out to an h5 file as well
   >>> ins.write(prefix, output_type='flags', clobber=True)
-  >>> print(os.path.exists('%s_SSINS_flags.h5') % prefix)
+  >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
   True
 
 (h) Writing flags to an mwaf file
@@ -297,7 +302,7 @@ Using INS.mean_subtract
 ***********************
 ::
   >>> from SSINS import INS
-  >>> ins = INS('SSINS/data/1061313128_99_bl_1pol_half_time_SSINS.h5')
+  >>> ins = INS('SSINS/data/1061313128_99bl_1pol_half_time_SSINS.h5')
 
   >>> # The mean_subtract method returns the result of mean_subtraction
   >>> # It does NOT automatically change the metric_ms attribute
@@ -335,7 +340,7 @@ Extra Flagging Bits
   >>> # Suppose you want to flag all times with fewer than 20 clean channels remaining
   >>> # Construct a MF as follows
   >>> mf = MF(ins.freq_array, 5, N_samp_thresh=20)
-  >>> mf.apply_match_test(ins, apply_samp_thresh=True)
+  >>> mf.apply_match_test(ins, apply_samp_thresh=True) # doctest: +SKIP
 
 
 (b) Calculating occupancy
