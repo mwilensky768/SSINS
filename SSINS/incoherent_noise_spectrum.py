@@ -39,7 +39,7 @@ class INS(UVFlag):
         super(INS, self).__init__(input, mode='metric', copy_flags=False,
                                   waterfall=False, history='', label='')
         if self.type is 'baseline':
-            # Set the metric array to the data array without the spw axis
+            input.select(ant_str='cross')
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask)
