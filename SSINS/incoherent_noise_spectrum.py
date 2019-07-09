@@ -39,7 +39,8 @@ class INS(UVFlag):
         super(INS, self).__init__(input, mode='metric', copy_flags=False,
                                   waterfall=False, history='', label='')
         if self.type is 'baseline':
-            # Manually flag autos of input array
+
+            # Manually flag autos
             input.data_array[input.ant_1_array == input.ant_2_array] = np.ma.masked
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
