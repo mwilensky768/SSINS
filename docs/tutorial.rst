@@ -282,10 +282,11 @@ Flagging an INS using a match_filter (MF)
   >>> # You can choose to add flags to the file from SSINS flagging, or totally replace them
   >>> prefix_add = '/path/to/obsid_SSINS_add' # doctest: +SKIP
   >>> prefix_replace = '/path/to/obsid_SSINS_replace' # doctest: +SKIP
+  >>> # Can use Ncoarse keyword if input data does not have 24 coarse channels in it (default is 24)
   >>> ins.write(prefix_add, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
-  ...           mwaf_method='add') # doctest: +SKIP
+  ...           mwaf_method='add', Ncoarse=24) # doctest: +SKIP
   >>> ins.write(prefix_replace, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
-  ...           mwaf_method='replace') # doctest: +SKIP
+  ...           mwaf_method='replace', Ncoarse=24) # doctest: +SKIP
 
   >>> # Be sure to set clobber=False (default) if using the same prefix
   >>> # as the original file and you don't want to overwrite
