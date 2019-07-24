@@ -12,7 +12,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xlabel='', ylabel='', midpoint=False, aspect='auto',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
-               cbar_ticks=None, font_size='medium'):
+               cbar_ticks=None, font_size='medium', symlog=False, linthresh=1):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -73,6 +73,9 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
     elif log:
         cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
+                        vmin=vmin, vmax=vmax, interpolation='none')
+    elif symlog:
+        cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none')
     else:
         cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,

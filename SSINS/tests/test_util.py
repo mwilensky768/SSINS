@@ -53,3 +53,18 @@ def test_match_fraction():
     event_frac = util.event_fraction(events, Ntimes, ['shape_1', 'shape_2'], Nfreqs)
 
     assert event_frac == {'shape_1': 2 / 5, 'shape_2': 1 / 5, 'narrow': 1 / (Ntimes * Nfreqs)}, "Event fraction not calculated correctly"
+
+
+def test_make_ticks():
+
+    # Make up a frequency array and some frequencies to tick
+    freq_array = np.arange(1e8, 1.1e8, 1e6)
+    freqs = np.arange(1e8, 1.1e8, 2e6)
+
+    ticks, labels = util.make_ticks_labels(freqs, freq_array, sig_fig=2)
+
+    test_ticks = (np.arange(len(freq_array))[::2]).tolist()
+    test_labels = ['100.00', '102.00', '104.00', '106.00', '108.00']
+
+    assert np.all(ticks == test_ticks), "The ticks are not equal"
+    assert np.all(labels == test_labels), "The labels are not equal"
