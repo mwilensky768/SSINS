@@ -27,7 +27,7 @@ def test_INS_plot():
 
     cp.INS_plot(ins, prefix)
     cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
-                xticklabels=xticklabels, yticklabels=yticklabels)
+                xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
 
     assert os.path.exists(outfile), "The first plot was not made"
     assert os.path.exists(log_outfile), "The second plot was not made"
