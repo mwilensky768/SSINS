@@ -23,7 +23,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
-             xlabel='', ylabel='', log=False):
+             xlabel='', ylabel='', log=False, title=None):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -41,6 +41,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         xticklabels (sequence of str): The labels for the frequency ticks
         yticklabels (sequence of str): The labels for the time ticks
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
+        title (str): The title to use for the plot.
     """
 
     from matplotlib import cm, use
@@ -75,6 +76,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
+    if title is not None:
+        fig.suptitle(title)
 
     for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
