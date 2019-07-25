@@ -39,6 +39,7 @@ class INS(UVFlag):
         super(INS, self).__init__(input, mode='metric', copy_flags=False,
                                   waterfall=False, history='', label='')
         if self.type is 'baseline':
+
             # Manually flag autos
             input.data_array[input.ant_1_array == input.ant_2_array] = np.ma.masked
             self.metric_array = np.abs(input.data_array)
@@ -148,7 +149,8 @@ class INS(UVFlag):
         return(flags)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
-              output_type='data', mwaf_files=None, mwaf_method='add'):
+              output_type='data', mwaf_files=None, mwaf_method='add',
+              Ncoarse=24):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -240,14 +242,24 @@ class INS(UVFlag):
                 with fits.open(path) as mwaf_hdu:
                     NCHANS = mwaf_hdu[0].header['NCHANS']
                     NSCANS = mwaf_hdu[0].header['NSCANS']
-                    # 24 is the number of coarse channels in MWA data
-                    assert NCHANS == (flags.shape[1] / 24), "Number of fine channels of mwaf input and INS do not match."
-                    assert NSCANS == flags.shape[0], "Time axes of mwaf input and INS flags do not match"
+                    # Check that freq res and time res are compatible
+                    freq_mod = NCHANS % (flags.shape[1] / Ncoarse)
+                    time_mod = NSCANS % flags.shape[0]
+                    assert freq_mod == 0, "Number of fine channels of mwaf input and INS are incompatible."
+                    assert time_mod == 0, "Time axes of mwaf input and INS flags are incompatible."
+                    freq_div = NCHANS / (flags.shape[1] / Ncoarse)
+                    time_div = NSCANS / flags.shape[0]
                     Nant = mwaf_hdu[0].header['NANTENNA']
                     Nbls = Nant * (Nant + 1) // 2
 
-                    # This shape is on MWA wiki
-                    new_flags = np.repeat(flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1).reshape((NSCANS * Nbls, NCHANS))
+                    # Repeat in time
+                    time_rep_flags = np.repeat(flags, time_div, axis=0)
+                    # Repeat in freq
+                    freq_time_rep_flags = np.repeat(time_rep_flags, freq_div, axis=1)
+                    # Repeat in bls
+                    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
+                    # This shape is on MWA wiki. Reshape to this shape.
+                    new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
                     if mwaf_method is 'add':
                         mwaf_hdu[1].data['FLAGS'][new_flags] = 1
                     elif mwaf_method is 'replace':
