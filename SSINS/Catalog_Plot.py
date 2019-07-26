@@ -78,7 +78,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
     if title is not None:
-        fig.suptitle(title)
+        fig.suptitle(title, va=title_vert_align)
 
     for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
