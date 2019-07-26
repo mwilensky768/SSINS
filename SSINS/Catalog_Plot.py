@@ -23,7 +23,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
-             xlabel='', ylabel='', log=False, title=None, title_vert_align='top'):
+             xlabel='', ylabel='', log=False, title=None, title_x=0.5, title_y=.98):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -42,7 +42,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         yticklabels (sequence of str): The labels for the time ticks
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
         title (str): The title to use for the plot.
-        title_vert_align ('top', 'bottom', 'center'): Where to put the title
+        title_x (float): x-coordinate of title center (in figure coordinates)
+        title_y (float): y-coordinate of title center (in figure coordinates)
     """
 
     from matplotlib import cm, use
@@ -78,7 +79,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
     if title is not None:
-        fig.suptitle(title, va=title_vert_align)
+        fig.suptitle(title, x=title_x, y=title_y)
 
     for i, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[i])
