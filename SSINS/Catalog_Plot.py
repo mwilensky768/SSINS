@@ -23,7 +23,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
-             xlabel='', ylabel='', log=False, title=None):
+             xlabel='', ylabel='', log=False, title=None, title_vert_align='top'):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -42,6 +42,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         yticklabels (sequence of str): The labels for the time ticks
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
         title (str): The title to use for the plot.
+        title_vert_align ('top', 'bottom', 'center'): Where to put the title
     """
 
     from matplotlib import cm, use
