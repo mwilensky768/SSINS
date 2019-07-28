@@ -84,8 +84,8 @@ def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
 
 
 def make_obslist(obsfile):
-    """
-    Makes a python list from a text file whose lines are separated by "\n"
+    r"""
+    Makes a python list from a text file whose lines are separated by "\\n"
 
     Args:
         obsfile: A text file with an obsid on each line
