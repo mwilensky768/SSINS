@@ -219,7 +219,7 @@ Flagging an INS using a match_filter (MF)
   ...               'TV8': [1.88e8, 1.95e8]}
   >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
-  # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
+  >>> # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
   >>> mf.apply_match_test(ins) # doctest: +SKIP
 
 (e) Applying INS flags to an SS object and writing a new raw data file
@@ -338,7 +338,7 @@ Extra Flagging Bits
 (a) Flagging all times for highly contaminated channels
 *******************************************************
 ::
-  >>> # Suppose you want to flag all times with fewer than 20 clean channels remaining
+  >>> # Suppose you want to flag all times with fewer than 20 clean time integrations remaining
   >>> # Construct a MF as follows
   >>> mf = MF(ins.freq_array, 5, N_samp_thresh=20)
   >>> mf.apply_match_test(ins, apply_samp_thresh=True) # doctest: +SKIP
