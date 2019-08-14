@@ -7,9 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
-from SSINS import util
 from SSINS.plot_lib import image_plot, hist_plot
-import platform
 import warnings
 
 

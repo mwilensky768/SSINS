@@ -5,11 +5,8 @@ nice to have around.
 
 from __future__ import absolute_import, division, print_function
 
-import scipy.stats
 import numpy as np
 import os
-from astropy.io import fits
-from functools import reduce
 
 
 def red_event_sort(match_events, shape_tuples):

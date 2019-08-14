@@ -5,10 +5,7 @@ The incoherent noise spectrum class.
 """
 
 import numpy as np
-from scipy.special import erfcinv
 import os
-import warnings
-import pickle
 from pyuvdata import UVFlag
 import yaml
 from SSINS import version
