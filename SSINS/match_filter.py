@@ -177,9 +177,9 @@ class MF(object):
             good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
             if event_record:
                 for chan in good_chans[good_chan_ind]:
-                    event = (np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0][0],
-                             slice(chan, chan + 1),
-                             'samp_thresh',
-                             self.sig_thresh)
-                    INS.match_events.append(event)
+                    event_times = np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0]
+                    for event_time in event_times:
+                        event = (event_time, slice(chan, chan + 1), 'samp_thresh',
+                                 self.sig_thresh)
+                        INS.match_events.append(event)
             INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked
