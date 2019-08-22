@@ -66,7 +66,7 @@ class INS(UVFlag):
         self.order = order
         """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         self.metric_ms = self.mean_subtract()
-        """The incoherent noise spectrum, after mean-subtraction."""
+        """An array containing the z-scores of the data in the incoherent noise spectrum."""
 
     def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
 
