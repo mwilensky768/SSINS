@@ -5,8 +5,6 @@ Match Filter class
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-from SSINS import util
-from scipy.special import erfc
 import time
 
 

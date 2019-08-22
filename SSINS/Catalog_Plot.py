@@ -7,9 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
-from SSINS import util
 from SSINS.plot_lib import image_plot, hist_plot
-import platform
 import warnings
 
 
@@ -26,7 +24,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              xlabel='', ylabel='', log=False, sig_event_plot=True,
              sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
              sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
-             sample_sig_vmax=None):
+             sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -44,6 +42,9 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         xticklabels (sequence of str): The labels for the frequency ticks
         yticklabels (sequence of str): The labels for the time ticks
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
+        title (str): The title to use for the plot.
+        title_x (float): x-coordinate of title center (in figure coordinates)
+        title_y (float): y-coordinate of title center (in figure coordinates)
     """
 
     from matplotlib import cm, use
@@ -99,6 +100,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
+    if title is not None:
+        fig.suptitle(title, x=title_x, y=title_y)
 
     for data_ind, data in enumerate(['array', 'ms']):
         im_kwargs.update(data_kwargs[data_ind])

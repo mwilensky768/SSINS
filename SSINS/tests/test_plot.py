@@ -29,7 +29,7 @@ def test_INS_plot():
 
     cp.INS_plot(ins, prefix)
     cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
-                xticklabels=xticklabels, yticklabels=yticklabels)
+                xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
     cp.INS_plot(ins, symlog_prefix, symlog=True, xticks=xticks, yticks=yticks,
                 xticklabels=xticklabels, yticklabels=yticklabels)
 

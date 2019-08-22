@@ -8,11 +8,8 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from pyuvdata import UVData
-import os
-from SSINS import util, INS, MF
 import scipy.stats
 import warnings
-import time
 
 
 class SS(UVData):
