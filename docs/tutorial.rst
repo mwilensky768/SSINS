@@ -219,7 +219,7 @@ Flagging an INS using a match_filter (MF)
   ...               'TV8': [1.88e8, 1.95e8]}
   >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
 
-  # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
+  >>> # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
   >>> mf.apply_match_test(ins) # doctest: +SKIP
 
 (e) Applying INS flags to an SS object and writing a new raw data file
@@ -282,10 +282,11 @@ Flagging an INS using a match_filter (MF)
   >>> # You can choose to add flags to the file from SSINS flagging, or totally replace them
   >>> prefix_add = '/path/to/obsid_SSINS_add' # doctest: +SKIP
   >>> prefix_replace = '/path/to/obsid_SSINS_replace' # doctest: +SKIP
+  >>> # Can use Ncoarse keyword if input data does not have 24 coarse channels in it (default is 24)
   >>> ins.write(prefix_add, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
-  ...           mwaf_method='add') # doctest: +SKIP
+  ...           mwaf_method='add', Ncoarse=24) # doctest: +SKIP
   >>> ins.write(prefix_replace, output_type='mwaf', mwaf_files=mwaf_files, # doctest: +SKIP
-  ...           mwaf_method='replace') # doctest: +SKIP
+  ...           mwaf_method='replace', Ncoarse=24) # doctest: +SKIP
 
   >>> # Be sure to set clobber=False (default) if using the same prefix
   >>> # as the original file and you don't want to overwrite
@@ -337,7 +338,7 @@ Extra Flagging Bits
 (a) Flagging all times for highly contaminated channels
 *******************************************************
 ::
-  >>> # Suppose you want to flag all times with fewer than 20 clean channels remaining
+  >>> # Suppose you want to flag all times with fewer than 20 clean time integrations remaining
   >>> # Construct a MF as follows
   >>> mf = MF(ins.freq_array, 5, N_samp_thresh=20)
   >>> mf.apply_match_test(ins, apply_samp_thresh=True) # doctest: +SKIP

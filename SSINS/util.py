@@ -5,11 +5,8 @@ nice to have around.
 
 from __future__ import absolute_import, division, print_function
 
-import scipy.stats
 import numpy as np
 import os
-from astropy.io import fits
-from functools import reduce
 
 
 def red_event_sort(match_events, shape_tuples):
@@ -84,8 +81,8 @@ def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
 
 
 def make_obslist(obsfile):
-    """
-    Makes a python list from a text file whose lines are separated by "\n"
+    r"""
+    Makes a python list from a text file whose lines are separated by "\\n"
 
     Args:
         obsfile: A text file with an obsid on each line

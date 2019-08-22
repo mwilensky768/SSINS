@@ -161,12 +161,26 @@ def test_write_mwaf():
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
 
-    # shape of that mwaf file
-    ins.metric_array = np.ma.ones([223, 768, 1])
-    ins.metric_array[100, 32 * 11: 32 * (11 + 1)] = np.ma.masked
+    # Compatible shape with mwaf file
+    ins.metric_array = np.ma.ones([55, 384, 1])
+    ins.metric_array[50, 16 * 11: 16 * (11 + 1)] = np.ma.masked
 
+    # metadata from the input file, hardcoded for testing purposes
+    time_div = 4
+    freq_div = 2
+    NCHANS = 32
+    boxint = 11
+    Nbls = 8256
+    NSCANS = 224
     flags = ins.mask_to_flags()
-    new_flags = np.repeat(flags[:, np.newaxis, 32 * 11: 32 * (11 + 1)], 8256, axis=1).reshape((224 * 8256, 32))
+    # Repeat in time
+    time_rep_flags = np.repeat(flags, time_div, axis=0)
+    # Repeat in freq
+    freq_time_rep_flags = np.repeat(time_rep_flags, freq_div, axis=1)
+    # Repeat in bls
+    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
+    # This shape is on MWA wiki. Reshape to this shape.
+    new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
 
     # Test some defensive errors
     with pytest.raises(IOError):
