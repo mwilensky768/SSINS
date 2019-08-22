@@ -92,6 +92,7 @@ def test_apply_match_test():
     ins.metric_array[5] = 10
     ins.metric_array[7, 7:13] = 10
     ins.metric_ms = ins.mean_subtract()
+    ins.sig_array = np.ma.copy(ins.metric_ms)
 
     mf.apply_match_test(ins, event_record=True)
 
@@ -131,6 +132,8 @@ def test_samp_thresh():
     # Mock a simple metric_array and freq_array
     ins.metric_array = np.ma.ones([10, 20, 1])
     ins.weights_array = np.copy(ins.metric_array)
+    ins.metric_ms = ins.mean_subtract()
+    ins.sig_array = np.ma.copy(ins.metric_ms)
     ins.freq_array = np.zeros([1, 20])
     ins.freq_array = np.arange(20)
 

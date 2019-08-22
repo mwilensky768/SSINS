@@ -13,7 +13,7 @@ def test_INS_plot():
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
-    prefix = '%s/%s' % (outdir, obs)
+    prefix = '%s/%s_raw' % (outdir, obs)
     outfile = '%s_SSINS.pdf' % prefix
     log_prefix = '%s/%s_log' % (outdir, obs)
     log_outfile = '%s_SSINS.pdf' % log_prefix
@@ -49,7 +49,7 @@ def test_sig_plot():
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
-    prefix = '%s/%s' % (outdir, obs)
+    prefix = '%s/%s_flagged' % (outdir, obs)
     dataplotfile = '%s_SSINS.pdf' % prefix
     outfile = '%s_SSINS_sig.pdf' % prefix
 

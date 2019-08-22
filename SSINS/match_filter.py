@@ -143,8 +143,8 @@ class MF(object):
                 event = (t_max, f_max, shape_max, sig_max)
                 INS.metric_array[event[:2]] = np.ma.masked
                 # Only adjust those values in the sig_array that are not already assigned
-                INS.sig_array[event[:2]][np.logical_not(INS.metric_ms.mask[event[:2]])] = \
-                    INS.metric_ms[np.logical_not(INS.metric_ms.mask[event[:2]])]
+                nonmask = np.logical_not(INS.metric_ms.mask[event[:2]])
+                INS.sig_array[event[:2]][nonmask] = INS.metric_ms[event[:2]][nonmask]
                 if event_record:
                     INS.match_events.append(event)
                 if (apply_samp_thresh and self.N_samp_thresh):
@@ -153,6 +153,8 @@ class MF(object):
                     INS.metric_ms[:, f_max] = INS.mean_subtract(freq_slice=f_max)
                 else:
                     INS.metric_ms[:, f_max] = np.ma.masked
+        nonmask_all = np.logical_not(INS.metric_ms.mask)
+        INS.sig_array[nonmask_all] = INS.metric_ms[nonmask_all]
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
