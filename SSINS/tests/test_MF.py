@@ -147,8 +147,9 @@ def test_samp_thresh():
     bool_ind[0, 11] = 1
 
     mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
-    test_match_events = [(0, slice(11, 12), 'narrow'), (0, slice(9, 10), 'samp_thresh'), (0, slice(10, 11), 'samp_thresh')]
-    print(ins.match_events)
+    test_match_events = [(0, slice(11, 12), 'narrow')]
+    test_match_events += [(ind, slice(9, 10), 'samp_thresh') for ind in range(3)]
+    test_match_events += [(ind, slice(10, 11), 'samp_thresh') for ind in range(3)]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
