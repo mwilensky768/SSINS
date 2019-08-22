@@ -25,7 +25,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
              xlabel='', ylabel='', log=False, sig_event_plot=True,
              sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
-             sig_cmap=None, symlog=False, linthresh=1):
+             sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
+             sample_sig_vmax=None):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -88,7 +89,13 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'mask_color': 'white',
                          'midpoint': False,
                          'log': False,
-                         'symlog': False}]
+                         'symlog': False},
+                         {'cbar_label': 'Significance ($\hat{\sigma}$)',
+                          'vmin': sample_sig_vmin,
+                          'vmax': sample_sig_vmax,
+                          'midpoint': True,
+                          'cmap': cm.coolwarm,
+                          'mask_color': 'black'}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
@@ -107,7 +114,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     if sig_event_plot:
         if len(INS.match_events):
             fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
-                                   ncols=2, squeeze=False, figsize=(16, 9))
+                                   ncols=3, squeeze=False, figsize=(16, 9))
             event_sig_arr = np.zeros(INS.metric_array.shape)
             event_ind_arr = np.ma.zeros(INS.metric_array.shape, dtype=int)
 
@@ -119,7 +126,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
             event_sig_arr[event_sig_arr_wh_0] = INS.metric_ms[event_sig_arr_wh_0]
             event_ind_arr[event_sig_arr_wh_0] = np.ma.masked
 
-            for data_ind, data in enumerate([event_sig_arr, event_ind_arr]):
+            for data_ind, data in enumerate([event_sig_arr, event_ind_arr, INS.sig_array]):
                 im_kwargs.update(sig_event_kwargs[data_ind])
                 for pol_ind in range(INS.metric_array.shape[2]):
                     image_plot(fig, ax[pol_ind, data_ind], data[:, :, pol_ind],
