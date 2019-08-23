@@ -140,6 +140,9 @@ class MF(object):
                 count += 1
                 event = (t_max, f_max, shape_max, sig_max)
                 INS.metric_array[event[:2]] = np.ma.masked
+                # Only adjust those values in the sig_array that are not already assigned
+                nonmask = np.logical_not(INS.metric_ms.mask[event[:2]])
+                INS.sig_array[event[:2]][nonmask] = INS.metric_ms[event[:2]][nonmask]
                 if event_record:
                     INS.match_events.append(event)
                 if (apply_samp_thresh and self.N_samp_thresh):
@@ -148,6 +151,8 @@ class MF(object):
                     INS.metric_ms[:, f_max] = INS.mean_subtract(freq_slice=f_max)
                 else:
                     INS.metric_ms[:, f_max] = np.ma.masked
+        nonmask_all = np.logical_not(INS.metric_ms.mask)
+        INS.sig_array[nonmask_all] = INS.metric_ms[nonmask_all]
 
         print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
@@ -175,9 +180,10 @@ class MF(object):
             good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
             if event_record:
                 for chan in good_chans[good_chan_ind]:
-                    event = (np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0][0],
-                             slice(chan, chan + 1),
-                             'samp_thresh',
-                             self.sig_thresh)
-                    INS.match_events.append(event)
+                    event_times = np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0]
+                    INS.sig_array[event_times, chan] = INS.metric_ms[event_times, chan]
+                    for event_time in event_times:
+                        event = (event_time, slice(chan, chan + 1), 'samp_thresh',
+                                 self.sig_thresh)
+                        INS.match_events.append(event)
             INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked

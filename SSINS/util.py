@@ -109,3 +109,20 @@ def make_obsfile(obslist, outpath):
     with open(outpath, 'w') as f:
         for obs in obslist:
             f.write("%s\n" % obs)
+
+
+def make_ticks_labels(freqs, freq_array, sig_fig=1):
+    """
+    Makes xticks from desired frequencies to be ticked and the freq_array.
+
+    Args:
+        freqs: The desired frequencies to be ticked, in Hz
+        freq_array: The frequency array that is to be ticked.
+        sig_fig: Precision of the label - number of digits after decimal point (in Mhz)
+    """
+
+    # Find the channel numbers closest to each desired frequency
+    ticks = np.array([np.argmin(np.abs(freq_array - freq)) for freq in freqs])
+    labels = [('%.' + str(sig_fig) + 'f') % (10**-6 * freq) for freq in freqs]
+
+    return(ticks, labels)

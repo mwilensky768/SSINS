@@ -21,7 +21,10 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              vmax=None, ms_vmin=None, ms_vmax=None, data_cmap=None,
              xticklabels=None, yticklabels=None, aspect='auto',
              cbar_ticks=None, ms_cbar_ticks=None, cbar_label='',
-             xlabel='', ylabel='', log=False, title=None, title_x=0.5, title_y=.98):
+             xlabel='', ylabel='', log=False, sig_event_plot=True,
+             sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
+             sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
+             sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -65,8 +68,10 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'vmax': vmax,
                     'cmap': data_cmap,
                     'cbar_ticks': cbar_ticks,
-                    'log': log},
-                   {'cbar_label': 'Deviation $\hat{\sigma}$',
+                    'log': log,
+                    'symlog': symlog,
+                    'linthresh': linthresh},
+                   {'cbar_label': 'Deviation ($\hat{\sigma})$',
                     'mask_color': 'black',
                     'cmap': cm.coolwarm,
                     'vmin': ms_vmin,
@@ -74,21 +79,65 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'cbar_ticks': ms_cbar_ticks,
                     'midpoint': True}]
 
+    sig_event_kwargs = [{'cbar_label': 'Significance ($\hat{\sigma}$)',
+                         'vmin': sig_event_vmin,
+                         'vmax': sig_event_vmax,
+                         'log': sig_log,
+                         'cmap': sig_cmap,
+                         'midpoint': False},
+                        {'cbar_label': 'Event Index',
+                         'cmap': cm.viridis_r,
+                         'mask_color': 'white',
+                         'midpoint': False,
+                         'log': False,
+                         'symlog': False},
+                         {'cbar_label': 'Significance ($\hat{\sigma}$)',
+                          'vmin': sample_sig_vmin,
+                          'vmax': sample_sig_vmax,
+                          'midpoint': True,
+                          'cmap': cm.coolwarm,
+                          'mask_color': 'black'}]
+
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
     if title is not None:
         fig.suptitle(title, x=title_x, y=title_y)
 
-    for i, data in enumerate(['array', 'ms']):
-        im_kwargs.update(data_kwargs[i])
+    for data_ind, data in enumerate(['array', 'ms']):
+        im_kwargs.update(data_kwargs[data_ind])
         for pol_ind in range(INS.metric_array.shape[2]):
-            image_plot(fig, ax[pol_ind, i],
+            image_plot(fig, ax[pol_ind, data_ind],
                        getattr(INS, 'metric_%s' % data)[:, :, pol_ind],
                        title=pol_dict[INS.polarization_array[pol_ind]],
                        xlabel=xlabel, ylabel=ylabel, **im_kwargs)
     plt.tight_layout(h_pad=1, w_pad=1)
     fig.savefig('%s_SSINS.%s' % (prefix, file_ext))
     plt.close(fig)
+
+    if sig_event_plot:
+        if len(INS.match_events):
+            fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
+                                   ncols=3, squeeze=False, figsize=(16, 9))
+            event_sig_arr = np.zeros(INS.metric_array.shape)
+            event_ind_arr = np.ma.zeros(INS.metric_array.shape, dtype=int)
+
+            # iterate backwards so that the most significant events are shown at the topmost layer
+            for event_ind in range(len(INS.match_events) - 1, -1, -1):
+                event_sig_arr[INS.match_events[event_ind][:2]] = INS.match_events[event_ind][-1]
+                event_ind_arr[INS.match_events[event_ind][:2]] = event_ind
+            event_sig_arr_wh_0 = np.where(event_sig_arr == 0)
+            event_sig_arr[event_sig_arr_wh_0] = INS.metric_ms[event_sig_arr_wh_0]
+            event_ind_arr[event_sig_arr_wh_0] = np.ma.masked
+
+            for data_ind, data in enumerate([event_sig_arr, event_ind_arr, INS.sig_array]):
+                im_kwargs.update(sig_event_kwargs[data_ind])
+                for pol_ind in range(INS.metric_array.shape[2]):
+                    image_plot(fig, ax[pol_ind, data_ind], data[:, :, pol_ind],
+                               title=pol_dict[INS.polarization_array[pol_ind]],
+                               xlabel=xlabel, ylabel=ylabel, **im_kwargs)
+            plt.tight_layout(h_pad=1, w_pad=1)
+            fig.savefig('%s_SSINS_sig.%s' % (prefix, file_ext))
+            plt.close(fig)
 
 
 def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log',
