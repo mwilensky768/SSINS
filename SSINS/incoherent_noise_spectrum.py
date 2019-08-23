@@ -64,7 +64,10 @@ class INS(UVFlag):
         self.order = order
         """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         self.metric_ms = self.mean_subtract()
-        """The incoherent noise spectrum, after mean-subtraction."""
+        """An array containing the z-scores of the data in the incoherent noise spectrum."""
+        self.sig_array = np.ma.copy(self.metric_ms)
+        """An array that is initially equal to the z-score of each data point. During flagging,
+        the entries are assigned according to their z-score at the time of their flagging."""
 
     def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
 

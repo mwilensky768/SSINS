@@ -13,10 +13,12 @@ def test_INS_plot():
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
-    prefix = '%s/%s' % (outdir, obs)
+    prefix = '%s/%s_raw' % (outdir, obs)
     outfile = '%s_SSINS.pdf' % prefix
     log_prefix = '%s/%s_log' % (outdir, obs)
     log_outfile = '%s_SSINS.pdf' % log_prefix
+    symlog_prefix = '%s/%s_symlog' % (outdir, obs)
+    symlog_outfile = '%s_SSINS.pdf' % symlog_prefix
 
     ins = INS(insfile)
 
@@ -28,12 +30,48 @@ def test_INS_plot():
     cp.INS_plot(ins, prefix)
     cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
                 xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
+    cp.INS_plot(ins, symlog_prefix, symlog=True, xticks=xticks, yticks=yticks,
+                xticklabels=xticklabels, yticklabels=yticklabels)
 
     assert os.path.exists(outfile), "The first plot was not made"
     assert os.path.exists(log_outfile), "The second plot was not made"
+    assert os.path.exists(symlog_outfile), "The third plot was not made"
 
     os.remove(outfile)
     os.remove(log_outfile)
+    os.remove(symlog_outfile)
+    os.rmdir(outdir)
+
+
+def test_sig_plot():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    outdir = os.path.join(DATA_PATH, 'test_plots')
+
+    prefix = '%s/%s_flagged' % (outdir, obs)
+    dataplotfile = '%s_SSINS.pdf' % prefix
+    outfile = '%s_SSINS_sig.pdf' % prefix
+
+    ins = INS(insfile)
+    shape_dict = {'TV6': [1.74e8, 1.81e8],
+                  'TV7': [1.81e8, 1.88e8],
+                  'TV8': [1.88e8, 1.95e8]}
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict)
+    mf.apply_match_test(ins)
+
+    xticks = np.arange(0, 384, 96)
+    xticklabels = ['%.1f' % (10**-6 * ins.freq_array[tick]) for tick in xticks]
+    yticks = np.arange(0, 50, 10)
+    yticklabels = ['%i' % (2 * tick) for tick in yticks]
+
+    cp.INS_plot(ins, prefix)
+
+    assert os.path.exists(outfile), "The first plot was not made"
+    assert os.path.exists(dataplotfile), "The second plot was not made"
+
+    os.remove(outfile)
+    os.remove(dataplotfile)
     os.rmdir(outdir)
 
 
