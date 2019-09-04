@@ -288,7 +288,7 @@ class INS(UVFlag):
         """
 
         with open(filename, 'r') as infile:
-            yaml_dict = yaml.load(infile)
+            yaml_dict = yaml.load(infile, loader=yaml.Loader)
 
         match_events = []
         for i in range(len(yaml_dict['time_ind'])):
