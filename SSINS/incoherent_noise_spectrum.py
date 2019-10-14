@@ -216,16 +216,18 @@ class INS(UVFlag):
 
         elif output_type is 'match_events':
             yaml_dict = {'time_ind': [],
-                         'freq_slice': [],
+                         'freq_bounds': [],
                          'shape': [],
                          'sig': []}
             for event in self.match_events:
                 yaml_dict['time_ind'].append(event[0])
-                yaml_dict['freq_slice'].append(event[1])
+                # Convert slice object to just its bounds
+                freq_bounds = [event[1].start, event[1].stop]
+                yaml_dict['freq_bounds'].append(freq_bounds)
                 yaml_dict['shape'].append(event[2])
                 yaml_dict['sig'].append(event[3])
             with open(filename, 'w') as outfile:
-                yaml.dump(yaml_dict, outfile, default_flow_style=False)
+                yaml.safe_dump(yaml_dict, outfile, default_flow_style=False)
 
         elif output_type is 'mwaf':
             if mwaf_files is None:
@@ -288,12 +290,16 @@ class INS(UVFlag):
         """
 
         with open(filename, 'r') as infile:
-            yaml_dict = yaml.load(infile)
+            yaml_dict = yaml.safe_load(infile)
 
         match_events = []
         for i in range(len(yaml_dict['time_ind'])):
+            # Convert bounds back to slice
+            freq_slice = slice(yaml_dict['freq_bounds'][i][0],
+                               yaml_dict['freq_bounds'][i][1])
+
             match_events.append((yaml_dict['time_ind'][i],
-                                 yaml_dict['freq_slice'][i],
+                                 freq_slice,
                                  yaml_dict['shape'][i],
                                  yaml_dict['sig'][i]))
 
