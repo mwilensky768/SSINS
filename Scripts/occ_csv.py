@@ -31,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--csv', help='A csv whose columns are obsids, ins data files, ins masks, and yml files')
     parser.add_argument('-o', '--outfile', help='The name of the output csv that contains occupancy information')
     parser.add_argument('-i', '--ch_ignore', help='A text file of fine frequency channels to ignore in occupancy calculation')
+    parser.add_argument('-t', '--time_ignore', help='Times to ignore when calculating occupancy')
     args = parser.parse_args()
 
     dict_list = csv_to_dict_list(args.csv)
@@ -41,6 +42,12 @@ if __name__ == "__main__":
     else:
         fine_channels_ignore = None
 
+    if args.time_ignore is not None:
+        time_ignore = util.make_obslist(args.time_ignore)
+        time_ignore = np.array(time_ignore).astype(float)
+    else:
+        time_ignore = None
+
     occ_dict_list = []
     for obs in dict_list:
         obsid = obs['obsid']
@@ -48,12 +55,15 @@ if __name__ == "__main__":
                   match_events_file=obs['yml_file'])
 
         if fine_channels_ignore is not None:
-            freq_inds = np.arange(len(ins.freq_array))
-            freq_inds = np.delete(freq_inds, fine_channels_ignore)
-        else:
-            freq_inds = slice(None)
+            freq_chans = np.arange(len(ins.freq_array))
+            freq_chans = np.delete(freq_inds, fine_channels_ignore)
+            ins.select(freq_chans=freq_chans)
+        if time_ignore is not None:
+            times = ins.time_array
+            times = np.delete(times, time_ignore)
+            ins.select(times=times)
 
-        total_occ = np.mean(ins.metric_array.mask[:, freq_inds, 0])
+        total_occ = np.mean(ins.metric_array.mask[:, :, 0])
 
         obs_occ_dict = {'obsid': obsid, 'total_occ': total_occ}
         if args.shapes is not None:
