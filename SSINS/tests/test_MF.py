@@ -21,7 +21,7 @@ def test_init():
 
     assert mf_1.slice_dict['shape'] == slice(0, 5), "It did not set the shape correctly"
     assert mf_1.slice_dict['narrow'] is None, "narrow did not get set correctly"
-    assert mf_1.slice_dict['streak'] == slice(None), "streak did not get set correctly"
+    assert mf_1.slice_dict['streak'] == slice(0, 384), "streak did not get set correctly"
 
     # Test disabling streak/narrow
     mf_2 = MF(freqs, 5, shape_dict=shape_dict, narrow=False, streak=False)
@@ -65,7 +65,7 @@ def test_match_test():
     print(shape_max)
 
     assert t_max == 5, "Wrong time"
-    assert f_max == slice(None), "Wrong freq"
+    assert f_max == slice(0, 20), "Wrong freq"
     assert shape_max == 'streak', "Wrong shape"
 
 
@@ -104,7 +104,7 @@ def test_apply_match_test():
 
     assert np.all(test_mask == ins.metric_array.mask), "Flags are incorrect"
 
-    test_match_events_slc = [(5, slice(None), 'streak'),
+    test_match_events_slc = [(5, slice(0, 20), 'streak'),
                              (7, slice(7, 13), 'shape'),
                              (3, slice(5, 6), 'narrow')]
 
