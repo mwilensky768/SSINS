@@ -71,7 +71,7 @@ class MF(object):
         if narrow:
             slice_dict['narrow'] = None
         if streak:
-            slice_dict['streak'] = slice(None)
+            slice_dict['streak'] = slice(0, len(self.freq_array))
 
         return(slice_dict)
 
