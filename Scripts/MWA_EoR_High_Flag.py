@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
         ins.metric_array[ins.metric_array == 0] = np.ma.masked
         ins.metric_ms = ins.mean_subtract()
-        ins.sig_array = np.ma.copy(self.metric_ms)
+        ins.sig_array = np.ma.copy(ins.metric_ms)
 
         prefix = '%s/%s_trimmed_zeromask' % (args.outdir, obsid)
         freqs = np.arange(1.7e8, 2e8, 5e6)
