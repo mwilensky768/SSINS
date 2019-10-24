@@ -18,7 +18,6 @@ if __name__ == "__main__":
         obsid = ins_filepath[slash_ind + 1: slash_ind + 11]
 
         ins = INS(ins_filepath)
-        print(len(ins.metric_array))
         ins.select(times=ins.time_array[3:-3])
         ins.metric_ms = ins.mean_subtract()
         mf = MF(ins.freq_array, 5, shape_dict={'TV6': [1.74e8, 1.81e8],
