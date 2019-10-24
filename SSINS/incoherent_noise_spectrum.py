@@ -220,12 +220,12 @@ class INS(UVFlag):
                          'shape': [],
                          'sig': []}
             for event in self.match_events:
-                yaml_dict['time_ind'].append(event[0])
+                yaml_dict['time_ind'].append(int(event[0]))
                 # Convert slice object to just its bounds
                 freq_bounds = [int(event[1].start), int(event[1].stop)]
                 yaml_dict['freq_bounds'].append(freq_bounds)
                 yaml_dict['shape'].append(event[2])
-                yaml_dict['sig'].append(event[3])
+                yaml_dict['sig'].append(float(event[3]))
             with open(filename, 'w') as outfile:
                 yaml.safe_dump(yaml_dict, outfile, default_flow_style=False)
 
