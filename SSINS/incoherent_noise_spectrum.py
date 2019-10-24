@@ -8,6 +8,7 @@ from pyuvdata import UVFlag
 import yaml
 from SSINS import version
 from functools import reduce
+import warnings
 
 
 class INS(UVFlag):
