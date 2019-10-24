@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
         ins.metric_array[ins.metric_array == 0] = np.ma.masked
         ins.metric_ms = ins.mean_subtract()
-        ins.sig_array = np.ma.copy(self.metric_ms)
+        ins.sig_array = np.ma.copy(ins.metric_ms)
 
         prefix = '%s/%s_trimmed_zeromask' % (args.outdir, obsid)
         freqs = np.arange(1.7e8, 2e8, 5e6)
@@ -46,8 +46,8 @@ if __name__ == "__main__":
         mf.apply_match_test(ins, apply_samp_thresh=True)
 
         flagged_prefix = '%s/%s_trimmed_zeromask_MF' % (args.outdir, obsid)
-        ins.write(flagged_prefix, output_type='data')
-        ins.write(flagged_prefix, output_type='mask')
+        ins.write(flagged_prefix, output_type='data', clobber=True)
+        ins.write(flagged_prefix, output_type='mask', clobber=True)
         ins.write(flagged_prefix, output_type='match_events')
 
         Catalog_Plot.INS_plot(ins, flagged_prefix, xticks=xticks, yticks=yticks,
