@@ -306,3 +306,15 @@ class INS(UVFlag):
                                  yaml_dict['sig'][i]))
 
         return(match_events)
+
+    def select(self, **kwargs):
+        """
+        A thin wrapper around UVFlag.select. This is not fully integrated into
+        SSINS yet. The metric_ms and sig_array attributes need to be manually
+        adjusted according to the desired select functionality. Issues a warning
+        about this. See UVFlag documentation for select function.
+        """
+
+        warnings.warn("You have chosen to use INS.select. Be sure to manually adjust the metric_ms and sig_array attributes accordingly.")
+
+        super(INS, self).select(**kwargs)
