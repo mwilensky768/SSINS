@@ -222,7 +222,7 @@ class INS(UVFlag):
             for event in self.match_events:
                 yaml_dict['time_ind'].append(event[0])
                 # Convert slice object to just its bounds
-                freq_bounds = [event[1].start, event[1].stop]
+                freq_bounds = [int(event[1].start), int(event[1].stop)]
                 yaml_dict['freq_bounds'].append(freq_bounds)
                 yaml_dict['shape'].append(event[2])
                 yaml_dict['sig'].append(event[3])
