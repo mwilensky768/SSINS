@@ -46,6 +46,9 @@ class MF(object):
            See apply_samp_thresh() documentation for exact meaning."""
         self.slice_dict = self._shape_slicer(narrow, streak)
         """A dictionary whose keys are the same as shape_dict and whose values are corresponding slices into the freq_array attribute"""
+        for shape in self.slice_dict:
+            if shape not in self.sig_thresh.keys():
+                raise KeyError("%s shape has no sig_thresh. Check sig_thresh input." % shape)
 
     def _shape_slicer(self, narrow, streak):
 
@@ -75,12 +78,8 @@ class MF(object):
                     max_chan += 1
                 slice_dict[shape] = slice(min_chan, max_chan)
         if narrow:
-            if 'narrow' not in self.sig_thresh.keys():
-                raise KeyError("No sig_thresh provided for 'narrow' shape")
             slice_dict['narrow'] = None
         if streak:
-            if 'streak' not in self.sig_thresh.keys():
-                raise KeyError("No sig_thresh provided for 'streak' shape")
             slice_dict['streak'] = slice(0, len(self.freq_array))
 
         return(slice_dict)

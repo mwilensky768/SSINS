@@ -16,15 +16,16 @@ def test_init():
     ch_width = freqs[1] - freqs[0]
     shape = [freqs[0] - 0.1 * ch_width, freqs[4] + 0.1 * ch_width]
     shape_dict = {'shape': shape}
+    sig_thresh = {'narrow': 5, 'shape': 5, 'streak': 5}
 
-    mf_1 = MF(freqs, 5, shape_dict=shape_dict)
+    mf_1 = MF(freqs, sig_thresh, shape_dict=shape_dict)
 
     assert mf_1.slice_dict['shape'] == slice(0, 5), "It did not set the shape correctly"
     assert mf_1.slice_dict['narrow'] is None, "narrow did not get set correctly"
     assert mf_1.slice_dict['streak'] == slice(0, 384), "streak did not get set correctly"
 
     # Test disabling streak/narrow
-    mf_2 = MF(freqs, 5, shape_dict=shape_dict, narrow=False, streak=False)
+    mf_2 = MF(freqs, sig_thresh, shape_dict=shape_dict, narrow=False, streak=False)
 
     assert 'narrow' not in mf_2.slice_dict, "narrow is still in the shape_dict"
     assert 'streak' not in mf_2.slice_dict, "streak still in shape_dict"
@@ -32,8 +33,14 @@ def test_init():
 
     # Test if error gets raised with bad shape_dict
     try:
-        mf_3 = MF(freqs, 5, shape_dict={}, streak=False, narrow=False)
+        mf_3 = MF(freqs, sig_thresh, shape_dict={}, streak=False, narrow=False)
     except ValueError:
+        pass
+
+    # Test if error gets raised with missing significances
+    try:
+        mf_4 = MF(freqs, {'narrow': 5}, shape_dict={'shape': shape})
+    except KeyError:
         pass
 
 
@@ -53,7 +60,8 @@ def test_match_test():
     # Make a shape dictionary for a shape that will be injected later
     shape = [7.9, 12.1]
     shape_dict = {'shape': shape}
-    mf = MF(ins.freq_array, 5, shape_dict=shape_dict)
+    sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
+    mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
 
     # Inject a shape, narrow, and streak event
     ins.metric_array[3, 5] = 10
@@ -85,7 +93,8 @@ def test_apply_match_test():
     # Make a shape dictionary for a shape that will be injected later
     shape = [7.9, 12.1]
     shape_dict = {'shape': shape}
-    mf = MF(ins.freq_array, 5, shape_dict=shape_dict)
+    sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
+    mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
 
     # Inject a shape, narrow, and streak event
     ins.metric_array[3, 5] = 10
@@ -138,7 +147,8 @@ def test_samp_thresh():
     ins.freq_array = np.arange(20)
 
     # Arbitrarily flag enough data in channel 10
-    mf = MF(ins.freq_array, 5, streak=False, N_samp_thresh=5)
+    sig_thresh = {'narrow': 5}
+    mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
     ins.metric_array[3:, 10] = np.ma.masked
     ins.metric_array[3:, 9] = np.ma.masked
     # Put in an outlier so it gets to samp_thresh_test
@@ -160,5 +170,5 @@ def test_samp_thresh():
 
     # Test that exception is raised when N_samp_thresh is too high
     with pytest.raises(ValueError):
-        mf = MF(ins.freq_array, 5, N_samp_thresh=100)
+        mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, N_samp_thresh=100)
         mf.apply_samp_thresh_test(ins)
