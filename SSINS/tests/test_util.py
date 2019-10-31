@@ -2,7 +2,6 @@ from __future__ import division, print_function, absolute_import
 
 from SSINS import util
 from SSINS.data import DATA_PATH
-import nose.tools as nt
 import os
 import numpy as np
 import scipy.stats
