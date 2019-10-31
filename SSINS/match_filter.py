@@ -20,8 +20,14 @@ class MF(object):
         """
         Args:
             freq_array: Sets the freq_array attribute of the filter
-            sig_thresh (float): Sets the sig_thresh attribute of the filter
-            shape_dict (dict): Sets the preliminary shape_dict attribute of the filter
+            sig_thresh (dict): A dictionary where the keys are the desired
+                shapes to flag. The values are the desired significance
+                thresholds for each shape. If streak or narrow are True, thresholds
+                for these must be included in this dictionary, although they
+                should not be included in the shape_dict keyword input.
+            shape_dict (dict): A dictionary of shapes to flag. Keys are shapes
+                other than 'streak' and 'narrow'. Values are frequency limits
+                of corresponding shape.
             N_samp_thresh (int): Sets the N_samp_thresh attribute of the filter
             narrow (bool): If True, search for narrowband (single channel) RFI
             streak (bool): If True, search for broad RFI streaks that occupy the entire observing band
@@ -34,7 +40,7 @@ class MF(object):
         self.shape_dict = shape_dict
         """A dictionary of shapes. Keys are a shape name, values are the lower and upper frequency bounds in hz."""
         self.sig_thresh = sig_thresh
-        """Significance threshold to flag. Any shape with a z-score higher than this will be identified by the filter."""
+        """A dictionary of significance thresholds to flag per shape. Keys are shapes and values are thresholds."""
         self.N_samp_thresh = N_samp_thresh
         """The threshold for flagging an entire channel when some flags exist and apply_samp_thresh() is called.
            See apply_samp_thresh() documentation for exact meaning."""
@@ -69,8 +75,12 @@ class MF(object):
                     max_chan += 1
                 slice_dict[shape] = slice(min_chan, max_chan)
         if narrow:
+            if 'narrow' not in self.sig_thresh.keys():
+                raise KeyError("No sig_thresh provided for 'narrow' shape")
             slice_dict['narrow'] = None
         if streak:
+            if 'streak' not in self.sig_thresh.keys():
+                raise KeyError("No sig_thresh provided for 'streak' shape")
             slice_dict['streak'] = slice(0, len(self.freq_array))
 
         return(slice_dict)
@@ -107,11 +117,11 @@ class MF(object):
                 N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
                                      axis=1)
                 sliced_arr = np.absolute(INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
-                t, p = np.unravel_index((sliced_arr / self.sig_thresh).argmax(),
+                t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmax(),
                                         sliced_arr.shape)
                 f = self.slice_dict[shape]
                 sig = sliced_arr[t, p]
-            if sig > self.sig_thresh:
+            if sig > self.sig_thresh[shape]:
                 if sig > sig_max:
                     t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
         return(t_max, f_max, sig_max, shape_max)
@@ -184,6 +194,6 @@ class MF(object):
                     INS.sig_array[event_times, chan] = INS.metric_ms[event_times, chan]
                     for event_time in event_times:
                         event = (event_time, slice(chan, chan + 1), 'samp_thresh',
-                                 self.sig_thresh)
+                                 None)
                         INS.match_events.append(event)
             INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked
