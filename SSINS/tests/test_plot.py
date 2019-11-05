@@ -57,7 +57,8 @@ def test_sig_plot():
     shape_dict = {'TV6': [1.74e8, 1.81e8],
                   'TV7': [1.81e8, 1.88e8],
                   'TV8': [1.88e8, 1.95e8]}
-    mf = MF(ins.freq_array, 5, shape_dict=shape_dict)
+    sig_thresh = {'TV6': 5, 'TV7': 5, 'TV8': 5, 'narrow': 5, 'streak': 5}
+    mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
     mf.apply_match_test(ins)
 
     xticks = np.arange(0, 384, 96)
