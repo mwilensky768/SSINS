@@ -139,7 +139,6 @@ class MF(object):
             event_record (bool): If True, append events to INS.match_events
             apply_samp_thresh (bool): If True, call apply_samp_thresh() between iterations. Note this will not execute if the N_samp_thresh parameter is 0.
         """
-        print('Beginning match_test at %s' % time.strftime("%H:%M:%S"))
 
         count = 1
         while count:
@@ -162,8 +161,6 @@ class MF(object):
                     INS.metric_ms[:, f_max] = np.ma.masked
         nonmask_all = np.logical_not(INS.metric_ms.mask)
         INS.sig_array[nonmask_all] = INS.metric_ms[nonmask_all]
-
-        print('Finished match_test at %s' % time.strftime("%H:%M:%S"))
 
     def apply_samp_thresh_test(self, INS, event_record=False):
         """
