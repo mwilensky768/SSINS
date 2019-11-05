@@ -186,7 +186,9 @@ Flagging an INS using a match_filter (MF)
 
   >>> # The MF class requires a frequency array and significance threshold as positional arguments
   >>> # We will disable searching for broadband streaks and provide no additional sub-bands for the filter
-  >>> mf = MF(ins.freq_array, 5, streak=False)
+  >>> # First we need to define a sig_thresh dictionary for our only shape (narrowband)
+  >>> sig_thresh = {'narrow': 5}
+  >>> mf = MF(ins.freq_array, sig_thresh, streak=False, narrow=True, shape_dict={})
 
 (b) Constructing a filter for streaks and Western Australian DTV in MWA EoR Highband
 ************************************************************************************
@@ -195,8 +197,17 @@ Flagging an INS using a match_filter (MF)
   >>> # The input should be a dictionary, where the key is the name of the shape and the value are the lower/upper frequencies in hz
   >>> shape_dict = {'TV6': [1.74e8, 1.81e8],
   ...               'TV7': [1.81e8, 1.88e8],
-  ...               'TV8': [1.88e8, 1.95e8]}
-  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
+  ...               'TV8': [1.88e8, 1.95e8],
+  ...               'TV9': [1.95e8, 2.02e8]}
+  >>> # We also need to apply significance thresholds for each shape, including 'narrow' and 'streak'
+  >>> # In principle, these can be different values per shape
+  >>> sig_thresh = {'narrow': 5,
+  ...               'streak': 5,
+  ...               'TV6': 5,
+  ...               'TV7': 5,
+  ...               'TV8': 5,
+  ...               'TV9': 5}
+  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True, narrow=True)
 
 (c) Constructing a filter for streaks and South African DTV in HERA below 200 Mhz
 *********************************************************************************
@@ -207,7 +218,14 @@ Flagging an INS using a match_filter (MF)
   ...               'TV5': [1.82e8, 1.9e8],
   ...               'TV6': [1.9e8, 1.98e8]}
   >>> # Technically 2 Mhz of channel 7 should appear, but we omit that in this example
-  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
+  >>> # We also need to apply significance thresholds for each shape, including 'narrow' and 'streak'
+  >>> # In principle, these can be different values per shape
+  >>> sig_thresh = {'narrow': 5,
+                    'streak': 5,
+                    'TV4': 5,
+                    'TV5': 5,
+                    'TV6': 5}
+  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True)
 
 (d) Using the filter to flag the noise spectrum
 ***********************************************
@@ -216,8 +234,15 @@ Flagging an INS using a match_filter (MF)
   >>> # For the test data we will use the MWA DTV example above
   >>> shape_dict = {'TV6': [1.74e8, 1.81e8],
   ...               'TV7': [1.81e8, 1.88e8],
-  ...               'TV8': [1.88e8, 1.95e8]}
-  >>> mf = MF(ins.freq_array, 5, shape_dict=shape_dict, streak=True)
+  ...               'TV8': [1.88e8, 1.95e8],
+  ...               'TV9': [1.95e8, 2.02e8]}
+  >>> sig_thresh = {'narrow': 5,
+  ...               'streak': 5,
+  ...               'TV6': 5,
+  ...               'TV7': 5,
+  ...               'TV8': 5,
+  ...               'TV9': 5}
+  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True)
 
   >>> # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
   >>> mf.apply_match_test(ins) # doctest: +SKIP
@@ -340,7 +365,8 @@ Extra Flagging Bits
 ::
   >>> # Suppose you want to flag all times with fewer than 20 clean time integrations remaining
   >>> # Construct a MF as follows
-  >>> mf = MF(ins.freq_array, 5, N_samp_thresh=20)
+  >>> sig_thresh = {'narrow': 5, 'streak': 5}
+  >>> mf = MF(ins.freq_array, sig_thresh, N_samp_thresh=20)
   >>> mf.apply_match_test(ins, apply_samp_thresh=True) # doctest: +SKIP
 
 
