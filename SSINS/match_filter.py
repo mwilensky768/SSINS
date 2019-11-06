@@ -20,11 +20,12 @@ class MF(object):
         """
         Args:
             freq_array: Sets the freq_array attribute of the filter
-            sig_thresh (dict): A dictionary where the keys are the desired
+            sig_thresh (dict or number): If dictionary, the keys are the desired
                 shapes to flag. The values are the desired significance
                 thresholds for each shape. If streak or narrow are True, thresholds
                 for these must be included in this dictionary, although they
-                should not be included in the shape_dict keyword input.
+                should not be included in the shape_dict keyword input. If passing
+                a number, this number is used as the threshold for all shapes.
             shape_dict (dict): A dictionary of shapes to flag. Keys are shapes
                 other than 'streak' and 'narrow'. Values are frequency limits
                 of corresponding shape.
@@ -46,9 +47,15 @@ class MF(object):
            See apply_samp_thresh() documentation for exact meaning."""
         self.slice_dict = self._shape_slicer(narrow, streak)
         """A dictionary whose keys are the same as shape_dict and whose values are corresponding slices into the freq_array attribute"""
-        for shape in self.slice_dict:
-            if shape not in self.sig_thresh.keys():
-                raise KeyError("%s shape has no sig_thresh. Check sig_thresh input." % shape)
+        if type(self.sig_thresh) is dict:
+            for shape in self.slice_dict:
+                if shape not in self.sig_thresh.keys():
+                    raise KeyError("%s shape has no sig_thresh. Check sig_thresh input." % shape)
+        else:
+            sig_thresh_dict = {}
+            for shape in self.slice_dict:
+                sig_thresh_dict[shape] = self.sig_thresh
+            self.sig_thresh = sig_thresh_dict
 
     def _shape_slicer(self, narrow, streak):
 
