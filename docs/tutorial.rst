@@ -200,7 +200,7 @@ Flagging an INS using a match_filter (MF)
   ...               'TV8': [1.88e8, 1.95e8],
   ...               'TV9': [1.95e8, 2.02e8]}
   >>> # We also need to apply significance thresholds for each shape, including 'narrow' and 'streak'
-  >>> # In principle, these can be different values per shape
+  >>> # In principle, these can be different values per shape, see advanced techniques.
   >>> sig_thresh = 5
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True, narrow=True)
 
