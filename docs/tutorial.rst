@@ -187,7 +187,7 @@ Flagging an INS using a match_filter (MF)
   >>> # The MF class requires a frequency array and significance threshold as positional arguments
   >>> # We will disable searching for broadband streaks and provide no additional sub-bands for the filter
   >>> # First we need to define a sig_thresh dictionary for our only shape (narrowband)
-  >>> sig_thresh = {'narrow': 5}
+  >>> sig_thresh = 5
   >>> mf = MF(ins.freq_array, sig_thresh, streak=False, narrow=True, shape_dict={})
 
 (b) Constructing a filter for streaks and Western Australian DTV in MWA EoR Highband
@@ -200,13 +200,8 @@ Flagging an INS using a match_filter (MF)
   ...               'TV8': [1.88e8, 1.95e8],
   ...               'TV9': [1.95e8, 2.02e8]}
   >>> # We also need to apply significance thresholds for each shape, including 'narrow' and 'streak'
-  >>> # In principle, these can be different values per shape
-  >>> sig_thresh = {'narrow': 5,
-  ...               'streak': 5,
-  ...               'TV6': 5,
-  ...               'TV7': 5,
-  ...               'TV8': 5,
-  ...               'TV9': 5}
+  >>> # In principle, these can be different values per shape, see advanced techniques.
+  >>> sig_thresh = 5
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True, narrow=True)
 
 (c) Constructing a filter for streaks and South African DTV in HERA below 200 Mhz
@@ -220,11 +215,7 @@ Flagging an INS using a match_filter (MF)
   >>> # Technically 2 Mhz of channel 7 should appear, but we omit that in this example
   >>> # We also need to apply significance thresholds for each shape, including 'narrow' and 'streak'
   >>> # In principle, these can be different values per shape
-  >>> sig_thresh = {'narrow': 5,
-                    'streak': 5,
-                    'TV4': 5,
-                    'TV5': 5,
-                    'TV6': 5}
+  >>> sig_thresh = 5
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True)
 
 (d) Using the filter to flag the noise spectrum
@@ -236,18 +227,21 @@ Flagging an INS using a match_filter (MF)
   ...               'TV7': [1.81e8, 1.88e8],
   ...               'TV8': [1.88e8, 1.95e8],
   ...               'TV9': [1.95e8, 2.02e8]}
-  >>> sig_thresh = {'narrow': 5,
-  ...               'streak': 5,
-  ...               'TV6': 5,
-  ...               'TV7': 5,
-  ...               'TV8': 5,
-  ...               'TV9': 5}
+  >>> sig_thresh = 5
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, streak=True)
 
   >>> # Use the apply_match_test method to flag the INS (this applies the flags to the mask of the metric array)
   >>> mf.apply_match_test(ins) # doctest: +SKIP
 
-(e) Applying INS flags to an SS object and writing a new raw data file
+(e) Saving the INS mask out to an h5 file
+*****************************************
+::
+  >>> # Just use the write method as above, with the right output_type
+  >>> ins.write(prefix, output_type='mask', clobber=True)
+  >>> print(os.path.exists('%s_SSINS_mask.h5' % prefix))
+  True
+
+(f) Applying INS flags to an SS object and writing a new raw data file
 **********************************************************************
 ::
   >>> # We can use the apply_flags method to apply flags from an INS object
@@ -266,14 +260,6 @@ Flagging an INS using a match_filter (MF)
   >>> ss.write(filename_out, 'uvfits', filename_in=filename_in, combine=True,
   ...          read_kwargs={'times': times})
   >>> print(os.path.exists(filename_out))
-  True
-
-(f) Saving the INS mask out to an h5 file
-*****************************************
-::
-  >>> # Just use the write method as above, with the right output_type
-  >>> ins.write(prefix, output_type='mask', clobber=True)
-  >>> print(os.path.exists('%s_SSINS_mask.h5' % prefix))
   True
 
 (g) Getting time propagated flags from the INS mask
@@ -375,3 +361,17 @@ Extra Flagging Bits
 ::
   >>> # The total occupancy can be calculated from the flag mask with a one-liner
   >>> occ = np.mean(ins.metric_array.mask)
+
+
+(c) Setting different significance thresholds per shape
+*******************************************************
+::
+  >>> # One may pass a dictionary of significance thresholds to set different
+  >>> # thresholds per shape. All desired shapes, including narrow and broad if
+  >>> # desired, must be included.
+  >>> sig_thresh = {'narrow': 5, 'streak': 20, 'TV6': 5, 'TV7': 5, 'TV8': 5, 'TV9': 5}
+  >>> shape_dict = {'TV6': [1.74e8, 1.81e8],
+  ...               'TV7': [1.81e8, 1.88e8],
+  ...               'TV8': [1.88e8, 1.95e8],
+  ...               'TV9': [1.95e8, 2.02e8]}
+  >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)

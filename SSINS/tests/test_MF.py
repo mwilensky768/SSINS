@@ -16,13 +16,14 @@ def test_init():
     ch_width = freqs[1] - freqs[0]
     shape = [freqs[0] - 0.1 * ch_width, freqs[4] + 0.1 * ch_width]
     shape_dict = {'shape': shape}
-    sig_thresh = {'narrow': 5, 'shape': 5, 'streak': 5}
+    sig_thresh = {'narrow': 10, 'shape': 5, 'streak': 5}
 
     mf_1 = MF(freqs, sig_thresh, shape_dict=shape_dict)
 
     assert mf_1.slice_dict['shape'] == slice(0, 5), "It did not set the shape correctly"
     assert mf_1.slice_dict['narrow'] is None, "narrow did not get set correctly"
     assert mf_1.slice_dict['streak'] == slice(0, 384), "streak did not get set correctly"
+    assert mf_1.sig_thresh == sig_thresh
 
     # Test disabling streak/narrow
     mf_2 = MF(freqs, sig_thresh, shape_dict=shape_dict, narrow=False, streak=False)
@@ -42,6 +43,10 @@ def test_init():
         mf_4 = MF(freqs, {'narrow': 5}, shape_dict={'shape': shape})
     except KeyError:
         pass
+
+    # Test passing a number to shape_dict
+    mf_5 = MF(freqs, 5, shape_dict={'shape': shape})
+    assert mf_5.sig_thresh == {'shape': 5, 'narrow': 5, 'streak': 5}
 
 
 def test_match_test():
