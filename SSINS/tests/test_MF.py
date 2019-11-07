@@ -140,6 +140,8 @@ def test_samp_thresh():
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    out_prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    match_outfile = '%s_SSINS_match_events.yml' % out_prefix
 
     ins = INS(insfile)
 
@@ -172,6 +174,12 @@ def test_samp_thresh():
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
         assert ins.match_events[i][:-1] == event, "The events weren't appended correctly"
+
+    # Test that writing with samp_thresh flags is OK
+    ins.write(out_prefix, output_type='match_events')
+    test_match_events_read = ins.match_events_read(match_outfile)
+    os.remove(match_outfile)
+    assert ins.match_events == test_match_events_read
 
     # Test that exception is raised when N_samp_thresh is too high
     with pytest.raises(ValueError):
