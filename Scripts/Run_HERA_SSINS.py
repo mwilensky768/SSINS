@@ -1,4 +1,4 @@
-from SSINS import SS, INS
+from SSINS import SS, INS, version
 from SSINS import Catalog_Plot as cp
 import numpy as np
 import argparse
@@ -10,6 +10,9 @@ parser.add_argument("-o", "--other_sig", help="The desired significance threshol
 parser.add_argument("-p", "--prefix", help="The prefix for output files")
 parser.add_argument("-N", "--N_samp_thresh", help="The N_samp_thresh parameter for the match filter")
 args = parser.parse_args()
+
+version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
+version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 
 # Make the SS object
 ss = SS()
@@ -26,6 +29,7 @@ ins.write(args.prefix, output_type='z_score')
 where_FM = np.where(np.logical_and(ins.freq_array > 87.5e6, ins.freq_array < 108e6))
 ins.metric_array[:, where_FM] = np.ma.masked
 ins.metric_ms = ins.mean_subtract()
+ins.history += "Manually flagged the FM band. "
 
 # Make a filter with specified settings
 dab_width = 1.536e6
@@ -56,6 +60,7 @@ mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=args.N_
 
 # Do flagging
 mf.apply_match_test(ins)
+ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_substr
 
 # Write outputs
 ins.write(args.prefix, output_type='mask')
