@@ -1,14 +1,14 @@
-from SSINS import SS, INS, version
-from SSINS import Catalog_Plot as cp
+from SSINS import SS, INS, version, MF
+from functools import reduce
 import numpy as np
 import argparse
 
-parser = parser.ArgumentParser()
+parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--filename", help="The visibility file to process")
-parser.add_argument("-s", "--streak_sig", help="The desired streak significance threshold")
-parser.add_argument("-o", "--other_sig", help="The desired significance threshold for other shapes")
+parser.add_argument("-s", "--streak_sig", type=float, help="The desired streak significance threshold")
+parser.add_argument("-o", "--other_sig", type=float, help="The desired significance threshold for other shapes")
 parser.add_argument("-p", "--prefix", help="The prefix for output files")
-parser.add_argument("-N", "--N_samp_thresh", help="The N_samp_thresh parameter for the match filter")
+parser.add_argument("-N", "--N_samp_thresh", type=int, help="The N_samp_thresh parameter for the match filter")
 args = parser.parse_args()
 
 version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
@@ -59,7 +59,7 @@ sig_thresh['streak'] = args.streak_sig
 mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=args.N_samp_thresh)
 
 # Do flagging
-mf.apply_match_test(ins)
+mf.apply_match_test(ins, apply_samp_thresh=True)
 ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_substr
 
 # Write outputs
