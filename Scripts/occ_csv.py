@@ -1,6 +1,7 @@
 from SSINS import INS, util
 import argparse
 import csv
+import numpy as np
 
 
 def csv_to_dict_list(csv_filepath):
@@ -56,7 +57,7 @@ if __name__ == "__main__":
 
         if fine_channels_ignore is not None:
             freq_chans = np.arange(len(ins.freq_array))
-            freq_chans = np.delete(freq_inds, fine_channels_ignore)
+            freq_chans = np.delete(freq_chans, fine_channels_ignore)
             ins.select(freq_chans=freq_chans)
         if time_ignore is not None:
             times = ins.time_array
@@ -67,9 +68,8 @@ if __name__ == "__main__":
 
         obs_occ_dict = {'obsid': obsid, 'total_occ': total_occ}
         if args.shapes is not None:
-            for shapes in args.shapes:
-                obs_occ_dict[shape] = len([event for event in match_events if event[2] == shape]) / ins.metric_array.shape[0]
-
+            for shape in args.shapes:
+                obs_occ_dict[shape] = len([event for event in ins.match_events if event[2] == shape]) / ins.metric_array.shape[0]
         occ_dict_list.append(obs_occ_dict)
 
-    dict_list_to_csv(occ_dict_list, args.outfile, ['obsid', 'total_occ'] + [shape for shapes in args.shapes])
+    dict_list_to_csv(occ_dict_list, args.outfile, ['obsid', 'total_occ'] + [shape for shape in args.shapes])
