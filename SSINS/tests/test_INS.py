@@ -218,3 +218,13 @@ def test_select():
 
     assert ins.metric_array.shape[0] == Ntimes - 6
     assert ins.metric_array.shape[1] == 24
+    for param in ins._data_params:
+        assert getattr(ins, param).shape == ins.metric_array.shape
+
+
+def test_data_params():
+    obs = '1061313128_99bl_1pol_half_time_SSINS'
+    testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
+    ins = INS(testfile)
+
+    assert ins._data_params == ['metric_array', 'weights_array', 'metric_ms', 'sig_array']
