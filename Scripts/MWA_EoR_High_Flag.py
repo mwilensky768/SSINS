@@ -20,10 +20,14 @@ if __name__ == "__main__":
         ins = INS(ins_filepath)
         ins.select(times=ins.time_array[3:-3])
         ins.metric_ms = ins.mean_subtract()
-        mf = MF(ins.freq_array, 5, shape_dict={'TV6': [1.74e8, 1.81e8],
-                                               'TV7': [1.81e8, 1.88e8],
-                                               'TV8': [1.88e8, 1.95e8],
-                                               'TV9': [1.95e8, 2.02e8]},
+        shape_dict = {'TV6': [1.74e8, 1.81e8],
+                      'TV7': [1.81e8, 1.88e8],
+                      'TV8': [1.88e8, 1.95e8],
+                      'TV9': [1.95e8, 2.02e8]}
+        sig_thresh = {shape: 5 for shape in shape_dict}
+        sig_thresh['narrow'] = 5
+        sig_thresh['streak'] = 20
+        mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict,
                 N_samp_thresh=len(ins.time_array) // 2)
 
         ins.metric_array[ins.metric_array == 0] = np.ma.masked
@@ -44,7 +48,7 @@ if __name__ == "__main__":
 
         mf.apply_match_test(ins, apply_samp_thresh=True)
 
-        flagged_prefix = '%s/%s_trimmed_zeromask_MF' % (args.outdir, obsid)
+        flagged_prefix = '%s/%s_trimmed_zeromask_MF_s20' % (args.outdir, obsid)
         ins.write(flagged_prefix, output_type='data', clobber=True)
         ins.write(flagged_prefix, output_type='mask', clobber=True)
         ins.write(flagged_prefix, output_type='match_events')
