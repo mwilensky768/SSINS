@@ -308,14 +308,19 @@ class INS(UVFlag):
 
         return(match_events)
 
-    def select(self, **kwargs):
-        """
-        A thin wrapper around UVFlag.select. This is not fully integrated into
-        SSINS yet. The metric_ms and sig_array attributes need to be manually
-        adjusted according to the desired select functionality. Issues a warning
-        about this. See UVFlag documentation for select function.
-        """
+    @property
+    def _data_params(self):
+        """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
 
-        warnings.warn("You have chosen to use INS.select. Be sure to manually adjust the metric_ms and sig_array attributes accordingly.")
+        UVFlag_params = ['metric_array', 'weights_array']
+        Extra_params = ['metric_ms', 'sig_array']
+        SSINS_params = UVFlag_params + Extra_params
+        return(SSINS_params)
+
+    def select(self, **kwargs):
+        """Thin wrapper around UVFlag.select that also recalculates the ms array
+        immediately afterwards.
+        """
 
         super(INS, self).select(**kwargs)
+        self.metric_ms = self.mean_subtract()
