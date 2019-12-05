@@ -26,7 +26,7 @@ if __name__ == "__main__":
                       'TV9': [1.95e8, 2.02e8]}
         sig_thresh = {shape: 5 for shape in shape_dict}
         sig_thresh['narrow'] = 5
-        sig_thresh['streak'] = 20
+        sig_thresh['streak'] = 8
         mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict,
                 N_samp_thresh=len(ins.time_array) // 2)
 
@@ -44,15 +44,15 @@ if __name__ == "__main__":
 
         Catalog_Plot.INS_plot(ins, prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
-                              data_cmap=cm.plasma)
+                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5)
 
         mf.apply_match_test(ins, apply_samp_thresh=True)
 
-        flagged_prefix = '%s/%s_trimmed_zeromask_MF_s20' % (args.outdir, obsid)
+        flagged_prefix = '%s/%s_trimmed_zeromask_MF_s8' % (args.outdir, obsid)
         ins.write(flagged_prefix, output_type='data', clobber=True)
         ins.write(flagged_prefix, output_type='mask', clobber=True)
         ins.write(flagged_prefix, output_type='match_events')
 
         Catalog_Plot.INS_plot(ins, flagged_prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
-                              data_cmap=cm.plasma)
+                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5)
