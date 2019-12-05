@@ -44,7 +44,8 @@ if __name__ == "__main__":
 
         Catalog_Plot.INS_plot(ins, prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
-                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5)
+                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
+                              title=obsid, xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
         mf.apply_match_test(ins, apply_samp_thresh=True)
 
@@ -55,4 +56,5 @@ if __name__ == "__main__":
 
         Catalog_Plot.INS_plot(ins, flagged_prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
-                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5)
+                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
+                              title=obsid, xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
