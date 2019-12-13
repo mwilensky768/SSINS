@@ -1,13 +1,16 @@
-from SSINS import INS, SS, MF
-from SSINS import Catalog_Plot as cp
+from SSINS import INS
 import numpy as np
 import argparse
 import os
+from pyuvdata import UVData, utils
 
 parser = argparse.ArgumentParser()
-parser.add_argument('obsid', help='The obsid of the file in question')
-parser.add_argument('infile', help='The path to the input file')
-parser.add_argument('outdir', help='The output directory')
+parser.add_argument('-o', '--obsid', help='The obsid of the file in question')
+parser.add_argument('-i', '--insfile', help='The path to the input file')
+parser.add_argument('-m', '--maskfile', help='The path to the masks')
+parser.add_argument('-d', '--outdir', help='The output directory')
+parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files')
+parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
 args = parser.parse_args()
 
 if not os.path.exists(args.outdir):
@@ -17,26 +20,20 @@ indir = args.infile[:args.infile.rfind('/')]
 if indir == args.outdir:
     raise ValueError("indir and outdir are the same")
 
-ss = SS()
-ss.read(args.infile, flag_choice='original')
+uvd = UVData()
+if len(args.uvd) > 1:
+    uvd.read_mwa_corr_fits(args.uvd)
+else:
+    uvd.read(args.uvd)
+uvd.select(times=np.unique(uv.time_array)[3:-3])
 
-ins = INS(ss)
+ins = INS(args.insfile, mask_file=args.maskfile)
+uvf = ins.copy()
+uvf.to_flag()
+uvf.flag_array = ins.mask_to_flags()
 
-ins.metric_array[-5:] = np.ma.masked
-ins.metric_ms = ins.mean_subtract()
+utils.apply_uvflag(uvd, uvf, inplace=False)
+if np.any(uvd.nsample_array == 0):
+    uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
 
-shape_dict = {'TV4': [1.74e8, 1.81e8],
-              'TV5': [1.81e8, 1.88e8],
-              'TV6': [1.88e8, 1.95e8],
-              'broad6': [1.72e8, 1.83e8],
-              'broad7': [1.79e8, 1.9e8],
-              'broad8': [1.86e8, 1.98e8]}
-
-mf = MF(ins.freq_array, 5, shape_dict=shape_dict, N_samp_thresh=25)
-mf.apply_match_test(ins, apply_samp_thresh=True)
-
-cp.INS_plot(ins, '%s/%s' % (args.outdir, args.obsid))
-
-ss.apply_flags(flag_choice='INS', INS=ins)
-ss.write('%s/%s.uvfits' % (args.outdir, args.obsid), 'uvfits',
-         nsample_default=16)
+uvd.write_uvfits('%s/%s.uvfits' % (args.outdir, args.obsid))
