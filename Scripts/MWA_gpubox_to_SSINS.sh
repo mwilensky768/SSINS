@@ -24,5 +24,5 @@ if [ ! -e ${outdir}/${obs}_SSINS_data.h5 ]; then
 
   echo "Executing python script for ${obs}"
   gpufiles=$(ls ${data_dir}/${obs}/*gpubox*.fits)
-  python MWA_vis_to_SSINS.py -f $gpufiles -o $obs ${uvfits_dir}/${obs}_noflag.uvfits -d ${outdir}
+  python MWA_vis_to_SSINS.py -f $gpufiles -o $obs -d ${outdir}
 fi
