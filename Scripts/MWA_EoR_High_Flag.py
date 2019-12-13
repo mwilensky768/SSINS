@@ -47,7 +47,8 @@ if __name__ == "__main__":
                               data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
                               title=obsid, xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
-        mf.apply_match_test(ins, apply_samp_thresh=True)
+        mf.apply_match_test(ins, apply_samp_thresh=False)
+        mf.apply_samp_thresh_test(ins, event_record=True)
 
         flagged_prefix = '%s/%s_trimmed_zeromask_MF_s8' % (args.outdir, obsid)
         ins.write(flagged_prefix, output_type='data', clobber=True)
