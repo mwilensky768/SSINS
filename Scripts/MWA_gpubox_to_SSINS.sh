@@ -13,8 +13,6 @@ data_dir=/astro/mwaeor/MWA/data
 
 echo JOBID $SLURM_ARRAY_JOB_ID
 echo TASKID $SLURM_ARRAY_TASK_ID
-
-obs=$(sed "${SLURM_ARRAY_TASK_ID}q;d" ${obs_file_name})
 echo OBSID $obs
 
 gpufiles=$(ls ${data_dir}/${obs}/*gpubox*.fits)
