@@ -9,6 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--ins_file_list', help="A text file of SSINS h5 data files")
     parser.add_argument('-o', '--outdir', help="The output directory for the files")
+    parser.add_argument('-s', '--skip_write', action='store_false', help="Whether to skip writing output files or just write plots.")
     args = parser.parse_args()
 
     ins_file_list = util.make_obslist(args.ins_file_list)
@@ -51,9 +52,10 @@ if __name__ == "__main__":
         mf.apply_samp_thresh_test(ins, event_record=True)
 
         flagged_prefix = '%s/%s_trimmed_zeromask_MF_s8' % (args.outdir, obsid)
-        ins.write(flagged_prefix, output_type='data', clobber=True)
-        ins.write(flagged_prefix, output_type='mask', clobber=True)
-        ins.write(flagged_prefix, output_type='match_events')
+        if args.write:
+            ins.write(flagged_prefix, output_type='data', clobber=True)
+            ins.write(flagged_prefix, output_type='mask', clobber=True)
+            ins.write(flagged_prefix, output_type='match_events')
 
         Catalog_Plot.INS_plot(ins, flagged_prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
