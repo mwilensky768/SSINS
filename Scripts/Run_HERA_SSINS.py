@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from SSINS import SS, INS, version, MF
 from functools import reduce
 import numpy as np
