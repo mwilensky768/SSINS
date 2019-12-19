@@ -65,6 +65,6 @@ mf.apply_match_test(ins, apply_samp_thresh=True)
 ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_substr
 
 # Write outputs
-ins.write(args.prefix, output_type='mask')
-ins.write(args.prefix, output_type='flags')
-ins.write(args.prefix, output_type='match_events')
+ins.write(args.prefix, output_type='mask', sep='.')
+ins.write(args.prefix, output_type='flags', sep='.')
+ins.write(args.prefix, output_type='match_events', sep='.')
