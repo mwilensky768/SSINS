@@ -150,7 +150,7 @@ class INS(UVFlag):
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
-              Ncoarse=24):
+              Ncoarse=24, sep='_'):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -177,14 +177,15 @@ class INS(UVFlag):
                 mwaf - Writes an mwaf file by converting mask to flags.
             mwaf_files (seq): A list of paths to mwaf files to use as input for each coarse channel
             mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags to current flags in input file or replace them entirely
+            sep (str): Determines the separator in the filename of the output file.
         """
 
         version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
         if output_type is 'match_events':
-            filename = '%s_SSINS_%s.yml' % (prefix, output_type)
+            filename = '%s%sSSINS%s%s.yml' % (prefix, sep, sep, output_type)
         else:
-            filename = '%s_SSINS_%s.h5' % (prefix, output_type)
+            filename = '%s%sSSINS%s%s.h5' % (prefix, sep, sep, output_type)
 
         if output_type is not 'mwaf':
             self.history += 'Wrote %s to %s using SSINS %s. ' % (output_type, filename, version_hist_substr)

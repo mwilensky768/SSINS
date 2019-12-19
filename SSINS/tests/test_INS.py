@@ -121,6 +121,7 @@ def test_write():
     flags_outfile = '%s_SSINS_flags.h5' % prefix
     mask_outfile = '%s_SSINS_mask.h5' % prefix
     match_outfile = '%s_SSINS_match_events.yml' % prefix
+    sep_data_outfile = '%s.SSINS.data.h5' % prefix
 
     ss = SS()
     ss.read(testfile, flag_choice='original')
@@ -137,6 +138,7 @@ def test_write():
     ins.write(prefix, output_type='flags')
     ins.write(prefix, output_type='mask')
     ins.write(prefix, output_type='match_events')
+    ins.write(prefix, output_type='data', sep='.')
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='bad_label')
 
@@ -146,8 +148,10 @@ def test_write():
     assert np.all(ins.metric_array.mask == new_ins.metric_array.mask), "Elements of the mask were not equal"
     assert np.all(ins.metric_ms == new_ins.metric_ms), "Elements of the metric_ms were not equal"
     assert np.all(ins.match_events == new_ins.match_events), "Elements of the match_events were not equal"
+    assert os.path.exists(sep_data_outfile), "sep_data_outfile was note written"
 
-    for path in [data_outfile, z_score_outfile, flags_outfile, mask_outfile, match_outfile]:
+    for path in [data_outfile, z_score_outfile, flags_outfile, mask_outfile,
+                 match_outfile, sep_data_outfile]:
         os.remove(path)
 
 
