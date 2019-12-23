@@ -24,8 +24,8 @@ ss.read(args.filename, ant_str='cross')
 ins = INS(ss)
 
 # Write the raw data and z-scores to h5 format
-ins.write(args.prefix)
-ins.write(args.prefix, output_type='z_score')
+ins.write(args.prefix, sep='.')
+ins.write(args.prefix, output_type='z_score', sep='.')
 
 # Flag FM radio
 where_FM = np.where(np.logical_and(ins.freq_array > 87.5e6, ins.freq_array < 108e6))
