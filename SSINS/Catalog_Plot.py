@@ -2,9 +2,6 @@
 A library of wrappers which call plotting functions in the SSINS.plot_lib
 library. Each function is named according to the class that they plot.
 """
-
-from __future__ import absolute_import, division, print_function
-
 import os
 import numpy as np
 from SSINS.plot_lib import image_plot, hist_plot

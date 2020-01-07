@@ -1,9 +1,6 @@
 """
 Copied from pyuvdata.version with permission from Dr. Bryna Hazelton.
 """
-
-from __future__ import absolute_import, division, print_function
-
 import os
 import six
 import subprocess

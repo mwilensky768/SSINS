@@ -2,9 +2,6 @@
 A simple plotting library used by SSINS.Catalog_Plot. Direct interaction with
 these functions is unnecessary.
 """
-
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 
 

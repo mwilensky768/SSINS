@@ -3,9 +3,6 @@ The sky_subtract (SS) class is defined here. This is the backbone of the analysi
 pipeline when working with raw datafiles. It is a subclass of UVData. See UVData
 documentation for attributes that are not listed here.
 """
-
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 from pyuvdata import UVData
 import scipy.stats

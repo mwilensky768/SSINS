@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 import pytest
 from SSINS.data import DATA_PATH
 from SSINS import SS, INS
