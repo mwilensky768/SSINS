@@ -11,9 +11,9 @@ Copied from pyuvdata with permission from Dr. Bryna Hazelton
 
 import sys
 import os
-import six
 import subprocess
 import json
+import io
 
 import SSINS
 from SSINS.data import DATA_PATH
@@ -73,13 +73,9 @@ def test_construct_version_info():
 
         data = data.strip()
 
-        if six.PY2:
-            return data
         return data.decode('utf8')
 
     def unicode_to_str(u):
-        if six.PY2:
-            return u.encode('utf8')
         return u
 
     try:
@@ -121,7 +117,7 @@ def test_main():
 
     saved_stdout = sys.stdout
     try:
-        out = six.StringIO()
+        out = io.StringIO()
         sys.stdout = out
         SSINS.version.main()
         output = out.getvalue()
