@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 """
 Copied from pyuvdata with permission from Dr. Bryna Hazelton
 """
