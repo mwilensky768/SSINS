@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 
-class MF(object):
+class MF():
 
     """
     Defines the Match Filter (MF) class.
