@@ -2,7 +2,6 @@
 Copied from pyuvdata.version with permission from Dr. Bryna Hazelton.
 """
 import os
-import six
 import subprocess
 import json
 
@@ -22,8 +21,6 @@ def _get_git_output(args, capture_stderr=False):
 
     data = data.strip()
 
-    if six.PY2:
-        return data
     return data.decode('utf8')
 
 
@@ -44,8 +41,6 @@ def _get_gitinfo_file(git_file=None):
 
 
 def _unicode_to_str(u):
-    if six.PY2:
-        return u.encode('utf8')
     return u
 
 
