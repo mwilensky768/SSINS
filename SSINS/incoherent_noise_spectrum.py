@@ -31,8 +31,8 @@ class INS(UVFlag):
             match_events_file: A path to a .yml file that has events caught by the match filter
         """
 
-        super(INS, self).__init__(input, mode='metric', copy_flags=False,
-                                  waterfall=False, history='', label='')
+        super().__init__(input, mode='metric', copy_flags=False,
+                         waterfall=False, history='', label='')
         if self.type is 'baseline':
 
             # Manually flag autos
@@ -41,7 +41,7 @@ class INS(UVFlag):
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask)
             """The number of baselines that contributed to each element of the metric_array"""
-            super(INS, self).to_waterfall(method='mean')
+            super().to_waterfall(method='mean')
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
         if mask_file is None:
@@ -189,7 +189,7 @@ class INS(UVFlag):
 
         if output_type is 'data':
             self.metric_array = self.metric_array.data
-            super(INS, self).write(filename, clobber=clobber, data_compression=data_compression)
+            super().write(filename, clobber=clobber, data_compression=data_compression)
             self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
 
         elif output_type is 'z_score':

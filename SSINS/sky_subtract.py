@@ -20,7 +20,7 @@ class SS(UVData):
         """
         Initializes identically to a UVData object, except for one additional attribute.
         """
-        super(SS, self).__init__()
+        super().__init__()
         self.MLE = None
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
@@ -42,7 +42,7 @@ class SS(UVData):
             kwargs: Additional kwargs are passed to UVData.read()
         """
 
-        super(SS, self).read(filename, **kwargs)
+        super().read(filename, **kwargs)
         if (self.data_array is not None) and diff:
             self.diff()
             self.apply_flags(flag_choice=flag_choice)
@@ -123,7 +123,7 @@ class SS(UVData):
         self.time_array = 0.5 * (self.time_array[self.Nbls:] + self.time_array[:-self.Nbls])
         """The center time of the differenced visibilities. Length Nblts."""
         self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
-        super(SS, self).set_lsts_from_time_array()
+        super().set_lsts_from_time_array()
 
     def MLE_calc(self):
 
