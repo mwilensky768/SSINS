@@ -1,5 +1,3 @@
-from __future__ import division, print_function, absolute_import
-
 from SSINS import util
 from SSINS.data import DATA_PATH
 import os

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 """
 Copied from pyuvdata with permission from Dr. Bryna Hazelton
 """
@@ -13,9 +11,9 @@ Copied from pyuvdata with permission from Dr. Bryna Hazelton
 
 import sys
 import os
-import six
 import subprocess
 import json
+import io
 
 import SSINS
 from SSINS.data import DATA_PATH
@@ -36,7 +34,7 @@ def test_get_gitinfo_file():
         git_file = temp_git_file
 
     with open(git_file) as data_file:
-        data = [SSINS.version._unicode_to_str(x) for x in json.loads(data_file.read().strip())]
+        data = [x for x in json.loads(data_file.read().strip())]
         git_origin = data[0]
         git_hash = data[1]
         git_description = data[2]
@@ -75,14 +73,7 @@ def test_construct_version_info():
 
         data = data.strip()
 
-        if six.PY2:
-            return data
         return data.decode('utf8')
-
-    def unicode_to_str(u):
-        if six.PY2:
-            return u.encode('utf8')
-        return u
 
     try:
         git_origin = get_git_output(['config', '--get', 'remote.origin.url'], capture_stderr=True)
@@ -100,7 +91,7 @@ def test_construct_version_info():
             # Check if a GIT_INFO file was created when installing package
             git_file = os.path.join(SSINS_dir, 'GIT_INFO')
             with open(git_file) as data_file:
-                data = [unicode_to_str(x) for x in json.loads(data_file.read().strip())]
+                data = [x for x in json.loads(data_file.read().strip())]
                 git_origin = data[0]
                 git_hash = data[1]
                 git_description = data[2]
@@ -123,7 +114,7 @@ def test_main():
 
     saved_stdout = sys.stdout
     try:
-        out = six.StringIO()
+        out = io.StringIO()
         sys.stdout = out
         SSINS.version.main()
         output = out.getvalue()

@@ -1,9 +1,10 @@
 # SSINS Readme
 
-SSINS is a python package intended for radio frequency interference flagging in radio astronomy datasets. It stands for Sky-Subtracted Incoherent Noise Spectra. If you use this software for published work, please cite this paper that describes the SSINS method: (doi:10.1088/1538-3873/ab3cad) (arxiv version: https://arxiv.org/abs/1906.01093). 
+SSINS is a python package intended for radio frequency interference flagging in radio astronomy datasets. It stands for Sky-Subtracted Incoherent Noise Spectra. If you use this software for published work, please cite this paper that describes the SSINS method: (doi:10.1088/1538-3873/ab3cad) (arxiv version: https://arxiv.org/abs/1906.01093).
 
 ## Dependencies
 
+**python3** is now required. Support for python2 has been dropped.
 **pyuvdata 1.3.8 or better**.  
 **pyuvdata has its own dependencies!** and some of those listed below are shared.  
 See https://github.com/RadioAstronomySoftwareGroup/pyuvdata.  
@@ -18,7 +19,7 @@ See https://github.com/RadioAstronomySoftwareGroup/pyuvdata.
 
 **matplotlib** will be necessary if the user wants to use the Catalog_Plot and plot_lib libraries.  
 **astropy** will be necessary if desiring to write mwaf files. (required for pyuvdata anyway, see pyuvdata dependencies)
-**python3** will be non-optional when the new year rolls around.
+
 
 ## Installation
 
