@@ -4,13 +4,19 @@ import argparse
 import os
 from pyuvdata import UVData, utils
 
+
+def uvd_read_select(obj, filepath, time_slice=slice(3, -3)):
+    obj.read(filepath, read_data=False)
+    times = np.unique(obj.time_array)[time_slice]
+    obj.read(filepath, times=times)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', help='The obsid of the file in question')
 parser.add_argument('-i', '--insfile', help='The path to the input file')
 parser.add_argument('-m', '--maskfile', help='The path to the masks')
 parser.add_argument('-d', '--outdir', help='The output directory')
 parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files')
-parser.add_argument('-t', '--uvd_type', help="The type of visibility file")
 parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
 parser.add_argument('-f', '--rfi_flag', type='store_true', help="Whether or not to do rfi flagging with SSINS")
 args = parser.parse_args()
@@ -27,13 +33,7 @@ if args.rfi_flag:
         ins = INS(args.insfile, mask_file=args.maskfile)
     else:
         ss = SS()
-        if args.uvd_type is 'uvfits':
-            ss.read(args.uvd)
-        elif args.uvd_type is 'gpubox':
-            ss.read_mwa_corr_fits(args.uvd)
-        else:
-            raise ValueError("uvd_type option has an invalid value. Choose either 'uvfits' or 'gpubox'")
-        ss.select(times=np.unique(ss.time_array)[3:-3])
+        uvd_obj_read(ss, args.uvd)
         ins = INS(ss)
         freqs = np.arange(1.7e8, 2e8, 5e6)
         xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array, sig_fig=0)
@@ -49,10 +49,8 @@ if args.rfi_flag:
         # Try to save memory - hope for garbage collector
         del ss
         # Set up MF flagging for routine shapes
-        shape_dict = {'TV6': [1.74e8, 1.81e8],
-                      'TV7': [1.81e8, 1.88e8],
-                      'TV8': [1.88e8, 1.95e8],
-                      'TV9': [1.95e8, 2.02e8]}
+        shape_dict = {'TV6': [1.74e8, 1.81e8], 'TV7': [1.81e8, 1.88e8],
+                      'TV8': [1.88e8, 1.95e8], 'TV9': [1.95e8, 2.02e8]}
         sig_thresh = {shape: 5 for shape in shape_dict}
         sig_thresh['narrow'] = 5
         sig_thresh['streak'] = 8
@@ -67,13 +65,7 @@ if args.rfi_flag:
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
     uvd = UVData()
-    if args.uvd_type is 'gpubox':
-        uvd.read_mwa_corr_fits(args.uvd)
-    elif args.uvd_type is 'uvfits':
-        uvd.read(args.uvd)
-    else:
-        raise ValueError("uvd_type option has an invalid value. Choose either 'uvfits' or 'gpubox'")
-    uvd.select(times=np.unique(uv.time_array)[3:-3])
+    uvd_obj_read(uvd, args.uvd)
     uvf = ins.copy()
     uvf.to_flag()
     uvf.flag_array = ins.mask_to_flags()
