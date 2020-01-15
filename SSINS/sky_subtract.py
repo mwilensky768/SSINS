@@ -47,28 +47,6 @@ class SS(UVData):
             self.diff()
             self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
 
-    def read_mwa_corr_fits(self, filelist, diff=True, flag_choice=None, INS=None,
-                           custom=None, **kwargs):
-
-        """
-        Reads in MWA gpubox files by first calling
-        UVData.read_mwa_corr_fits(). See UVData documentation for list of kwargs that can be
-        passed to UVData.read_mwa_corr_fits()
-
-        Args:
-            filelist (list of str): The filepaths to read in, including a metafits file ending in '.metafits'.
-            diff (bool): If True, and data was read in, then difference the visibilities in time
-            flag_choice: Sets flags for the data array on read using apply_flags method.
-            INS: An INS object for apply_flags()
-            custom: A custom flag array for apply_flags()
-            kwargs: Additional kwargs are passed to UVData.read()
-        """
-
-        super().read_mwa_corr_fits(filelist, **kwargs)
-        if (self.data_array is not None) and diff:
-            self.diff()
-            self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
-
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
         A function which applies flags to the data via numpy masked arrays. Also
