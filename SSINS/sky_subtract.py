@@ -34,7 +34,7 @@ class SS(UVData):
         passed to UVData.read()
 
         Args:
-            filename (str): The filepath to read in.
+            filename (str or list of str): The filepath(s) to read in.
             diff (bool): If True, and data was read in, then difference the visibilities in time
             flag_choice: Sets flags for the data array on read using apply_flags method.
             INS: An INS object for apply_flags()
@@ -45,7 +45,29 @@ class SS(UVData):
         super().read(filename, **kwargs)
         if (self.data_array is not None) and diff:
             self.diff()
-            self.apply_flags(flag_choice=flag_choice)
+            self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+
+    def read_mwa_corr_fits(self, filelist, diff=True, flag_choice=None, INS=None,
+                           custom=None, **kwargs):
+
+        """
+        Reads in MWA gpubox files by first calling
+        UVData.read_mwa_corr_fits(). See UVData documentation for list of kwargs that can be
+        passed to UVData.read_mwa_corr_fits()
+
+        Args:
+            filelist (list of str): The filepaths to read in, including a metafits file ending in '.metafits'.
+            diff (bool): If True, and data was read in, then difference the visibilities in time
+            flag_choice: Sets flags for the data array on read using apply_flags method.
+            INS: An INS object for apply_flags()
+            custom: A custom flag array for apply_flags()
+            kwargs: Additional kwargs are passed to UVData.read()
+        """
+
+        super().read_mwa_corr_fits(filelist, **kwargs)
+        if (self.data_array is not None) and diff:
+            self.diff()
+            self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
