@@ -18,13 +18,13 @@ parser.add_argument('-m', '--maskfile', help='The path to the masks')
 parser.add_argument('-d', '--outdir', help='The output directory')
 parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files')
 parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
-parser.add_argument('-f', '--rfi_flag', type='store_true', help="Whether or not to do rfi flagging with SSINS")
+parser.add_argument('-f', '--rfi_flag', action='store_true', help="Whether or not to do rfi flagging with SSINS")
 args = parser.parse_args()
 
 if not os.path.exists(args.outdir):
     os.makedirs(args.outdir)
 
-indir = args.infile[:args.infile.rfind('/')]
+indir = args.uvd[0][:args.uvd[0].rfind('/')]
 if indir == args.outdir:
     raise ValueError("indir and outdir are the same")
 
