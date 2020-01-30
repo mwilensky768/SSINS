@@ -130,25 +130,63 @@ class INS(UVFlag):
 
     def mask_to_flags(self):
         """
-        A function that propagates a mask on sky-subtracted data to flags that
-        can be applied to the original data, pre-subtraction. The flags are
-        propagated in such a way that if a time is flagged in the INS, then
-        both times that could have contributed to that time in the sky-subtraction
-        step are flagged.
+        Propagates the mask to construct flags for the original
+        (non time-differenced) data. If a time is flagged in the INS, then both
+        times that could have contributed to that time in the sky-subtraction
+        step are flagged in the new array.
 
         Returns:
-            flags: The final flag array obtained from the mask.
+            tp_flags (array): The time-propagated flags
         """
-        shape = list(self.metric_array.shape)
-        flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
-        flags[:-1] = self.metric_array.mask
-        flags[1:] = np.logical_or(flags[1:], flags[:-1])
 
-        return(flags)
+        # Propagate the flags
+        shape = list(self.metric_array.shape)
+        tp_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+        tp_flags[:-1] = self.metric_array.mask
+        tp_flags[1:] = np.logical_or(tp_flags[1:], tp_flags[:-1])
+
+        return(tp_flags)
+
+    def flag_uvf(self, uvf, inplace=False):
+        """
+        Applies flags calculated from mask_to_flags method onto a given UVFlag
+        object. Option to edit an existing uvf object inplace. Works by
+        propagating the mask on sky-subtracted data to flags that can be applied
+        to the original data, pre-subtraction.  ORs the flags from the INS
+        object and the input uvf object.
+
+        Args:
+            uvf: A waterfall UVFlag object in flag mode to apply flags to. Must be
+                constructed from the original data. Errors if not waterfall,
+                in flag mode, or time ordering does not match INS object.
+
+            inplace: Whether to edit the uvf input inplace or not. Default False.
+
+        Returns:
+            uvf: The UVFlag object in flag mode with the time-propagated flags.
+        """
+        if uvf.mode != 'flag':
+            raise ValueError("UVFlag object must be in flag mode to write flags from INS object.")
+        if uvf.type != 'waterfall':
+            raise ValueError("UVFlag object must be in waterfall mode to write flags from INS object.")
+        test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
+        if not np.all(self.time_array == test_times):
+            raise ValueError("UVFlag object's times do not match those of INS object.")
+
+        new_flags = self.mask_to_flags()
+
+        if inplace:
+            this_uvf = uvf
+        else:
+            this_uvf = uvf.copy()
+
+        this_uvf.flag_array = np.logical_or(this_uvf.flag_array, new_flags)
+
+        return(this_uvf)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
-              Ncoarse=24, sep='_'):
+              Ncoarse=24, sep='_', uvf=None):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -207,11 +245,11 @@ class INS(UVFlag):
             del mask_uvf
 
         elif output_type is 'flags':
-            flag_uvf = self.copy()
-            flag_uvf.to_flag()
-            flag_uvf.flag_array = self.mask_to_flags()
-            super(INS, flag_uvf).write(filename, clobber=clobber, data_compression=data_compression)
-            del flag_uvf
+            if uvf is None:
+                raise ValueError("When writing 'flags', you must supply a UVFlag"
+                                 "object to write flags to using the uvf keyword.")
+            flag_uvf = self.flag_uvf(uvf=uvf)
+            flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
 
         elif output_type is 'match_events':
             yaml_dict = {'time_ind': [],
