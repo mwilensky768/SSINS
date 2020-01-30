@@ -162,7 +162,7 @@ class INS(UVFlag):
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
-              Ncoarse=24, sep='_'):
+              Ncoarse=24, sep='_', uvf=None):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -221,11 +221,11 @@ class INS(UVFlag):
             del mask_uvf
 
         elif output_type is 'flags':
-            flag_uvf = self.copy()
-            flag_uvf.to_flag()
-            flag_uvf.flag_array = self.mask_to_flags()
-            super(INS, flag_uvf).write(filename, clobber=clobber, data_compression=data_compression)
-            del flag_uvf
+            if uvf is None:
+                raise ValueError("When writing 'flags', you must supply a UVFlag"
+                                 "object to write flags to using the uvf keyword.")
+            flag_uvf = self.mask_to_flags(uvf=flag_uvf)
+            flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
 
         elif output_type is 'match_events':
             yaml_dict = {'time_ind': [],
