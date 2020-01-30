@@ -128,23 +128,37 @@ class INS(UVFlag):
         else:
             return(MS)
 
-    def mask_to_flags(self):
+    def mask_to_flags(self, uvf):
         """
-        A function that propagates a mask on sky-subtracted data to flags that
-        can be applied to the original data, pre-subtraction. The flags are
-        propagated in such a way that if a time is flagged in the INS, then
-        both times that could have contributed to that time in the sky-subtraction
-        step are flagged.
+        Edits a given UVFlag object in place to have time-propagated flags from
+        the corresponding INS object. Propagates the mask on sky-subtracted data
+        to flags that can be applied to the original data, pre-subtraction. The flags are
+        propagated so that if a time is flagged in the INS, then both times that
+        could have contributed to that time in the sky-subtraction step are flagged.
+
+        Args:
+            uvf: A waterfall UVFlag object in flag mode to apply flags to. Must be
+            constructed from the original data. Errors if not waterfall,
+            in flag mode, or time ordering does not match INS object.
 
         Returns:
-            flags: The final flag array obtained from the mask.
+            uvf: The UVFlag object in flag mode with the time-propagated flags.
         """
+        if uvf.mode is not 'flag':
+            raise ValueError("UVFlag object must be in flag mode to write flags from INS object.")
+        if uvf.type is not 'waterfall':
+            raise ValueError("UVFlag object must be in waterfall mode to write flags from INS object.")
+        test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
+        if not np.all(self.time_array == test_times):
+            raise ValueError("UVFlag object's times do not match those of INS object.")
         shape = list(self.metric_array.shape)
         flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
         flags[:-1] = self.metric_array.mask
         flags[1:] = np.logical_or(flags[1:], flags[:-1])
 
-        return(flags)
+        uvf.flag_array = flags
+
+        return(uvf)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
