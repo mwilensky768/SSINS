@@ -128,18 +128,22 @@ class INS(UVFlag):
         else:
             return(MS)
 
-    def mask_to_flags(self, uvf):
+    def mask_to_flags(self, uvf, inplace=False):
         """
-        Edits a given UVFlag object in place to have time-propagated flags from
-        the corresponding INS object. Propagates the mask on sky-subtracted data
-        to flags that can be applied to the original data, pre-subtraction. The flags are
+        Makes UVFlag object in place to have time-propagated flags from
+        the corresponding INS object. Option to edit an existing uvf object
+        inplace. Works by propagating the mask on sky-subtracted data to flags
+        that can be applied to the original data, pre-subtraction. The flags are
         propagated so that if a time is flagged in the INS, then both times that
-        could have contributed to that time in the sky-subtraction step are flagged.
+        could have contributed to that time in the sky-subtraction step are
+        flagged. ORs the flags from the INS object and the input uvf object.
 
         Args:
             uvf: A waterfall UVFlag object in flag mode to apply flags to. Must be
-            constructed from the original data. Errors if not waterfall,
-            in flag mode, or time ordering does not match INS object.
+                constructed from the original data. Errors if not waterfall,
+                in flag mode, or time ordering does not match INS object.
+
+            inplace: Whether to edit the uvf input inplace or not. Default False.
 
         Returns:
             uvf: The UVFlag object in flag mode with the time-propagated flags.
@@ -151,14 +155,21 @@ class INS(UVFlag):
         test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
         if not np.all(self.time_array == test_times):
             raise ValueError("UVFlag object's times do not match those of INS object.")
+
+        # Propagate the flags
         shape = list(self.metric_array.shape)
-        flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
-        flags[:-1] = self.metric_array.mask
-        flags[1:] = np.logical_or(flags[1:], flags[:-1])
+        new_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+        new_flags[:-1] = self.metric_array.mask
+        new_flags[1:] = np.logical_or(flags[1:], flags[:-1])
 
-        uvf.flag_array = flags
+        if inplace:
+            this_uvf = uvf
+        else:
+            this uvf = uvf.copy()
 
-        return(uvf)
+        this_uvf.flag_array = np.logical_or(this_uvf.flag_array, new_flags)
+
+        return(this_uvf)
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
