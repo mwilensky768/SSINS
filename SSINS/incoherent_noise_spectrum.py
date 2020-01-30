@@ -165,9 +165,9 @@ class INS(UVFlag):
         Returns:
             uvf: The UVFlag object in flag mode with the time-propagated flags.
         """
-        if uvf.mode is not 'flag':
+        if uvf.mode != 'flag':
             raise ValueError("UVFlag object must be in flag mode to write flags from INS object.")
-        if uvf.type is not 'waterfall':
+        if uvf.type != 'waterfall':
             raise ValueError("UVFlag object must be in waterfall mode to write flags from INS object.")
         test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
         if not np.all(self.time_array == test_times):
