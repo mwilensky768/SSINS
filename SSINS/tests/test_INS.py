@@ -3,6 +3,7 @@ from SSINS.data import DATA_PATH
 import numpy as np
 import os
 import pytest
+from pyuvdata import UVData, UVFlag
 
 
 def test_init():
@@ -159,6 +160,7 @@ def test_write():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
     data_outfile = '%s_SSINS_data.h5' % prefix
     z_score_outfile = '%s_SSINS_z_score.h5' % prefix
     mask_outfile = '%s_SSINS_mask.h5' % prefix
