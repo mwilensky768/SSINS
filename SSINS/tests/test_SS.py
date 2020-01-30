@@ -66,9 +66,10 @@ def test_apply_flags():
     assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
     assert ss.flag_choice is 'INS'
 
-    # Make flag_choice custom but do not provide array - should keep old flags
-    ss.apply_flags(flag_choice='custom', custom=None)
-    assert not np.any(ss.data_array.mask), "Some of the channels other than the 0th were flagged"
+    # Make flag_choice custom but do not provide array - should unflag everything and issue a warning
+    with pytest.warns(UserWarning, match="Custom flags were chosen, but custom flags were None type. Setting flag_choice to None and unmasking data."):
+        ss.apply_flags(flag_choice='custom', custom=None)
+    assert not np.any(ss.data_array.mask), "Some of the channels were still flagged"
     assert ss.flag_choice is None
 
     with pytest.raises(ValueError):
@@ -138,8 +139,9 @@ def test_write():
     # Flags the first time and no others
     ss.apply_flags(flag_choice='custom', custom=custom)
 
-    # Write this out without combining flags
-    ss.write(outfile, 'uvfits', filename_in=testfile, combine=False)
+    # Write this out without combining flags, will issue a warning
+    with pytest.warns(UserWarning, match="Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0."):
+        ss.write(outfile, 'uvfits', filename_in=testfile, combine=False)
 
     # Check if the flags propagated correctly
     UV = UVData()
