@@ -138,7 +138,7 @@ def test_mask_to_flags():
     assert new_uvf != uvf, "The UVflag object was edited inplace and should not have been."
 
     # Edit the uvf inplace
-    inplace_uvf = (ins.mask_to_flags, uvf=uvf, inplace=True)
+    inplace_uvf = ins.mask_to_flags(uvf=uvf, inplace=True)
 
     # Check that new flags are correct
     assert np.all(inplace_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."

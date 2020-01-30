@@ -165,7 +165,7 @@ class INS(UVFlag):
         if inplace:
             this_uvf = uvf
         else:
-            this uvf = uvf.copy()
+            this_uvf = uvf.copy()
 
         this_uvf.flag_array = np.logical_or(this_uvf.flag_array, new_flags)
 
