@@ -160,7 +160,7 @@ class INS(UVFlag):
         shape = list(self.metric_array.shape)
         new_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
         new_flags[:-1] = self.metric_array.mask
-        new_flags[1:] = np.logical_or(flags[1:], flags[:-1])
+        new_flags[1:] = np.logical_or(new_flags[1:], new_flags[:-1])
 
         if inplace:
             this_uvf = uvf
@@ -235,7 +235,7 @@ class INS(UVFlag):
             if uvf is None:
                 raise ValueError("When writing 'flags', you must supply a UVFlag"
                                  "object to write flags to using the uvf keyword.")
-            flag_uvf = self.mask_to_flags(uvf=flag_uvf)
+            flag_uvf = self.mask_to_flags(uvf=uvf)
             flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
 
         elif output_type is 'match_events':

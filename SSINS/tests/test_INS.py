@@ -126,7 +126,7 @@ def test_mask_to_flags():
     new_uvf = ins.mask_to_flags(uvf=uvf, inplace=False)
 
     # Construct the expected flags by hand
-    test_flags = np.zeros(flags.shape, dtype=bool)
+    test_flags = np.zeros_like(new_uvf.flag_array)
     test_flags[1:5, freq_inds_1] = True
     test_flags[6, :] = True
     test_flags[7, freq_inds_2] = True
@@ -148,11 +148,11 @@ def test_mask_to_flags():
 
     # Test write/read
     ins.write(prefix, output_type='flags', uvf=uvf)
-    read_uvf = UVFlag(flag_outfile, mode='flag', waterfall=True)
+    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
     # Check equality
     assert read_uvf == uvf, "UVFlag objsect differs after read"
 
-    os.remove(flag_outfile)
+    os.remove(flags_outfile)
 
 
 def test_write():
