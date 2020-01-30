@@ -265,13 +265,17 @@ Flagging an INS using a match_filter (MF)
 (g) Getting time propagated flags from the INS mask
 ***************************************************
 ::
+  >>> from pyuvdata import UVData, UVFlag
   >>> # Each integration in the SSINS is a result of a difference of paired integrations
   >>> # To get flags for the raw data, we have to propagate flagged INS samples in time to all possible contributing times
   >>> # The mask_to_flags method returns an array where we have done this. This is useful for comparing to other UVFlag objects
   >>> flags = ins.mask_to_flags()
 
-  >>> # We can write these out to an h5 file as well
-  >>> ins.write(prefix, output_type='flags', clobber=True)
+  >>> # We can write these out to an h5 file as well, but we need to make a UVFlag object from the original data
+  >>> uvd = UVData()
+  >>> uvd.read(filepath, times=times)
+  >>> uvf = UVFlag(uvd, waterfall=True, mode='flag')
+  >>> ins.write(prefix, output_type='flags', clobber=True, uvf=uvf)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
   True
 
