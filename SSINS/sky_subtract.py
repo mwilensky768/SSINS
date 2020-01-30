@@ -77,7 +77,7 @@ class SS(UVData):
             if custom is not None:
                 self.data_array[custom] = np.ma.masked
             else:
-                warnings.warn('Custom flags were chosen, but custom flags were None type. Setting flags to None.')
+                warnings.warn("Custom flags were chosen, but custom flags were None type. Setting flag_choice to None and unmasking data.")
                 self.flag_choice = None
         elif flag_choice is None:
             self.data_array.mask = np.zeros(self.data_array.shape, dtype=bool)
@@ -235,9 +235,7 @@ class SS(UVData):
 
         # Check nsample_array for issue
         if np.any(UV.nsample_array == 0) and (file_type_out is 'uvfits'):
-            warnings.warn("Writing uvfits file with some nsample == 0. This will"
-                          " result in a failure to propagate flags. Changing "
-                          " nsample value to nsample_default parameter (default is 1)")
+            warnings.warn("Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0.")
             UV.nsample_array[UV.nsample_array == 0] = nsample_default
 
         # Option to keep old flags
