@@ -104,15 +104,15 @@ def test_mask_to_flags():
     # Check error handling
     with pytest.raises(ValueError):
         bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
-        err_uvf = ins.mask_to_flags(uvf=bad_uvf)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
         bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
-        err_uvf = ins.mask_to_flags(uvf=bad_uvf)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
         bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
         # Pretend the data is off by 1 day
         bad_uvf.time_array += 1
-        err_uvf = ins.mask_to_flags(uvf=bad_uvf)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
 
     # Pretend we flagged the INS object
     freq_inds_1 = np.arange(0, len(ins.freq_array), 2)
@@ -123,7 +123,7 @@ def test_mask_to_flags():
     ins.metric_array[-2, freq_inds_2] = np.ma.masked
 
     # Make a NEW uvflag object
-    new_uvf = ins.mask_to_flags(uvf=uvf, inplace=False)
+    new_uvf = ins.flag_uvf(uvf=uvf, inplace=False)
 
     # Construct the expected flags by hand
     test_flags = np.zeros_like(new_uvf.flag_array)
@@ -139,7 +139,7 @@ def test_mask_to_flags():
     assert new_uvf != uvf, "The UVflag object was edited inplace and should not have been."
 
     # Edit the uvf inplace
-    inplace_uvf = ins.mask_to_flags(uvf=uvf, inplace=True)
+    inplace_uvf = ins.flag_uvf(uvf=uvf, inplace=True)
 
     # Check that new flags are correct
     assert np.all(inplace_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."
