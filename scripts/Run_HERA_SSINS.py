@@ -4,6 +4,7 @@ from SSINS import SS, INS, version, MF
 from functools import reduce
 import numpy as np
 import argparse
+from pyuvdata import UVData, UVFlag
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--filename", help="The visibility file to process")
@@ -22,6 +23,13 @@ ss.read(args.filename, ant_str='cross')
 
 # Make the INS object
 ins = INS(ss)
+
+# Clear some memory?? and make the uvflag object for storing flags later
+del ss
+uvd = UVData()
+uvd.read(args.filename)
+uvf = UVFlag(uvd, waterfall=True, mode='flag')
+del uvd
 
 # Write the raw data and z-scores to h5 format
 ins.write(args.prefix, sep='.')
@@ -66,5 +74,6 @@ ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_subs
 
 # Write outputs
 ins.write(args.prefix, output_type='mask', sep='.')
-ins.write(args.prefix, output_type='flags', sep='.')
+uvd.history += ins.history
+ins.write(args.prefix, output_type='flags', sep='.', uvd=uvd)
 ins.write(args.prefix, output_type='match_events', sep='.')
