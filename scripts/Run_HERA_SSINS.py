@@ -74,6 +74,6 @@ ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_subs
 
 # Write outputs
 ins.write(args.prefix, output_type='mask', sep='.')
-uvd.history += ins.history
+uvf.history += ins.history
 ins.write(args.prefix, output_type='flags', sep='.', uvf=uvf)
 ins.write(args.prefix, output_type='match_events', sep='.')
