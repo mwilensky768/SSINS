@@ -27,7 +27,7 @@ copyright = u'2018, Michael Wilensky'
 author = u'Michael Wilensky'
 
 # The short X.Y version
-version = u'1.1'
+version = u'1.2'
 # The full version, including alpha/beta/rc tags
 release = u''
 
