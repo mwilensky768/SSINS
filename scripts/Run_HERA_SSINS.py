@@ -7,11 +7,18 @@ import argparse
 from pyuvdata import UVData, UVFlag
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--filename", help="The visibility file to process")
-parser.add_argument("-s", "--streak_sig", type=float, help="The desired streak significance threshold")
-parser.add_argument("-o", "--other_sig", type=float, help="The desired significance threshold for other shapes")
-parser.add_argument("-p", "--prefix", help="The prefix for output files")
-parser.add_argument("-N", "--N_samp_thresh", type=int, help="The N_samp_thresh parameter for the match filter")
+parser.add_argument("-f", "--filename",
+                    help="The visibility file to process")
+parser.add_argument("-s", "--streak_sig", type=float,
+                    help="The desired streak significance threshold")
+parser.add_argument("-o", "--other_sig", type=float,
+                    help="The desired significance threshold for other shapes")
+parser.add_argument("-p", "--prefix",
+                    help="The prefix for output files")
+parser.add_argument("-N", "--N_samp_thresh", type=int,
+                    help="The N_samp_thresh parameter for the match filter")
+parser.add_argument("-c", "--clobber", action='store_true',
+                    help="Whether to overwrite files that have already been written")
 args = parser.parse_args()
 
 version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
@@ -32,8 +39,8 @@ uvf = UVFlag(uvd, waterfall=True, mode='flag')
 del uvd
 
 # Write the raw data and z-scores to h5 format
-ins.write(args.prefix, sep='.')
-ins.write(args.prefix, output_type='z_score', sep='.')
+ins.write(args.prefix, sep='.', clobber=args.clobber)
+ins.write(args.prefix, output_type='z_score', sep='.', clobber=args.clobber)
 
 # Flag FM radio
 where_FM = np.where(np.logical_and(ins.freq_array > 87.5e6, ins.freq_array < 108e6))
@@ -43,7 +50,7 @@ ins.history += "Manually flagged the FM band. "
 
 # Make a filter with specified settings
 dab_width = 1.536e6
-dab_freqs = np.arange(214e6, 230e6, dab_width)
+dab_freqs = np.arange(214e6, 230e6 + dab_width, dab_width)
 dab_dict = {'DAB%i' % ind: [dab_freqs[ind], dab_freqs[ind + 1]] for ind in range(len(dab_freqs) - 1)}
 
 shape_dict = {'TV4': [174e6, 182e6],
@@ -73,7 +80,7 @@ mf.apply_match_test(ins, apply_samp_thresh=True)
 ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_substr
 
 # Write outputs
-ins.write(args.prefix, output_type='mask', sep='.')
+ins.write(args.prefix, output_type='mask', sep='.', clobber=args.clobber)
 uvf.history += ins.history
-ins.write(args.prefix, output_type='flags', sep='.', uvf=uvf)
-ins.write(args.prefix, output_type='match_events', sep='.')
+ins.write(args.prefix, output_type='flags', sep='.', uvf=uvf, clobber=args.clobber)
+ins.write(args.prefix, output_type='match_events', sep='.', clobber=args.clobber)
