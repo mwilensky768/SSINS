@@ -218,40 +218,40 @@ class INS(UVFlag):
 
         version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
-        if output_type is 'match_events':
+        if output_type == 'match_events':
             filename = '%s%sSSINS%s%s.yml' % (prefix, sep, sep, output_type)
         else:
             filename = '%s%sSSINS%s%s.h5' % (prefix, sep, sep, output_type)
 
-        if output_type is not 'mwaf':
+        if output_type != 'mwaf':
             self.history += 'Wrote %s to %s using SSINS %s. ' % (output_type, filename, version_hist_substr)
 
-        if output_type is 'data':
+        if output_type == 'data':
             self.metric_array = self.metric_array.data
             super().write(filename, clobber=clobber, data_compression=data_compression)
             self.metric_array = np.ma.masked_array(data=self.metric_array, mask=self.metric_ms.mask)
 
-        elif output_type is 'z_score':
+        elif output_type == 'z_score':
             z_uvf = self.copy()
             z_uvf.metric_array = np.copy(self.metric_ms.data)
             super(INS, z_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del z_uvf
 
-        elif output_type is 'mask':
+        elif output_type == 'mask':
             mask_uvf = self.copy()
             mask_uvf.to_flag()
             mask_uvf.flag_array = np.copy(self.metric_array.mask)
             super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del mask_uvf
 
-        elif output_type is 'flags':
+        elif output_type == 'flags':
             if uvf is None:
                 raise ValueError("When writing 'flags', you must supply a UVFlag"
                                  "object to write flags to using the uvf keyword.")
             flag_uvf = self.flag_uvf(uvf=uvf)
             flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
 
-        elif output_type is 'match_events':
+        elif output_type == 'match_events':
             yaml_dict = {'time_ind': [],
                          'freq_bounds': [],
                          'shape': [],
@@ -269,7 +269,7 @@ class INS(UVFlag):
             with open(filename, 'w') as outfile:
                 yaml.safe_dump(yaml_dict, outfile, default_flow_style=False)
 
-        elif output_type is 'mwaf':
+        elif output_type == 'mwaf':
             if mwaf_files is None:
                 raise ValueError("mwaf_files is set to None. This must be a sequence of existing mwaf filepaths.")
 
