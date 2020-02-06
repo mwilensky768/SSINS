@@ -98,9 +98,8 @@ class SS(UVData):
         """
 
         assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
-        cond = np.all([self.baseline_array[:self.Nbls] == self.baseline_array[k * self.Nbls:(k + 1) * self.Nbls]
-                       for k in range(1, self.Ntimes - 1)])
-        assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+        if self.blt_order != 'time':
+            self.reorder_blts(order='time')
 
         # Difference in time and OR the flags
         self.data_array = np.ma.masked_array(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls])
