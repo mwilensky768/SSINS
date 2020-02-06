@@ -34,7 +34,7 @@ ins = INS(ss)
 # Clear some memory?? and make the uvflag object for storing flags later
 del ss
 uvd = UVData()
-uvd.read(args.filename)
+uvd.read(args.filename, ant_str='cross')
 uvf = UVFlag(uvd, waterfall=True, mode='flag')
 del uvd
 
