@@ -33,7 +33,7 @@ class INS(UVFlag):
 
         super().__init__(input, mode='metric', copy_flags=False,
                          waterfall=False, history='', label='')
-        if self.type is 'baseline':
+        if self.type == 'baseline':
 
             # Manually flag autos
             input.data_array[input.ant_1_array == input.ant_2_array] = np.ma.masked
@@ -302,9 +302,9 @@ class INS(UVFlag):
                     freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
                     # This shape is on MWA wiki. Reshape to this shape.
                     new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
-                    if mwaf_method is 'add':
+                    if mwaf_method == 'add':
                         mwaf_hdu[1].data['FLAGS'][new_flags] = 1
-                    elif mwaf_method is 'replace':
+                    elif mwaf_method == 'replace':
                         mwaf_hdu[1].data['FLAGS'] = new_flags
                     else:
                         raise ValueError("mwaf_method is %s. Options are 'add' or 'replace'." % mwaf_method)
