@@ -1,14 +1,10 @@
-from SSINS import INS
+from SSINS import INS, SS, Catalog_Plot, MF, util
+from astropy.time import Time
+from matplotlib import cm
 import numpy as np
 import argparse
 import os
-from pyuvdata import UVData, utils
-
-
-def uvd_read_select(obj, filepath, time_slice=slice(3, -3)):
-    obj.read(filepath, read_data=False)
-    times = np.unique(obj.time_array)[time_slice]
-    obj.read(filepath, times=times)
+from pyuvdata import UVData, utils, UVFlag
 
 
 parser = argparse.ArgumentParser()
@@ -24,6 +20,7 @@ args = parser.parse_args()
 if not os.path.exists(args.outdir):
     os.makedirs(args.outdir)
 
+print("The filelist is %s" % args.uvd)
 indir = args.uvd[0][:args.uvd[0].rfind('/')]
 if indir == args.outdir:
     raise ValueError("indir and outdir are the same")
@@ -33,18 +30,21 @@ if args.rfi_flag:
         ins = INS(args.insfile, mask_file=args.maskfile)
     else:
         ss = SS()
-        uvd_obj_read(ss, args.uvd)
+        ss.read(args.uvd, phase_to_pointing_center=True, flag_choice='original')
         ins = INS(ss)
+        
+        prefix = '%s/%s' % (args.outdir, args.obsid)
+        ins.write(prefix)
         freqs = np.arange(1.7e8, 2e8, 5e6)
         xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array, sig_fig=0)
         yticks = [0, 20, 40]
         yticklabels = []
         for tick in yticks:
             yticklabels.append(Time(ins.time_array[tick], format='jd').iso[:-4])
-        Catalog_Plot.INS_plot(ins, '%s/%s' % (args.outdir, args.obsid),
+        Catalog_Plot.INS_plot(ins, prefix,
                               xticks=xticks, yticks=yticks, xticklabels=xticklabels,
                               yticklabels=yticklabels, data_cmap=cm.plasma,
-                              ms_vmin=-5, ms_vmax=5, title=obsid,
+                              ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
         # Try to save memory - hope for garbage collector
         del ss
@@ -58,20 +58,20 @@ if args.rfi_flag:
                 N_samp_thresh=len(ins.time_array) // 2)
         mf.apply_match_test(ins, apply_samp_thresh=False)
         mf.apply_samp_thresh_test(ins, event_record=True)
-        Catalog_Plot.INS_plot(ins, '%s/%s_flagged' % (args.outdir, args.obsid),
+        Catalog_Plot.INS_plot(ins, '%s_flagged' % prefix,
                               xticks=xticks, yticks=yticks, xticklabels=xticklabels,
                               yticklabels=yticklabels, data_cmap=cm.plasma,
-                              ms_vmin=-5, ms_vmax=5, title=obsid,
+                              ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
+        ins.write(prefix, output_type='mask')
 
     uvd = UVData()
-    uvd_obj_read(uvd, args.uvd)
-    uvf = ins.copy()
-    uvf.to_flag()
+    uvd.read(args.uvd, phase_to_pointing_center=True)
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
-    utils.apply_uvflag(uvd, uvf, inplace=False)
+    utils.apply_uvflag(uvd, uvf, inplace=True)
 
 if np.any(uvd.nsample_array == 0):
     uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
 
-uvd.write_uvfits('%s/%s.uvfits' % (args.outdir, args.obsid))
+uvd.write_uvfits('%s/%s.uvfits' % (args.outdir, args.obsid), spoof_nonessential=True)
