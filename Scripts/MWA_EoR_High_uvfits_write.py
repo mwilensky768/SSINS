@@ -30,7 +30,8 @@ if args.rfi_flag:
         ins = INS(args.insfile, mask_file=args.maskfile)
     else:
         ss = SS()
-        ss.read(args.uvd, phase_to_pointing_center=True, flag_choice='original')
+        ss.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True, flag_choice='original')
+
         ins = INS(ss)
         
         prefix = '%s/%s' % (args.outdir, args.obsid)
@@ -66,7 +67,7 @@ if args.rfi_flag:
         ins.write(prefix, output_type='mask')
 
     uvd = UVData()
-    uvd.read(args.uvd, phase_to_pointing_center=True)
+    uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
