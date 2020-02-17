@@ -9,7 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--ins_file_list', help="A text file of SSINS h5 data files")
     parser.add_argument('-o', '--outdir', help="The output directory for the files")
-    parser.add_argument('-s', '--skip_write', action='store_false', help="Whether to skip writing output files or just write plots.")
+    parser.add_argument('-w', '--write', action='store_true', help="Whether to write output files in addition to plots.")
     args = parser.parse_args()
 
     ins_file_list = util.make_obslist(args.ins_file_list)
