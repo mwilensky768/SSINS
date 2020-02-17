@@ -8,7 +8,8 @@ parser.add_argument('-o', '--obsid', help='The obsid of the files.')
 args = parser.parse_args()
 
 ss = SS()
-ss.read(args.filelist, ant_str='cross')
+print("reading in vis data; applying cable corrections and phasing to pointing center")
+ss.read(args.filelist, correct_cable_len=True, phase_to_pointing_center=True, ant_str='cross')
 
 ins = INS(ss)
 
