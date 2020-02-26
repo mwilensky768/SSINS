@@ -19,6 +19,8 @@ parser.add_argument("-N", "--N_samp_thresh", type=int,
                     help="The N_samp_thresh parameter for the match filter")
 parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
+parser.add_argument("-x", "--no_diff", actions='store_false',
+                    help="Flag to turn off differencing. Use if files are already time-differenced.")
 args = parser.parse_args()
 
 version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
@@ -34,7 +36,7 @@ ins = INS(ss)
 # Clear some memory?? and make the uvflag object for storing flags later
 del ss
 uvd = UVData()
-uvd.read(args.filename, ant_str='cross')
+uvd.read(args.filename, ant_str='cross', diff=args.no_diff)
 uvf = UVFlag(uvd, waterfall=True, mode='flag')
 del uvd
 
