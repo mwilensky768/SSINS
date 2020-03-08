@@ -149,3 +149,47 @@ def test_write():
     assert np.all(UV.flag_array[:2 * UV.Nbls]), "Not all expected flags were propagated"
     assert not np.any(UV.flag_array[2 * UV.Nbls:]), "More flags were made than expected"
     os.remove(outfile)
+
+
+def test_read_multifiles():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+    new_fp1 = os.path.join(DATA_PATH, f'{obs}_new1.uvfits')
+    new_fp2 = os.path.join(DATA_PATH, f'{obs}_new2.uvfits')
+    flist = [new_fp1, new_fp2]
+
+    file_type = 'uvfits'
+
+    # Read in a file's metadata and split it into two objects
+    uvd_full = UVData()
+    uvd_full.read(testfile, read_data=False)
+    times1 = np.unique(uvd_full.time_array)[:14]
+    times2 = np.unique(uvd_full.time_array)[14:]
+
+    # Write two separate files to be read in later
+    uvd_split1 = UVData()
+    uvd_split2 = UVData()
+    uvd_split1.read(testfile, times=times1)
+    uvd_split2.read(testfile, times=times2)
+    uvd_split1.write_uvfits(new_fp1)
+    uvd_split2.write_uvfits(new_fp2)
+
+    # Check wanings and diff's
+    ss_orig = SS()
+    ss_multi = SS()
+    # test warning raise
+    with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
+                                          " check SS.read call and ensure the appropriate"
+                                          " keyword arguments for your intended use case.")):
+        ss_orig.read(testfile, diff=False)
+        ss_orig.diff()
+    with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
+                                          " check SS.read call and ensure the appropriate"
+                                          " keyword arguments for your intended use case.")):
+        ss_multi.read(flist, diff=True)
+
+    assert np.all(np.isclose(ss_orig.data_array, ss_multi.data_array)), "Diffs were different!"
+    assert ss_multi.Ntimes == (uvd_full.Ntimes - 1), "Too many diffs were done"
+
+    for path in flist:
+        os.remove(path)
