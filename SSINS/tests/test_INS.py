@@ -13,7 +13,7 @@ def test_init():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, flag_choice='original')
+    ss.read(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
 
@@ -37,7 +37,7 @@ def test_mean_subtract():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     ins = INS(ss, order=0)
 
@@ -60,7 +60,7 @@ def test_polyfit():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     ins = INS(ss, order=1)
 
@@ -91,7 +91,7 @@ def test_mask_to_flags():
     flags_outfile = '%s_SSINS_flags.h5' % prefix
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     uvd = UVData()
     uvd.read(testfile)
@@ -168,7 +168,7 @@ def test_write():
     sep_data_outfile = '%s.SSINS.data.h5' % prefix
 
     ss = SS()
-    ss.read(testfile, flag_choice='original')
+    ss.read(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
     # Mock some events
