@@ -183,9 +183,6 @@ def test_read_multifiles():
                                           " keyword arguments for your intended use case.")):
         ss_orig.read(testfile, diff=False)
         ss_orig.diff()
-    with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
-                                          " check SS.read call and ensure the appropriate"
-                                          " keyword arguments for your intended use case.")):
         ss_multi.read(flist, diff=True)
 
     assert np.all(np.isclose(ss_orig.data_array, ss_multi.data_array)), "Diffs were different!"
