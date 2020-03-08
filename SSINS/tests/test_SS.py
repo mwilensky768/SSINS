@@ -22,7 +22,7 @@ def test_SS_read():
     assert ss.data_array is None, "Data array is not None"
 
     # Test select on read and diff
-    ss.read(testfile, times=np.unique(ss.time_array)[1:10])
+    ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
     assert ss.Ntimes == 8, "Diff seems like it wasn't executed correctly"
 
     # See that it still passes UVData check
@@ -37,7 +37,7 @@ def test_apply_flags():
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     ss = SS()
 
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     # Make sure no flags are applied to start with
     assert not np.any(ss.data_array.mask), "There are some flags to start with."
@@ -83,7 +83,7 @@ def test_mixture_prob():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
     ss.apply_flags('original')
 
     # Generate the mixture probabilities
@@ -100,7 +100,7 @@ def test_rev_ind():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     # Make a band that will pick out only the largest value in the data
     dat_sort = np.sort(np.abs(ss.data_array), axis=None)
@@ -131,7 +131,7 @@ def test_write():
     outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     custom = np.zeros_like(ss.data_array.mask)
     custom[:ss.Nbls] = 1
