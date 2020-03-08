@@ -27,9 +27,8 @@ Generating the sky-subtracted visibilities
 
   >>> # Read data by specifying a filepath as an argument to the read method
   >>> filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
-  >>> # By default, the visibilities are differenced in time on read (see paper)
-  >>> ss.read(filepath)
-  >>> # Setting diff=False saves the differencing for later (not useful in most situations)
+  >>> # By default, the visibilities are NOT differenced in time on read (see paper). This is for compatibility with multi-file reading.
+  >>> ss.read(filepath, diff=True)
 
 (b) Passing keyword arguments to SS.read
 ****************************************
@@ -44,7 +43,7 @@ Generating the sky-subtracted visibilities
   >>> # The following lines make use of the time_array attribute (metadata) to
   >>> # read in all but the first and last integrations
   >>> times = np.unique(ss.time_array)[1:-1]
-  >>> ss.read(filepath, read_data=True, times=times)
+  >>> ss.read(filepath, read_data=True, times=times, diff=True)
 
 (c) Applying flags
 ******************
