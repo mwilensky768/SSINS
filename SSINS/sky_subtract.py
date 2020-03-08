@@ -7,6 +7,7 @@ import numpy as np
 from pyuvdata import UVData
 import scipy.stats
 import warnings
+import traceback
 
 
 class SS(UVData):
@@ -25,7 +26,7 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
+    def read(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
              **kwargs):
 
         """
@@ -43,9 +44,17 @@ class SS(UVData):
         """
 
         super().read(filename, **kwargs)
-        if (self.data_array is not None) and diff:
-            self.diff()
-            self.apply_flags(flag_choice=flag_choice)
+
+        if (self.data_array is not None):
+            if diff:
+                self.diff()
+                self.apply_flags(flag_choice=flag_choice)
+            else:
+                # This warning will be issued when diff is False and there is some data read in
+                # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
+                warnings.warn("diff on read defaults to False now. Please double"
+                              " check SS.read call and ensure the appropriate"
+                              " keyword arguments for your intended use case.")
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
