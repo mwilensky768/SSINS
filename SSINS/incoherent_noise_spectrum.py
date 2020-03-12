@@ -8,6 +8,7 @@ from pyuvdata import UVFlag
 import yaml
 from SSINS import version
 from functools import reduce
+import warnings
 
 
 class INS(UVFlag):
@@ -344,3 +345,24 @@ class INS(UVFlag):
                                  yaml_dict['sig'][i]))
 
         return(match_events)
+
+    @property
+    def _data_params(self):
+        """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
+
+        # Prevents a bug that occurs during __init__
+        if not hasattr(self, 'metric_ms'):
+            return(None)
+        else:
+            UVFlag_params = super(INS, self)._data_params
+            Extra_params = ['metric_ms', 'sig_array']
+            SSINS_params = UVFlag_params + Extra_params
+        return(SSINS_params)
+
+    def select(self, **kwargs):
+        """Thin wrapper around UVFlag.select that also recalculates the ms array
+        immediately afterwards.
+        """
+
+        super(INS, self).select(**kwargs)
+        self.metric_ms = self.mean_subtract()
