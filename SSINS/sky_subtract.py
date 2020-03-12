@@ -106,32 +106,62 @@ class SS(UVData):
         UVData.check()
         """
 
-        assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
-        if self.blt_order != 'time':
-            self.reorder_blts(order='time')
+        if self.blt_order != 'baseline':
+            self.reorder_blts(order='baseline')
 
-        # Difference in time and OR the flags
-        self.data_array = np.ma.masked_array(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls])
-        """The time-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
-        self.flag_array = np.logical_or(self.flag_array[self.Nbls:], self.flag_array[:-self.Nbls])
-        """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
+        # index accumulator
+        ind_acc = 0
+        # Just treat every baseline independently - make no assumptions other than what is guaranteed by baseline ordered objects
+        for bl in np.unique(self.baseline_array):
+            diff_dat = np.diff(self.get_data(bl, squeeze='none'), axis=0)
+            diff_flags = np.logical_or(self.get_flags(bl, squeeze='none')[:-1],
+                                       self.get_flags(bl, squeeze='none')[1:])
+            diff_times = self.get_times(bl)
+            diff_times = 0.5 * (diff_times[:-1] + diff_times[1:])
+            diff_nsamples = self.get_nsamples(bl, squeeze='none')
+            diff_nsamples = 0.5 * (diff_nsamples[:-1] + diff_nsamples[1:])
+
+            len_diff = diff_dat.shape[0]
+            blt_slice = slice(ind_acc, ind_acc + len_diff)
+
+            self.data_array[blt_slice, :, :, :] = diff_dat
+            """The time-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
+            self.flag_array[blt_slice, :, :, :] = diff_flags
+            """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
+
+            self.time_array[blt_slice] = diff_times
+            """The center time of the differenced visibilities. Length Nblts."""
+            self.nsample_array[blt_slice, :, :, :] = diff_nsamples
+            """See pyuvdata documentation. Here we average the nsample_array of the visibilities that are differenced"""
+
+            where_bl = np.where(self.baseline_array == bl)
+
+            diff_ints = self.integration_time[where_bl]
+            diff_ints = diff_ints[:-1] + diff_ints[1:]
+            diff_uvw = self.uvw_array[where_bl]
+            diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
+
+            self.integration_time[blt_slice] = diff_ints
+            """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
+            self.uvw_array[blt_slice] = diff_uvw
+
+            self.baseline_array[blt_slice] = bl
+            self.ant_1_array[blt_slice], self.ant_2_array[blt_slice] = self.baseline_to_antnums(bl)
+            ind_acc += len_diff
 
         # Adjust the UVData attributes.
         self.Nblts -= self.Nbls
-        """Number of baseline-times. For now, this must be equal to the number of baselines times the number of times."""
-        self.ant_1_array = self.ant_1_array[:-self.Nbls]
-        self.ant_2_array = self.ant_2_array[:-self.Nbls]
-        self.baseline_array = self.baseline_array[:-self.Nbls]
-        self.integration_time = self.integration_time[self.Nbls:] + self.integration_time[:-self.Nbls]
-        """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
+        """Number of baseline-times. Not necessarily equal to Nbls * Ntimes"""
         self.Ntimes -= 1
         """Total number of integration times in the data. Equal to the original Ntimes-1."""
-        self.nsample_array = 0.5 * (self.nsample_array[self.Nbls:] + self.nsample_array[:-self.Nbls])
-        """See pyuvdata documentation. Here we average the nsample_array of the visibilities that are differenced"""
-        self.time_array = 0.5 * (self.time_array[self.Nbls:] + self.time_array[:-self.Nbls])
-        """The center time of the differenced visibilities. Length Nblts."""
-        self.uvw_array = 0.5 * (self.uvw_array[self.Nbls:] + self.uvw_array[:-self.Nbls])
+
+        for blts_attr in ['data_array', 'flag_array', 'time_array',
+                          'nsample_array', 'integration_time', 'baseline_array',
+                          'ant_1_array', 'ant_2_array', 'uvw_array']:
+            setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
+
         super().set_lsts_from_time_array()
+        self.data_array = np.ma.masked_array(self.data_array)
 
     def MLE_calc(self):
 
