@@ -35,7 +35,7 @@ class SS(UVData):
         passed to UVData.read()
 
         Args:
-            filename (str): The filepath to read in.
+            filename (str or list of str): The filepath(s) to read in.
             diff (bool): If True, and data was read in, then difference the visibilities in time
             flag_choice: Sets flags for the data array on read using apply_flags method.
             INS: An INS object for apply_flags()
@@ -48,7 +48,7 @@ class SS(UVData):
         if (self.data_array is not None):
             if diff:
                 self.diff()
-                self.apply_flags(flag_choice=flag_choice)
+                self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
             else:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
