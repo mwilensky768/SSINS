@@ -13,7 +13,6 @@ Tests the various capabilities of the sky_subtract class
 def test_SS_read():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
 
     ss = SS()
 
@@ -23,10 +22,45 @@ def test_SS_read():
 
     # Test select on read and diff
     ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
-    assert ss.Ntimes == 8, "Diff seems like it wasn't executed correctly"
+    assert ss.Ntimes == 8, "Number of times after diff disagrees!"
+    assert ss.Nbls == 99, "Number of baselines is incorrect"
 
     # See that it still passes UVData check
     assert ss.check()
+
+
+def test_diff():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+
+    ss = SS()
+    uv = UVData()
+
+    # Read in two times and two baselines of data, so that the diff is obvious.
+    uv.read(testfile, read_data=False)
+    times = np.unique(uv.time_array)[:2]
+    bls = [(0, 1), (0, 2)]
+    uv.read(testfile, times=times, bls=bls)
+    uv.reorder_blts(order='baseline')
+
+    diff_dat = uv.data_array[1::2] - uv.data_array[::2]
+    diff_flags = np.logical_or(uv.flag_array[::2], uv.flag_array[1::2])
+    diff_times = 0.5 * (uv.time_array[::2] + uv.time_array[1::2])
+    diff_nsamples = 0.5 * (uv.nsample_array[::2] + uv.nsample_array[1::2])
+    diff_ints = uv.integration_time[::2] + uv.integration_time[1::2]
+    diff_uvw = 0.5 * (uv.uvw_array[::2] + uv.uvw_array[1::2])
+
+    ss.read(testfile, diff=True, times=times, bls=bls)
+    ss.reorder_blts(order='baseline')
+
+    assert np.all(ss.data_array == diff_dat), "Data values are different!"
+    assert np.all(ss.flag_array == diff_flags), "Flags are different!"
+    assert np.all(ss.time_array == diff_times), "Times are different!"
+    assert np.all(ss.nsample_array == diff_nsamples), "nsample_array is different!"
+    assert np.all(ss.integration_time == diff_ints), "Integration times are different"
+    assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
+    assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
+    assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
 
 
 def test_apply_flags():
