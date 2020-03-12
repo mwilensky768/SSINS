@@ -7,6 +7,7 @@ import numpy as np
 from pyuvdata import UVData
 import scipy.stats
 import warnings
+import traceback
 
 
 class SS(UVData):
@@ -25,7 +26,7 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
+    def read(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
              **kwargs):
 
         """
@@ -43,9 +44,17 @@ class SS(UVData):
         """
 
         super().read(filename, **kwargs)
-        if (self.data_array is not None) and diff:
-            self.diff()
-            self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+
+        if (self.data_array is not None):
+            if diff:
+                self.diff()
+                self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+            else:
+                # This warning will be issued when diff is False and there is some data read in
+                # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
+                warnings.warn("diff on read defaults to False now. Please double"
+                              " check SS.read call and ensure the appropriate"
+                              " keyword arguments for your intended use case.")
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
@@ -77,7 +86,7 @@ class SS(UVData):
             if custom is not None:
                 self.data_array[custom] = np.ma.masked
             else:
-                warnings.warn('Custom flags were chosen, but custom flags were None type. Setting flags to None.')
+                warnings.warn("Custom flags were chosen, but custom flags were None type. Setting flag_choice to None and unmasking data.")
                 self.flag_choice = None
         elif flag_choice is None:
             self.data_array.mask = np.zeros(self.data_array.shape, dtype=bool)
@@ -98,9 +107,8 @@ class SS(UVData):
         """
 
         assert self.Nblts == self.Nbls * self.Ntimes, 'Nblts != Nbls * Ntimes'
-        cond = np.all([self.baseline_array[:self.Nbls] == self.baseline_array[k * self.Nbls:(k + 1) * self.Nbls]
-                       for k in range(1, self.Ntimes - 1)])
-        assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+        if self.blt_order != 'time':
+            self.reorder_blts(order='time')
 
         # Difference in time and OR the flags
         self.data_array = np.ma.masked_array(self.data_array[self.Nbls:] - self.data_array[:-self.Nbls])
@@ -235,9 +243,7 @@ class SS(UVData):
 
         # Check nsample_array for issue
         if np.any(UV.nsample_array == 0) and (file_type_out is 'uvfits'):
-            warnings.warn("Writing uvfits file with some nsample == 0. This will"
-                          " result in a failure to propagate flags. Changing "
-                          " nsample value to nsample_default parameter (default is 1)")
+            warnings.warn("Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0.")
             UV.nsample_array[UV.nsample_array == 0] = nsample_default
 
         # Option to keep old flags

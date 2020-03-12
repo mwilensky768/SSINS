@@ -27,9 +27,8 @@ Generating the sky-subtracted visibilities
 
   >>> # Read data by specifying a filepath as an argument to the read method
   >>> filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
-  >>> # By default, the visibilities are differenced in time on read (see paper)
-  >>> ss.read(filepath)
-  >>> # Setting diff=False saves the differencing for later (not useful in most situations)
+  >>> # By default, the visibilities are NOT differenced in time on read (see paper). This is for compatibility with multi-file reading.
+  >>> ss.read(filepath, diff=True)
 
 (b) Passing keyword arguments to SS.read
 ****************************************
@@ -44,7 +43,7 @@ Generating the sky-subtracted visibilities
   >>> # The following lines make use of the time_array attribute (metadata) to
   >>> # read in all but the first and last integrations
   >>> times = np.unique(ss.time_array)[1:-1]
-  >>> ss.read(filepath, read_data=True, times=times)
+  >>> ss.read(filepath, read_data=True, times=times, diff=True)
 
 (c) Applying flags
 ******************
@@ -265,13 +264,17 @@ Flagging an INS using a match_filter (MF)
 (g) Getting time propagated flags from the INS mask
 ***************************************************
 ::
+  >>> from pyuvdata import UVData, UVFlag
   >>> # Each integration in the SSINS is a result of a difference of paired integrations
   >>> # To get flags for the raw data, we have to propagate flagged INS samples in time to all possible contributing times
   >>> # The mask_to_flags method returns an array where we have done this. This is useful for comparing to other UVFlag objects
   >>> flags = ins.mask_to_flags()
 
-  >>> # We can write these out to an h5 file as well
-  >>> ins.write(prefix, output_type='flags', clobber=True)
+  >>> # We can write these out to an h5 file as well, but we need to make a UVFlag object from the original data
+  >>> uvd = UVData()
+  >>> uvd.read(filepath, times=times)
+  >>> uvf = UVFlag(uvd, waterfall=True, mode='flag')
+  >>> ins.write(prefix, output_type='flags', clobber=True, uvf=uvf)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
   True
 
