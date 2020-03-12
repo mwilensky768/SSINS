@@ -50,7 +50,8 @@ def test_diff():
     diff_ints = uv.integration_time[::2] + uv.integration_time[1::2]
     diff_uvw = 0.5 * (uv.uvw_array[::2] + uv.uvw_array[1::2])
 
-    ss.read(testfile, diff=True, times=times, bls=bls)
+    with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
+        ss.read(testfile, diff=True, times=times, bls=bls)
     ss.reorder_blts(order='baseline')
 
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
