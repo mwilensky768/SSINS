@@ -96,10 +96,8 @@ class SS(UVData):
     def diff(self):
 
         """
-        Differences the visibilities in time. Only supported if all baselines
-        have the same integration time, all baselines report at each time, and
-        the baseline-time axis is in the same baseline ordering at each integration.
-        In other words, this is not yet functional with baseline dependent averaging.
+        Differences the visibilities in time. Does so independently for each baseline,
+        so different integration times or sets of time centers are supported.
         The flags are propagated by taking the boolean OR of the entries that correspond
         to the visibilities that are differenced from one another. Other metadata
         attributes are also adjusted so that the resulting SS object passes
