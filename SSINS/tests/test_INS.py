@@ -14,6 +14,8 @@ def test_init():
 
     ss = SS()
     ss.read(testfile, flag_choice='original', diff=True)
+    # Needs to be in time order for averaging comparison to work
+    ss.reorder_blts(order='time')
 
     ins = INS(ss)
 
