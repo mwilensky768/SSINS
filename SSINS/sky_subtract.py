@@ -105,6 +105,7 @@ class SS(UVData):
         """
 
         if self.blt_order != 'baseline':
+            warnings.warn("Reordering data array to baseline order to perform differencing.")
             self.reorder_blts(order='baseline')
 
         # index accumulator
