@@ -6,8 +6,8 @@ import scipy.stats
 
 
 def test_obslist():
-    obsfile = os.path.join(DATA_PATH, 'obs_list.txt')
-    outfile = os.path.join(DATA_PATH, 'test_obs_list.txt')
+    obsfile = os.path.join(DATA_PATH, 'test_obs_list.txt')
+    outfile = os.path.join(DATA_PATH, 'test_obs_list_out.txt')
     obslist_test = ['1061313008', '1061313128', '1061318864', '1061318984']
     obslist = util.make_obslist(obsfile)
     util.make_obsfile(obslist, outfile)

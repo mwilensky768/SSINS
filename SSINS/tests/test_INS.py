@@ -3,6 +3,7 @@ from SSINS.data import DATA_PATH
 import numpy as np
 import os
 import pytest
+from pyuvdata import UVData, UVFlag
 
 
 def test_init():
@@ -12,7 +13,7 @@ def test_init():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, flag_choice='original')
+    ss.read(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
 
@@ -36,7 +37,7 @@ def test_mean_subtract():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     ins = INS(ss, order=0)
 
@@ -59,7 +60,7 @@ def test_polyfit():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     ins = INS(ss, order=1)
 
@@ -86,26 +87,72 @@ def test_mask_to_flags():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    flags_outfile = '%s_SSINS_flags.h5' % prefix
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
+    uvd = UVData()
+    uvd.read(testfile)
+
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
+    # start with some flags so that we can test the intended OR operation
+    uvf.flag_array[6, :] = True
     ins = INS(ss)
+
+    # Check error handling
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
+        # Pretend the data is off by 1 day
+        bad_uvf.time_array += 1
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+
+    # Pretend we flagged the INS object
     freq_inds_1 = np.arange(0, len(ins.freq_array), 2)
     freq_inds_2 = np.arange(1, len(ins.freq_array), 2)
     ins.metric_array[1, freq_inds_1] = np.ma.masked
     ins.metric_array[3, freq_inds_1] = np.ma.masked
     ins.metric_array[7, freq_inds_2] = np.ma.masked
     ins.metric_array[-2, freq_inds_2] = np.ma.masked
-    flags = ins.mask_to_flags()
 
-    test_flags = np.zeros(flags.shape, dtype=bool)
+    # Make a NEW uvflag object
+    new_uvf = ins.flag_uvf(uvf=uvf, inplace=False)
+
+    # Construct the expected flags by hand
+    test_flags = np.zeros_like(new_uvf.flag_array)
     test_flags[1:5, freq_inds_1] = True
+    test_flags[6, :] = True
     test_flags[7, freq_inds_2] = True
     test_flags[8, freq_inds_2] = True
     test_flags[-3:-1, freq_inds_2] = True
 
-    assert np.all(flags == test_flags), "Test flags were not equal to calculated flags."
+    # Check that new flags are correct
+    assert np.all(new_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."
+    # Check that the input uvf was not edited in place
+    assert new_uvf != uvf, "The UVflag object was edited inplace and should not have been."
+
+    # Edit the uvf inplace
+    inplace_uvf = ins.flag_uvf(uvf=uvf, inplace=True)
+
+    # Check that new flags are correct
+    assert np.all(inplace_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."
+    # Check that the input uvf was not edited in place
+    assert inplace_uvf == uvf, "The UVflag object was not edited inplace and should have been."
+
+    # Test write/read
+    ins.write(prefix, output_type='flags', uvf=uvf)
+    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
+    # Check equality
+    assert read_uvf == uvf, "UVFlag objsect differs after read"
+
+    os.remove(flags_outfile)
 
 
 def test_write():
@@ -116,13 +163,12 @@ def test_write():
     prefix = os.path.join(DATA_PATH, '%s_test' % obs)
     data_outfile = '%s_SSINS_data.h5' % prefix
     z_score_outfile = '%s_SSINS_z_score.h5' % prefix
-    flags_outfile = '%s_SSINS_flags.h5' % prefix
     mask_outfile = '%s_SSINS_mask.h5' % prefix
     match_outfile = '%s_SSINS_match_events.yml' % prefix
     sep_data_outfile = '%s.SSINS.data.h5' % prefix
 
     ss = SS()
-    ss.read(testfile, flag_choice='original')
+    ss.read(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
     # Mock some events
@@ -133,12 +179,13 @@ def test_write():
 
     ins.write(prefix, output_type='data')
     ins.write(prefix, output_type='z_score')
-    ins.write(prefix, output_type='flags')
     ins.write(prefix, output_type='mask')
     ins.write(prefix, output_type='match_events')
     ins.write(prefix, output_type='data', sep='.')
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='bad_label')
+    with pytest.raises(ValueError):
+        ins.write(prefix, output_type='flags')
 
     new_ins = INS(data_outfile, mask_file=mask_outfile, match_events_file=match_outfile)
     assert np.all(ins.metric_array == new_ins.metric_array), "Elements of the metric array were not equal"
@@ -148,8 +195,8 @@ def test_write():
     assert np.all(ins.match_events == new_ins.match_events), "Elements of the match_events were not equal"
     assert os.path.exists(sep_data_outfile), "sep_data_outfile was note written"
 
-    for path in [data_outfile, z_score_outfile, flags_outfile, mask_outfile,
-                 match_outfile, sep_data_outfile]:
+    for path in [data_outfile, z_score_outfile, mask_outfile, match_outfile,
+                 sep_data_outfile]:
         os.remove(path)
 
 
