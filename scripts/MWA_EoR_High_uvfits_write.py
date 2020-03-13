@@ -30,10 +30,11 @@ if args.rfi_flag:
         ins = INS(args.insfile, mask_file=args.maskfile)
     else:
         ss = SS()
-        ss.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True, flag_choice='original')
+        ss.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
+                flag_choice='original', diff=True)
 
         ins = INS(ss)
-        
+
         prefix = '%s/%s' % (args.outdir, args.obsid)
         ins.write(prefix)
         freqs = np.arange(1.7e8, 2e8, 5e6)

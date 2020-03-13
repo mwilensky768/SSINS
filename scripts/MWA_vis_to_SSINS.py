@@ -8,7 +8,8 @@ parser.add_argument('-o', '--obsid', help='The obsid of the files.')
 args = parser.parse_args()
 
 ss = SS()
-ss.read(args.filelist, correct_cable_len=True, phase_to_pointing_center=True, ant_str='cross')
+ss.read(args.filelist, correct_cable_len=True, phase_to_pointing_center=True,
+        ant_str='cross', diff=True)
 
 ins = INS(ss)
 ins.history += "Read in vis data: applied cable corrections and phased to pointing center. "
