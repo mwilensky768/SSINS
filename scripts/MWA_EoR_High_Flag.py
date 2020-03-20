@@ -10,7 +10,11 @@ from multiprocessing import Pool
 # longer than only -w writing the data files: for raw processing of data, disabling
 # -p is recommended.
 
-# for best performance, set -t to the number of available cores on the machine
+# for best performance, set -t to the number of available cores on the machine;
+# scaling after six cores is limited
+
+# pool doesn't like being fed multiple arguments, so args is global
+global args
 
 def execbody (ins_filepath):
     slash_ind = ins_filepath.rfind('/')
@@ -77,9 +81,9 @@ def execbody (ins_filepath):
     #a hardcoded csv generator for occ_csv
     if args.gencsv:
         csv = ""+obsid+","+flagged_prefix+"_SSINS_data.h5,"+flagged_prefix+"_SSINS_mask.h5,"+flagged_prefix+"_SSINS_match_events.yml\n"
-        f.write(csv)
+        with open("occcsv.csv", "a") as csvfile:
+            csvfile.write(csv)
         print("wrote entry for "+obsid)
-        print(csv)
 
 if __name__ == "__main__":
 
@@ -91,7 +95,6 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
     parser.add_argument('-g', '--gencsv', action='store_true', help="Toggles creation of CSV for occ_csv script.")
     parser.add_argument('-t', '--threads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
-    global args
     args = parser.parse_args()
 
     ins_file_list = util.make_obslist(args.ins_file_list)
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     if args.gencsv:
         f = open("occcsv.csv", "w") #wipe old file
         f.write("obsid,ins_file,mask_file,yml_file\n")#header
-        f = open("occcsv.csv", "a")
+        f.close()
 
     #time the full length of the run if -v passed
     if args.verbose:
@@ -116,3 +119,4 @@ if __name__ == "__main__":
     #print out full length of run
     if args.verbose:
         print(f'Time taken: {time() - start}')
+    f.close()
