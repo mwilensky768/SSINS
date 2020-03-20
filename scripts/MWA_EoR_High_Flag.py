@@ -119,4 +119,3 @@ if __name__ == "__main__":
     #print out full length of run
     if args.verbose:
         print(f'Time taken: {time() - start}')
-    f.close()
