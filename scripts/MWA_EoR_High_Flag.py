@@ -94,7 +94,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true', help="Toggles verbose console output of file processing progress.")
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
     parser.add_argument('-g', '--gencsv', action='store_true', help="Toggles creation of CSV for occ_csv script.")
-    parser.add_argument('-t', '--threads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
+    parser.add_argument('-n', '--numthreads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
     args = parser.parse_args()
 
     ins_file_list = util.make_obslist(args.ins_file_list)
@@ -108,13 +108,17 @@ if __name__ == "__main__":
     if args.verbose:
         start = time()
 
-    filelist = []
-
-    for ins_filepath in ins_file_list:
-        filelist.append(ins_filepath)
-
-    p = Pool(args.threads)
-    p.map(execbody, filelist)
+    if args.numthreads == 1: #single thread fallback
+        print("using single thread execution path")
+        for ins_filepath in ins_file_list:
+            execbody(ins_filepath)
+    else:#multithreaded execution
+        print("using multithreaded execution path")
+        filelist = []
+        for ins_filepath in ins_file_list:
+            filelist.append(ins_filepath)
+        p = Pool(args.numthreads)
+        p.map(execbody, filelist)
 
     #print out full length of run
     if args.verbose:
