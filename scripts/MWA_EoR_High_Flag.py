@@ -14,6 +14,19 @@ from multiprocessing import Pool
 # scaling after six cores is limited
 
 # pool doesn't like being fed multiple arguments, so args is global
+
+# note on multithread execution scaling: this script basically runs out of gains
+# at more than six cores allocated because of how the Pool scheduler works:
+# Pool allocates N workers to work on N elements on the list and then waits for
+# them *all* to return before issuing new work to threads.
+
+# Since the different datasets take different amounts of time to finish executing
+# many threads are stalled; with >6 cores allocated, most of the cores sit idle
+# as a batch of >6 data pieces is very likely to have a slow entry within it.
+
+# A CPU with aggressive turbo bins (capable of scaling a single thread very fast
+# on demand) may somewhat alleviate this problem.
+
 global args
 
 def execbody (ins_filepath):
