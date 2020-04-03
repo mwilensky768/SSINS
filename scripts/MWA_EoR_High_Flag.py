@@ -92,9 +92,9 @@ def execbody (ins_filepath):
             print("wrote trimmed zeromask (w/ match filter) for "+obsid)
 
     #a hardcoded csv generator for occ_csv
-    if args.gencsv:
+    if args.gencsv is not None:
         csv = ""+obsid+","+flagged_prefix+"_SSINS_data.h5,"+flagged_prefix+"_SSINS_mask.h5,"+flagged_prefix+"_SSINS_match_events.yml\n"
-        with open("occcsv.csv", "a") as csvfile:
+        with open(args.gencsv, "a") as csvfile:
             csvfile.write(csv)
         print("wrote entry for "+obsid)
 
@@ -106,14 +106,14 @@ if __name__ == "__main__":
     parser.add_argument('-w', '--write', action='store_true', help="Toggles creation of output data files.")
     parser.add_argument('-v', '--verbose', action='store_true', help="Toggles verbose console output of file processing progress.")
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
-    parser.add_argument('-g', '--gencsv', action='store_true', help="Toggles creation of CSV for occ_csv script.")
+    parser.add_argument('-g', '--gencsv', help="If nonnull, creates an output CSV file for occ_csv.py with the given name (pass with extension)")
     parser.add_argument('-n', '--numthreads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
     args = parser.parse_args()
 
     ins_file_list = util.make_obslist(args.ins_file_list)
 
-    if args.gencsv:
-        f = open("occcsv.csv", "w") #wipe old file
+    if args.gencsv is not None:
+        f = open(args.gencsv, "w") #wipe old file
         f.write("obsid,ins_file,mask_file,yml_file\n")#header
         f.close()
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         for ins_filepath in ins_file_list:
             execbody(ins_filepath)
     else:#multithreaded execution
-        print("using multithreaded execution path")
+        print("using multithreaded execution path: "+str(args.numthreads)+" cores used")
         filelist = []
         for ins_filepath in ins_file_list:
             filelist.append(ins_filepath)
