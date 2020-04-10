@@ -260,7 +260,7 @@ class INS(UVFlag):
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
-              Ncoarse=24, sep='_', uvf=None):
+              metafits_file=None, Ncoarse=24, sep='_', uvf=None):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -285,8 +285,12 @@ class INS(UVFlag):
                 match_events - Writes the match_events attribute out to a human-readable yml file
 
                 mwaf - Writes an mwaf file by converting mask to flags.
-            mwaf_files (seq): A list of paths to mwaf files to use as input for each coarse channel
-            mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags to current flags in input file or replace them entirely
+            mwaf_files (seq): A list of paths to mwaf files to use as input for
+                each coarse channel
+            mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags
+                to current flags in input file or replace them entirely
+            metafits_file (str): A path to the metafits file if writing mwaf outputs.
+                Required only if writing mwaf files.
             sep (str): Determines the separator in the filename of the output file.
         """
 
@@ -347,15 +351,34 @@ class INS(UVFlag):
         elif output_type == 'mwaf':
             if mwaf_files is None:
                 raise ValueError("mwaf_files is set to None. This must be a sequence of existing mwaf filepaths.")
+            if metafits_file is None:
+                raise ValueError("If writing mwaf files, must supply corresponding metafits file.")
 
             from astropy.io import fits
             flags = self.mask_to_flags()[:, :, 0]
+            with fits.open(metafits_file) as meta_hdu_list:
+                coarse_chans = meta_hdu_list["CHANNELS"].split(",")
+                coarse_chans = np.sort([int(chan) for chan in coarse_chans])
+            # Coarse channels need to be mapped properly
+            # Up to coarse channel 128, the channels go in the right order
+            # Then they go in reverse order
+            # The number of properly ordered channels
+            num_less = np.count_nonzero(coarse_chans <= 128)
+            # Numbers associated with filenames
+            box_keys = [str(ind).zfill(2) for ind in range(1, len(coarse_chans) + 1)]
+            # Channel index associated with each box
+            box_vals = np.zeros(len(coarse_chans), dtype=int)
+            # The first num_less go in frequency-increasing order
+            box_vals[:num_less] = np.arange(num_less)
+            # The rest go in frequency-decreasing order
+            box_vals[num_less:] = np.arange(len(coarse_chans) - 1, num_less - 1, -1)
+            box_label_to_chan_ind_map = dict(zip(box_keys, box_vals))
             for path in mwaf_files:
                 if not os.path.exists(path):
                     raise IOError("filepath %s in mwaf_files was not found in system." % path)
                 path_ind = path.rfind('_') + 1
                 boxstr = path[path_ind:path_ind + 2]
-                boxint = int(boxstr) - 1
+                chan_ind = box_label_to_chan_ind_map[boxstr]
                 with fits.open(path) as mwaf_hdu:
                     NCHANS = mwaf_hdu[0].header['NCHANS']
                     NSCANS = mwaf_hdu[0].header['NSCANS']
@@ -374,7 +397,7 @@ class INS(UVFlag):
                     # Repeat in freq
                     freq_time_rep_flags = np.repeat(time_rep_flags, freq_div, axis=1)
                     # Repeat in bls
-                    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
+                    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * chan_ind: NCHANS * (chan_ind + 1)], Nbls, axis=1)
                     # This shape is on MWA wiki. Reshape to this shape.
                     new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
                     if mwaf_method == 'add':
