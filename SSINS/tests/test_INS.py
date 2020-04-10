@@ -226,6 +226,7 @@ def test_write_mwaf():
     ins = INS(testfile)
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
+    metafits_file = os.path.join(DATA_PATH, '1061313128.metafits')
 
     # Compatible shape with mwaf file
     ins.metric_array = np.ma.ones([55, 384, 1])
@@ -235,7 +236,8 @@ def test_write_mwaf():
     time_div = 4
     freq_div = 2
     NCHANS = 32
-    boxint = 11
+    # boxes go backwards for this file
+    boxint = 24 - 12
     Nbls = 8256
     NSCANS = 224
     flags = ins.mask_to_flags()
@@ -250,16 +252,21 @@ def test_write_mwaf():
 
     # Test some defensive errors
     with pytest.raises(IOError):
-        ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files)
+        ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files,
+                  metafits_file=metafits_file)
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files,
-                  mwaf_method='bad_method')
+                  mwaf_method='bad_method', metafits_file=metafits_file)
     with pytest.raises(ValueError):
-        ins.write(prefix, output_type='mwaf', mwaf_files=None)
+        ins.write(prefix, output_type='mwaf', mwaf_files=None,
+                  metafits_file=metafits_file)
+    with pytest.raises(ValueError):
+        ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files)
 
-    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files)
+    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
+              metafits_file=metafits_file)
     ins.write('%s_replace' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
-              mwaf_method='replace')
+              mwaf_method='replace', metafits_file=metafits_file)
 
     with fits.open(mwaf_files[0]) as old_mwaf_hdu:
         with fits.open('%s_add_12.mwaf' % prefix) as add_mwaf_hdu:
