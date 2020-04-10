@@ -39,6 +39,7 @@ if args.rfi_flag:
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=20)
     mf.apply_match_test(ins, apply_samp_thresh=True)
 
+    ins.write(prefix, output_type='mask')
     ins.write(prefix, output_type='flags')
     ins.write(prefix, output_type='match_events')
     if args.write_mwaf:
