@@ -230,7 +230,7 @@ def test_write_mwaf():
 
     # Compatible shape with mwaf file
     ins.metric_array = np.ma.ones([55, 384, 1])
-    ins.metric_array[50, 16 * 11: 16 * (11 + 1)] = np.ma.masked
+    ins.metric_array[50, 16 * 12: int(16 * (12 + 0.5))] = np.ma.masked
 
     # metadata from the input file, hardcoded for testing purposes
     time_div = 4
@@ -273,6 +273,12 @@ def test_write_mwaf():
             assert np.all(add_mwaf_hdu[1].data['FLAGS'] == old_mwaf_hdu[1].data['FLAGS'] + new_flags)
     with fits.open('%s_replace_12.mwaf' % prefix) as replace_mwaf_hdu:
         assert np.all(replace_mwaf_hdu[1].data['FLAGS'] == new_flags)
+    with fits.open('%s_replace_12.mwaf' % prefix) as replace_mwaf_hdu:
+        # Only the first half of these 8 integrations in this coarse channel should be flagged
+        assert np.all(replace_mwaf_hdu[1].data['FLAGS'][200 * Nbls:208 * Nbls, :16])
+        assert not np.any(replace_mwaf_hdu[1].data['FLAGS'][:200 * Nbls])
+        assert not np.any(replace_mwaf_hdu[1].data['FLAGS'][208 * Nbls:])
+        assert not np.any(replace_mwaf_hdu[1].data['FLAGS'][:, 16:])
 
     for path in ['%s_add_12.mwaf' % prefix, '%s_replace_12.mwaf' % prefix]:
         os.remove(path)
