@@ -357,7 +357,7 @@ class INS(UVFlag):
             from astropy.io import fits
             flags = self.mask_to_flags()[:, :, 0]
             with fits.open(metafits_file) as meta_hdu_list:
-                coarse_chans = meta_hdu_list["CHANNELS"].split(",")
+                coarse_chans = meta_hdu_list[0].header["CHANNELS"].split(",")
                 coarse_chans = np.sort([int(chan) for chan in coarse_chans])
             # Coarse channels need to be mapped properly
             # Up to coarse channel 128, the channels go in the right order
