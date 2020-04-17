@@ -4,7 +4,7 @@ from pyuvdata import UVData, UVFlag
 import yaml
 import argparse
 from astropy.io import fits
-
+import numpy as np
 
 def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
 
@@ -28,6 +28,9 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
             occ_dict[event[2]] += 1. / total_valid
         else:
             occ_dict[event[2]] += 1. / (ins.metric_array.shape[0] - num_int_flag)
+
+    for item in occ_dict:
+        occ_dict[item] = float(occ_dict[item])
 
     return(occ_dict)
 
@@ -68,9 +71,8 @@ if args.rfi_flag:
     print(f"Flagging these shapes: {shape_dict}")
 
     num_init_flag = np.sum(ins.metric_array.mask)
-    with fits.open(metafits_file) as meta_hdu:
-        int_time = meta_hdu[0].header["INTTIME"]
-    print(f"integration time from metafits is {int_time}")
+    int_time = ss.integration_time[0] / 2
+    print(f"Using int_time {int_time}")
     num_int_flag = 4.0 / int_time
 
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=20)
@@ -78,7 +80,7 @@ if args.rfi_flag:
 
     occ_dict = calc_occ(ins, num_init_flag, num_int_flag, shape_dict)
     with open(f"{prefix}_occ.yml", "w") as occ_file:
-        yaml.safe_dump(occ_file)
+        yaml.safe_dump(occ_dict, occ_file)
 
     ins.write(prefix, output_type='mask', clobber=True)
     uvd = UVData()
