@@ -9,8 +9,8 @@ from pyuvdata import UVData, UVFlag
 import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--filename",
-                    help="The visibility file to process")
+parser.add_argument("-f", "--filename", nargs='*',
+                    help="The visibility file(s) to process")
 parser.add_argument("-s", "--streak_sig", type=float,
                     help="The desired streak significance threshold")
 parser.add_argument("-o", "--other_sig", type=float,
@@ -30,7 +30,11 @@ version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 
 # Make the SS object
 ss = SS()
-ss.read(args.filename, ant_str='cross', diff=args.no_diff)
+ss.read(args.filename, ant_str='cross', diff=False)
+if args.no_diff:
+    ss.diff()
+else:
+    ss.data_array = np.ma.masked_array(ss.data_array)
 
 # Make the INS object
 ins = INS(ss)
