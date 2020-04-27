@@ -71,6 +71,8 @@ class SS(UVData):
             INS: An INS from which to apply flags - only used if flag_choice='INS'
             custom: A custom flag array from which to apply flags - only used if flag_choice='custom'
         """
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.data_array = np.ma.masked_array(self.data_array)
         self.flag_choice = flag_choice
         self.MLE = None
         if flag_choice is 'original':
