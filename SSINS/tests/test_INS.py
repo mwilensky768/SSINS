@@ -33,6 +33,20 @@ def test_init():
     assert np.all(test_weights == ins.weights_array), "Weights did not sum properly"
 
 
+def test_no_diff_start():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    # Don't diff - will fail to mask data array
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=False)
+
+    ins = INS(ss)
+
+    assert ss.flag_choice is None
+
+
 def test_mean_subtract():
 
     obs = '1061313128_99bl_1pol_half_time'
