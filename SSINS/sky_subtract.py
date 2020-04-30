@@ -88,8 +88,10 @@ class SS(UVData):
             self.data_array.mask[:] = False
             for time_ind, time in enumerate(INS.time_array):
                 freq_inds, pol_inds = np.where(INS.metric_array.mask[time_ind])
-                blt_inds = np.where(self.time_array == time)
-                self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
+                # Skip if nothing to flag
+                if len(freq_inds) > 0:
+                    blt_inds = np.where(self.time_array == time)
+                    self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
         elif flag_choice is 'custom':
             self.data_array.mask[:] = False
             if custom is not None:
