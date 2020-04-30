@@ -102,6 +102,11 @@ def test_apply_flags():
     assert not np.any(ss.data_array.mask[:, :, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
     assert ss.flag_choice is 'INS'
 
+    # Make a bad time array to test an error
+    ins.time_array = ins.time_array + 1
+    with pytest.raises(ValueError):
+        ss.apply_flags(flag_choice='INS', INS=ins)
+
     # Make flag_choice custom but do not provide array - should unflag everything and issue a warning
     with pytest.warns(UserWarning, match="Custom flags were chosen, but custom flags were None type. Setting flag_choice to None and unmasking data."):
         ss.apply_flags(flag_choice='custom', custom=None)
