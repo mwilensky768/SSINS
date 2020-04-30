@@ -225,3 +225,20 @@ def test_read_multifiles():
 
     for path in flist:
         os.remove(path)
+
+
+def test_newmask():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    assert not isinstance(ss.data_array, np.ma.MaskedArray)
+
+    ss.apply_flags()
+
+    assert ss.flag_choice is None
+    assert isinstance(ss.data_array, np.ma.MaskedArray)
