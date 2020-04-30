@@ -93,12 +93,13 @@ def test_apply_flags():
     assert np.all(ss.data_array.mask), "The custom flag array was not applied"
     assert ss.flag_choice is 'custom', "The flag choice attribute was not changed"
 
-    # Read an INS in (no flags by default) and flag a channel, test if it applies correctly
+    # Read an INS in (no flags by default) and flag a channel for two times stuff, see if applied correctly
     ins = INS(insfile)
-    ins.metric_array.mask[:, 0] = True
+    ins.metric_array.mask[[2, 4], 1, :] = True
     ss.apply_flags(flag_choice='INS', INS=ins)
-    assert np.all(ss.data_array.mask[:, 0, 0]), "Not all of the 0th channel was flagged."
-    assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
+    assert np.all(ss.data_array.mask[2::ss.Ntimes, :, 1, :]), "The 2nd time was not flagged."
+    assert np.all(ss.data_array.mask[4::ss.Ntimes, :, 1, :]), "The 4th time was not flagged."
+    assert not np.any(ss.data_array.mask[:, :, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
     assert ss.flag_choice is 'INS'
 
     # Make flag_choice custom but do not provide array - should unflag everything and issue a warning
