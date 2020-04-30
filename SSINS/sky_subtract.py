@@ -83,11 +83,13 @@ class SS(UVData):
         if flag_choice is 'original':
             self.data_array.mask = np.copy(self.flag_array)
         elif flag_choice is 'INS':
+            if not np.all(INS.time_array == np.unique(self.time_array)):
+                raise ValueError("INS object and SS object have incompatible time arrays. Cannot apply flags.")
             self.data_array.mask[:] = False
-            ind = np.where(INS.metric_array.mask)
-            for i in range(len(ind[0])):
-                self.data_array[ind[0][i] * self.Nbls:(ind[0][i] + 1) * self.Nbls,
-                                :, ind[1][i], ind[2][i]] = np.ma.masked
+            for time_ind, time in enumerate(INS.time_array):
+                freq_inds, pol_inds = np.where(INS.metric_array.mask[time_ind])
+                blt_inds = np.where(self.time_array == time)
+                self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
         elif flag_choice is 'custom':
             self.data_array.mask[:] = False
             if custom is not None:
