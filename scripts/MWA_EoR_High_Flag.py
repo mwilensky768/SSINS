@@ -13,7 +13,7 @@ from multiprocessing import Pool
 # for best performance, set -t to the number of available cores on the machine;
 # scaling after six cores is limited
 
-# pool doesn't like being fed multiple arguments, so args is global
+# pool doesn't like being fed multiple arguments, so inputargs is global
 
 # note on multithread execution scaling: this script basically runs out of gains
 # at more than six cores allocated because of how the Pool scheduler works:
@@ -27,7 +27,7 @@ from multiprocessing import Pool
 # A CPU with aggressive turbo bins (capable of scaling a single thread very fast
 # on demand) may somewhat alleviate this problem.
 
-global args
+global inputargs
 
 def execbody (ins_filepath):
     slash_ind = ins_filepath.rfind('/')
@@ -52,8 +52,8 @@ def execbody (ins_filepath):
 
 
     #write plots if command flagged to do so
-    if args.plots:
-        prefix = '%s/%s_trimmed_zeromask' % (args.outdir, obsid)
+    if inputargs.plots:
+        prefix = '%s/%s_trimmed_zeromask' % (inputargs.outdir, obsid)
         freqs = np.arange(1.7e8, 2e8, 5e6)
         xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array, sig_fig=0)
         yticks = [0, 20, 40]
@@ -65,36 +65,36 @@ def execbody (ins_filepath):
                               xticklabels=xticklabels, yticklabels=yticklabels,
                               data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
                               title=obsid, xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
-        if args.verbose:
+        if inputargs.verbose:
             print("wrote trimmed zeromask plot for "+obsid)
 
     mf.apply_match_test(ins, apply_samp_thresh=False)
     mf.apply_samp_thresh_test(ins, event_record=True)
 
-    flagged_prefix = '%s/%s_trimmed_zeromask_MF_s8' % (args.outdir, obsid)
+    flagged_prefix = '%s/%s_trimmed_zeromask_MF_s8' % (inputargs.outdir, obsid)
 
     #write data/mask/match/ if command flagged to do so
-    if args.write:
+    if inputargs.write:
         ins.write(flagged_prefix, output_type='data', clobber=True)
         ins.write(flagged_prefix, output_type='mask', clobber=True)
         ins.write(flagged_prefix, output_type='match_events')
-        if args.verbose:
+        if inputargs.verbose:
             print("wrote data/mask/match files for "+obsid)
 
     #write plots if command flagged to do so
-    if args.plots:
+    if inputargs.plots:
         Catalog_Plot.INS_plot(ins, flagged_prefix, xticks=xticks, yticks=yticks,
                               xticklabels=xticklabels, yticklabels=yticklabels,
                               data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
                               title=obsid, xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
-        if args.verbose:
+        if inputargs.verbose:
             print("wrote trimmed zeromask (w/ match filter) for "+obsid)
 
     #a hardcoded csv generator for occ_csv
-    if args.gencsv is not None:
+    if inputargs.gencsv is not None:
         csv = ""+obsid+","+flagged_prefix+"_SSINS_data.h5,"+flagged_prefix+"_SSINS_mask.h5,"+flagged_prefix+"_SSINS_match_events.yml\n"
-        with open(args.gencsv, "a") as csvfile:
+        with open(inputargs.gencsv, "a") as csvfile:
             csvfile.write(csv)
         print("wrote entry for "+obsid)
 
@@ -108,31 +108,31 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
     parser.add_argument('-g', '--gencsv', help="If nonnull, creates an output CSV file for occ_csv.py with the given name (pass with extension)")
     parser.add_argument('-n', '--numthreads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
-    args = parser.parse_args()
+    inputargs = parser.parse_args()
 
-    ins_file_list = util.make_obslist(args.ins_file_list)
+    ins_file_list = util.make_obslist(inputargs.ins_file_list)
 
-    if args.gencsv is not None:
-        f = open(args.gencsv, "w") #wipe old file
+    if inputargs.gencsv is not None:
+        f = open(inputargs.gencsv, "w") #wipe old file
         f.write("obsid,ins_file,mask_file,yml_file\n")#header
         f.close()
 
     #time the full length of the run if -v passed
-    if args.verbose:
+    if inputargs.verbose:
         start = time()
 
-    if args.numthreads == 1: #single thread fallback
+    if inputargs.numthreads == 1: #single thread fallback
         print("using single thread execution path")
         for ins_filepath in ins_file_list:
             execbody(ins_filepath)
     else:#multithreaded execution
-        print("using multithreaded execution path: "+str(args.numthreads)+" cores used")
+        print("using multithreaded execution path: "+str(inputargs.numthreads)+" cores used")
         filelist = []
         for ins_filepath in ins_file_list:
             filelist.append(ins_filepath)
-        p = Pool(args.numthreads)
+        p = Pool(inputargs.numthreads)
         p.map(execbody, filelist)
 
     #print out full length of run
-    if args.verbose:
+    if inputargs.verbose:
         print(f'Time taken: {time() - start}')
