@@ -18,7 +18,7 @@ class INS(UVFlag):
     """
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
-                 match_events_file=None):
+                 match_events_file=None, spectrum_type="cross"):
 
         """
         init function for the INS class.
@@ -36,8 +36,34 @@ class INS(UVFlag):
                          waterfall=False, history='', label='')
         if self.type == 'baseline':
 
-            # Manually flag autos
-            input.data_array[input.ant_1_array == input.ant_2_array] = np.ma.masked
+            self.spectrum_type = spectrum_type
+            """Type of visibilities used in spectrum. Either cross or auto. No mixing allowed."""
+            self.history += f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+
+            if self.spectrum_type == "cross":
+
+                has_autos = np.any(input.ant_1_array == input.ant_2_array)
+                if has_autos:
+                    warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
+                    input.select(ant_str="cross")
+
+                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                if not has_crosses:
+                    raise ValueError("Requested spectrum type is cross, but no cross"
+                                     " correlations remain. Check SS input.")
+
+            elif self.spectrum_type == "auto":
+                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                if has_crosses:
+                    warnings.warn("Requested specturm type is 'auto'. Removing"
+                                  " crosses before averaging.")
+                    input.select(ant_str="auto")
+
+                has_autos = np.any(input.ant_1_array == input.ant_2_array)
+                if not has_autos:
+                    raise ValueError("Requested spectrum type is cross, but no autos"
+                                     " remain. Check SS input.")
+
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask)
