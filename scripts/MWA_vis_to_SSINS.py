@@ -48,16 +48,20 @@ parser.add_argument('-m', '--write_mwaf', action='store_true',
                     help='If RFI flagging is requested, also write out an mwaf file')
 args = parser.parse_args()
 
-ss = SS()
 gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
-ss.read(gpu_files + metafits_file, correct_cable_len=True,
-        phase_to_pointing_center=True, ant_str='cross', diff=True,
-        flag_choice='original', flag_init=True)
+for ind, gpu_file in enumerate(gpu_files):
+	ss = SS()
+	ss.read([gpu_file] + metafits_file, correct_cable_len=True,
+        	phase_to_pointing_center=True, ant_str='cross', diff=True,
+        	flag_choice='original', flag_init=True)
 
-ins = INS(ss)
-ins.history += "Read in vis data: applied cable corrections and phased to pointing center. "
+	if ind == 0:
+		ins = INS(ss)
+		ins.history += "Read in vis data: applied cable corrections and phased to pointing center."
+	else:
+        	ins.__add__(INS(ss), axis='frequency')
 
 prefix = '%s/%s' % (args.outdir, args.obsid)
 ins.write(prefix, clobber=True)
@@ -83,10 +87,16 @@ if args.rfi_flag:
         yaml.safe_dump(occ_dict, occ_file)
 
     ins.write(prefix, output_type='mask', clobber=True)
-    uvd = UVData()
-    uvd.read(gpu_files + metafits_file, correct_cable_len=True,
-             phase_to_pointing_center=True, ant_str='cross', read_data=False)
-    uvf = UVFlag(uvd, waterfall=True, mode='flag')
+
+    for ind, gpu_file in enumerate(gpu_files):
+        uvd = UVData()
+        uvd.read([gpu_file] + metafits_file, correct_cable_len=True,
+                 phase_to_pointing_center=True, ant_str='cross', read_data=False)
+        if ind == 0:
+            uvf = UVFlag(uvd, waterfall=True, mode='flag')
+        else:
+            uvf.__add__(UVFlag(uvd, waterfall=True, mode='flag'), axis='frequency')
+
     ins.write(prefix, output_type='flags', uvf=uvf, clobber=True)
     ins.write(prefix, output_type='match_events', clobber=True)
     if args.write_mwaf:
