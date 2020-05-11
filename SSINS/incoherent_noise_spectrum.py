@@ -110,9 +110,19 @@ class INS(UVFlag):
             MS (masked array): The mean-subtracted data array.
         """
 
-        # This constant is determined by the Rayleigh distribution, which
-        # describes the ratio of its rms to its mean
-        C = 4 / np.pi - 1
+        if self.spectrum_type == 'cross':
+            # This constant is determined by the Rayleigh distribution, which
+            # describes the ratio of its rms to its mean
+            C = 4 / np.pi - 1
+        else:
+            # This involves another constant that results from the folded normal distribution
+            # which describes the amplitudes of the auto-pols.
+            # The cross-pols have Rayleigh distributed amplitudes.
+            C_ray = 4 / np.pi - 1
+            C_fold = np.pi / 2 - 1
+            C_pol_map = {-1: C_fold, -2: C_fold, -3: C_ray, -4: C_ray,
+                         -5: C_fold, -6: C_fold, -7: C_ray, -8: C_ray}
+            C = np.array([C_pol_map[pol] for pol in self.polarization_array])
         if not self.order:
             coeffs = self.metric_array[:, freq_slice].mean(axis=0)
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
