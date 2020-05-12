@@ -122,7 +122,11 @@ class INS(UVFlag):
             C_fold = np.pi / 2 - 1
             C_pol_map = {-1: C_fold, -2: C_fold, -3: C_ray, -4: C_ray,
                          -5: C_fold, -6: C_fold, -7: C_ray, -8: C_ray}
-            C = np.array([C_pol_map[pol] for pol in self.polarization_array])
+            try:
+                C = np.array([C_pol_map[pol] for pol in self.polarization_array])
+            except KeyError:
+                raise ValueError("Autocorrelation z-scores are not implemented "
+                                 "for pseudostokes spectra.")
         if not self.order:
             coeffs = self.metric_array[:, freq_slice].mean(axis=0)
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
