@@ -6,6 +6,7 @@ import argparse
 from astropy.io import fits
 import numpy as np
 
+
 def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
 
     occ_dict = {}
@@ -52,16 +53,16 @@ gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
 for ind, gpu_file in enumerate(gpu_files):
-	ss = SS()
-	ss.read([gpu_file] + metafits_file, correct_cable_len=True,
-        	phase_to_pointing_center=True, ant_str='cross', diff=True,
-        	flag_choice='original', flag_init=True)
+    ss = SS()
+    ss.read([gpu_file] + metafits_file, correct_cable_len=True,
+            phase_to_pointing_center=True, ant_str='cross', diff=True,
+            flag_choice='original', flag_init=True)
 
-	if ind == 0:
-		ins = INS(ss)
-		ins.history += "Read in vis data: applied cable corrections and phased to pointing center."
-	else:
-        	ins.__add__(INS(ss), axis='frequency')
+    if ind == 0:
+        ins = INS(ss)
+        ins.history += "Read in vis data: applied cable corrections and phased to pointing center."
+    else:
+        ins.__add__(INS(ss), axis='frequency')
 
 prefix = '%s/%s' % (args.outdir, args.obsid)
 ins.write(prefix, clobber=True)
