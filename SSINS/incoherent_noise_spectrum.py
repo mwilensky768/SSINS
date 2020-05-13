@@ -34,11 +34,17 @@ class INS(UVFlag):
 
         super().__init__(input, mode='metric', copy_flags=False,
                          waterfall=False, history='', label='')
+
+        self.spectrum_type = spectrum_type
+        if self.spectrum_type not in ['cross', 'auto']:
+            raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
+
+        spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+
         if self.type == 'baseline':
 
-            self.spectrum_type = spectrum_type
             """Type of visibilities used in spectrum. Either cross or auto. No mixing allowed."""
-            self.history += f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+            self.history += spec_type_str
 
             if self.spectrum_type == "cross":
 
@@ -69,6 +75,15 @@ class INS(UVFlag):
             self.weights_array = np.logical_not(input.data_array.mask)
             """The number of baselines that contributed to each element of the metric_array"""
             super().to_waterfall(method='mean')
+        # Make sure the right type of spectrum is being used, otherwise raise errors.
+        # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
+        elif spec_type_str not in self.history:
+            if "Initialized spectrum_type:" in self.history:
+                raise ValueError("Requested spectrum type disagrees with saved spectrum. "
+                                 "Make opposite choice on initialization.")
+            elif self.spectrum_type == "auto":
+                raise ValueError("Reading in a 'cross' spectrum as 'auto'. Check"
+                                 " spectrum_type for INS initialization.")
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
         if mask_file is None:
