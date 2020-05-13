@@ -48,27 +48,27 @@ class INS(UVFlag):
 
             if self.spectrum_type == "cross":
 
+                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                if not has_crosses:
+                    raise ValueError("Requested spectrum type is 'cross', but no cross"
+                                     " correlations exist. Check SS input.")
+
                 has_autos = np.any(input.ant_1_array == input.ant_2_array)
                 if has_autos:
                     warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
                     input.select(ant_str="cross")
 
-                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
-                if not has_crosses:
-                    raise ValueError("Requested spectrum type is cross, but no cross"
-                                     " correlations remain. Check SS input.")
-
             elif self.spectrum_type == "auto":
-                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
-                if has_crosses:
-                    warnings.warn("Requested specturm type is 'auto'. Removing"
-                                  " crosses before averaging.")
-                    input.select(ant_str="auto")
-
                 has_autos = np.any(input.ant_1_array == input.ant_2_array)
                 if not has_autos:
-                    raise ValueError("Requested spectrum type is cross, but no autos"
-                                     " remain. Check SS input.")
+                    raise ValueError("Requested spectrum type is 'auto', but no autos"
+                                     " exist. Check SS input.")
+
+                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                if has_crosses:
+                    warnings.warn("Requested spectrum type is 'auto'. Removing"
+                                  " crosses before averaging.")
+                    input.select(ant_str="auto")
 
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
