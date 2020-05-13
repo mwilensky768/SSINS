@@ -277,3 +277,29 @@ def test_data_params():
     ins = INS(testfile)
 
     assert ins._data_params == ['metric_array', 'weights_array', 'metric_ms', 'sig_array']
+
+
+def test_spectrum_type_file_init():
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+    ins = INS(testfile)
+
+    assert ins.spectrum_type == "cross"
+
+    with pytest.raises(ValueError, match="Reading in a 'cross' spectrum as 'auto'."):
+        ins = INS(testfile, spectrum_type="auto")
+
+
+def test_spectrum_type_bl_init():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, diff=True)
+
+    ins = INS(ss)
+    assert "Initialized spectrum_type:cross from visibility data." in ins.history
+
+    with pytest.raises(ValueError, match="Requested spectrum type is 'auto', but no autos exist."):
+        ins = INS(ss, spectrum_type="auto")
