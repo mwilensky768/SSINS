@@ -36,6 +36,22 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
     return(occ_dict)
 
 
+def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
+    init_files = [path for path in gpu_files if "gpubox01" in path]
+    uvd_obj = uvd_type()
+    uvd_obj.read(init_files + metafits_file, **kwargs)
+    uvd_obj.history += "Applied cable corrections and phased to pointing center."
+    uvf_obj = uvf_type(uvd_obj)
+    for chan_num in range(2, 25):
+        boxstr = f"{chan_num}".zfill(2)
+        box_files = [path for path in gpu_files if f"gpubox{boxstr}" in path]
+        uvd_obj = uvd_type()
+        uvd_obj.read(box_files + metafits_file, **kwargs)
+        uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency")
+
+    return(uvf_obj)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--filelist', nargs='*',
                     help='List of gpubox, metafits, and mwaf files.')
@@ -52,19 +68,11 @@ args = parser.parse_args()
 gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
-for ind, gpu_file in enumerate(gpu_files):
-    ss = SS()
-    ss.read([gpu_file] + metafits_file, correct_cable_len=True,
-            phase_to_pointing_center=True, ant_str='cross', diff=True,
-            flag_choice='original', flag_init=True)
 
-    if ind == 0:
-        ins = INS(ss)
-        ins.history += "Read in vis data: applied cable corrections and phased to pointing center."
-    else:
-        ins.__add__(INS(ss), axis='frequency')
-
-prefix = '%s/%s' % (args.outdir, args.obsid)
+ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
+                    phase_to_pointing_center=True, ant_str='cross', diff=True,
+                    flag_choice='original', flag_init=True)
+prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
 if args.rfi_flag:
@@ -89,14 +97,9 @@ if args.rfi_flag:
 
     ins.write(prefix, output_type='mask', clobber=True)
 
-    for ind, gpu_file in enumerate(gpu_files):
-        uvd = UVData()
-        uvd.read([gpu_file] + metafits_file, correct_cable_len=True,
-                 phase_to_pointing_center=True, ant_str='cross', read_data=False)
-        if ind == 0:
-            uvf = UVFlag(uvd, waterfall=True, mode='flag')
-        else:
-            uvf.__add__(UVFlag(uvd, waterfall=True, mode='flag'), axis='frequency')
+    uvf = low_mem_setup(UVData, UVFlag, gpu_files, metafits_file,
+                        correct_cable_len=True, phase_to_pointing_center=True,
+                        ant_str='cross', read_data=False)
 
     ins.write(prefix, output_type='flags', uvf=uvf, clobber=True)
     ins.write(prefix, output_type='match_events', clobber=True)
