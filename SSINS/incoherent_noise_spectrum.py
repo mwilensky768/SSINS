@@ -39,6 +39,10 @@ class INS(UVFlag):
         # Used in _data_params to determine when not to return None
         self._super_complete = True
 
+        if np.any(self.polarization_array > 0):
+            raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
+                             " currently support pseudo-Stokes spectra.")
+
         self.spectrum_type = spectrum_type
         if self.spectrum_type not in ['cross', 'auto']:
             raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
@@ -146,12 +150,9 @@ class INS(UVFlag):
             C_fold = np.pi / 2 - 1
             C_pol_map = {-1: C_fold, -2: C_fold, -3: C_ray, -4: C_ray,
                          -5: C_fold, -6: C_fold, -7: C_ray, -8: C_ray}
-            try:
-                C = np.array([C_pol_map[pol] for pol in self.polarization_array])
-            except KeyError:
-                warnings.warn("Autocorrelation z-scores are not implemented for"
-                              " pseudo-Stokes spectra. INS.metric_ms attribute"
-                              " will not be accurate.")
+
+            C = np.array([C_pol_map[pol] for pol in self.polarization_array])
+
         if not self.order:
             coeffs = self.metric_array[:, freq_slice].mean(axis=0)
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
