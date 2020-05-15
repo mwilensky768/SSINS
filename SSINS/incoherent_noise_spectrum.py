@@ -9,6 +9,7 @@ import yaml
 from SSINS import version
 from functools import reduce
 import warnings
+from itertools import combinations
 
 
 class INS(UVFlag):
@@ -35,45 +36,54 @@ class INS(UVFlag):
         super().__init__(input, mode='metric', copy_flags=False,
                          waterfall=False, history='', label='')
 
+        self._super_complete = True
+
         self.spectrum_type = spectrum_type
         if self.spectrum_type not in ['cross', 'auto']:
             raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
 
         spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
 
+        self.order = order
+        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+
         if self.type == 'baseline':
 
             """Type of visibilities used in spectrum. Either cross or auto. No mixing allowed."""
             self.history += spec_type_str
 
+            self.metric_array = np.abs(input.data_array)
+            """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
+            self.weights_array = np.logical_not(input.data_array.mask).astype(float)
+            """The number of baselines that contributed to each element of the metric_array"""
+
+            cross_bool = self.ant_1_array != self.ant_2_array
+            auto_bool = self.ant_1_array == self.ant_2_array
+
             if self.spectrum_type == "cross":
 
-                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                has_crosses = np.any(cross_bool)
                 if not has_crosses:
                     raise ValueError("Requested spectrum type is 'cross', but no cross"
                                      " correlations exist. Check SS input.")
 
-                has_autos = np.any(input.ant_1_array == input.ant_2_array)
+                has_autos = np.any(auto_bool)
                 if has_autos:
                     warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
-                    input.select(ant_str="cross")
+                    self.select(blt_inds=np.where(cross_bool)[0])
 
             elif self.spectrum_type == "auto":
-                has_autos = np.any(input.ant_1_array == input.ant_2_array)
+                has_autos = np.any(auto_bool)
                 if not has_autos:
                     raise ValueError("Requested spectrum type is 'auto', but no autos"
                                      " exist. Check SS input.")
 
-                has_crosses = np.any(input.ant_1_array != input.ant_2_array)
+                has_crosses = np.any(cross_bool)
                 if has_crosses:
                     warnings.warn("Requested spectrum type is 'auto'. Removing"
                                   " crosses before averaging.")
-                    input.select(ant_str="auto")
+                    self.select(blt_inds=np.where(auto_bool)[0])
 
-            self.metric_array = np.abs(input.data_array)
-            """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
-            self.weights_array = np.logical_not(input.data_array.mask)
-            """The number of baselines that contributed to each element of the metric_array"""
             super().to_waterfall(method='mean')
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
@@ -101,8 +111,6 @@ class INS(UVFlag):
         else:
             self.match_events = self.match_events_read(match_events_file)
 
-        self.order = order
-        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         self.metric_ms = self.mean_subtract()
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
@@ -407,7 +415,7 @@ class INS(UVFlag):
         """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
 
         # Prevents a bug that occurs during __init__
-        if not hasattr(self, 'metric_ms'):
+        if not hasattr(self, '_super_complete'):
             return(None)
         else:
             UVFlag_params = super(INS, self)._data_params
