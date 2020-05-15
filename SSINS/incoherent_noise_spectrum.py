@@ -36,6 +36,7 @@ class INS(UVFlag):
         super().__init__(input, mode='metric', copy_flags=False,
                          waterfall=False, history='', label='')
 
+        # Used in _data_params to determine when not to return None
         self._super_complete = True
 
         self.spectrum_type = spectrum_type
