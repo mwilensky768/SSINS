@@ -27,7 +27,8 @@ def test_init():
     test_weights = np.sum(np.logical_not(ss.data_array.mask).reshape(new_shape), axis=1)
 
     # Check that the data array averaged correctly
-    assert np.all(test_dat == ins.metric_array), "Averaging did not work as intended."
+    # Weights are floating-point, which introdices itty bitty errors compared to masked average.
+    assert np.all(np.isclose(test_dat, ins.metric_array, rtol=1e-6, atol=1e-7)), "Averaging did not work as intended."
     # Check that the weights summed correctly
     assert np.all(test_weights == ins.weights_array), "Weights did not sum properly"
 
@@ -281,19 +282,26 @@ def test_data_params():
 
 def test_spectrum_type_file_init():
     obs = "1061313128_99bl_1pol_half_time_SSINS"
+    auto_obs = "1061312640_mix_auto_SSINS_data"
+    cross_obs = "1061312640_mix_cross_SSINS_data"
     testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+    auto_testfile = os.path.join(DATA_PATH, f"{auto_obs}.h5")
+    cross_testfile = os.path.join(DATA_PATH, f"{cross_obs}.h5")
     ins = INS(testfile)
 
     assert ins.spectrum_type == "cross"
 
     with pytest.raises(ValueError, match="Reading in a 'cross' spectrum as 'auto'."):
         ins = INS(testfile, spectrum_type="auto")
+    with pytest.raises(ValueError, match="Requested spectrum type disagrees with saved spectrum. "):
+        ins = INS(auto_testfile, spectrum_type="cross")
+    with pytest.raises(ValueError, match="Requested spectrum type disagrees with saved spectrum. "):
+        ins = INS(cross_testfile, spectrum_type="auto")
 
 
 def test_spectrum_type_bl_init():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    file_type = 'uvfits'
 
     ss = SS()
     ss.read(testfile, diff=True)
@@ -302,4 +310,41 @@ def test_spectrum_type_bl_init():
     assert "Initialized spectrum_type:cross from visibility data." in ins.history
 
     with pytest.raises(ValueError, match="Requested spectrum type is 'auto', but no autos exist."):
+        ins = INS(ss, spectrum_type="auto")
+
+
+def test_spectrum_type_bad_input():
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+    with pytest.raises(ValueError, match="Requested spectrum_type is invalid."):
+        ins = INS(testfile, spectrum_type="foo")
+
+
+def test_no_cross_auto_spectrum():
+    obs = "1061312640_autos"
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+
+    ss = SS()
+    ss.read(testfile, diff=True)
+
+    with pytest.raises(ValueError, match="Requested spectrum type is 'cross', but no cross"):
+        ins = INS(ss)
+
+
+def test_mix_spectrum():
+    obs = "1061312640_mix"
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+
+    ss = SS()
+    ss.read(testfile, diff=True)
+
+    with pytest.warns(UserWarning, match="Requested spectrum type is 'cross'. Removing autos before averaging."):
+        ins = INS(ss)
+
+    with pytest.warns(UserWarning, match="Requested spectrum type is 'auto'. Removing"):
+        ins = INS(ss, spectrum_type="auto")
+
+    # Hack polarization array to check error
+    ss.polarization_array[0] = 1
+    with pytest.raises(ValueError, match="SS input has pseudo-Stokes data. SSINS does not"):
         ins = INS(ss, spectrum_type="auto")
