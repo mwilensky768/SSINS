@@ -72,7 +72,7 @@ Generating the sky-subtracted visibilities
   >>> print(np.any(ss.data_array.mask))
   False
 
-(c) Plotting using Catalog_Plot
+(d) Plotting using Catalog_Plot
 *******************************
 ::
   >>> from SSINS import Catalog_Plot as cp
@@ -114,7 +114,17 @@ Making and writing an incoherent noise spectrum
   >>> ins = INS(ss)
   >>> # This averages the amplitudes of the sky-subtracted data over the baselines, taking into account flags that were applied
 
-(b) Plotting using Catalog_Plot
+(b) Making an incoherent noise spectrum out of autocorrelations
+***************************************************************
+::
+    >>> auto_ss = SS()
+
+    >>> # Read data by specifying a filepath as an argument to the read method
+    >>> auto_filepath = 'SSINS/data/1061312640_autos.uvfits'
+    >>> auto_ss.read(auto_filepath, diff=True)
+    >>> auto_ins = INS(auto_ss, spectrum_type="auto")
+
+(c) Plotting using Catalog_Plot
 *******************************
 ::
   >>> # Plotting INS is similar to plotting a VDH, just with a different function
@@ -133,7 +143,7 @@ Making and writing an incoherent noise spectrum
   >>> print(os.path.exists('%s_SSINS.pdf' % tick_prefix))
   True
 
-(c) Plotting using the plot_lib library
+(d) Plotting using the plot_lib library
 ***************************************
 ::
   >>> import matplotlib.pyplot as plt
@@ -155,7 +165,7 @@ Making and writing an incoherent noise spectrum
   >>> print(os.path.exists('%s_plot_lib_SSINS.pdf' % prefix))
   True
 
-(d) Saving out and reading in a spectrum
+(e) Saving out and reading in a spectrum
 ****************************************
 ::
   >>> # The INS.write method saves out h5 files that can be read both by INS objects and UVFlag objects
@@ -240,28 +250,8 @@ Flagging an INS using a match_filter (MF)
   >>> print(os.path.exists('%s_SSINS_mask.h5' % prefix))
   True
 
-(f) Applying INS flags to an SS object and writing a new raw data file
-**********************************************************************
-::
-  >>> # We can use the apply_flags method to apply flags from an INS object
-  >>> ss.apply_flags(flag_choice='INS', INS=ins)
 
-  >>> # We write these to a file using the write method. An input file is necessary.
-  >>> # This is extremely memory intensive since two opened raw data files must exist in memory
-  >>> # You can also supply it with an existing UVData object if one is already in memory outside of the SS class
-  >>> filename_out = '%s_raw.uvfits' % prefix
-  >>> filename_in = filepath
-
-  >>> # See docs for required arguments, behavior of the combine keyword, and propagating flags in time
-  >>> # We need to make sure the read_kwargs for the filename_in match how we made the original SS object
-  >>> # Here it needs a keyword dictionary.
-  >>> # This will issue a warning about nsample_default. See the docs for SS.write.
-  >>> ss.write(filename_out, 'uvfits', filename_in=filename_in, combine=True,
-  ...          read_kwargs={'times': times})
-  >>> print(os.path.exists(filename_out))
-  True
-
-(g) Getting time propagated flags from the INS mask
+(f) Getting time propagated flags from the INS mask
 ***************************************************
 ::
   >>> from pyuvdata import UVData, UVFlag
@@ -278,7 +268,7 @@ Flagging an INS using a match_filter (MF)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
   True
 
-(h) Writing flags to an mwaf file
+(g) Writing flags to an mwaf file
 *********************************
 ::
   >>> # We can add or replace flags from an existing mwaf file
