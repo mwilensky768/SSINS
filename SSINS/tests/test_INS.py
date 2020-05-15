@@ -298,6 +298,11 @@ def test_spectrum_type_file_init():
     with pytest.raises(ValueError, match="Requested spectrum type disagrees with saved spectrum. "):
         ins = INS(cross_testfile, spectrum_type="auto")
 
+    del ins
+    ins = INS(cross_testfile)
+    del ins
+    ins = INS(auto_testfile, spectrum_type="auto")
+
 
 def test_spectrum_type_bl_init():
     obs = '1061313128_99bl_1pol_half_time'
