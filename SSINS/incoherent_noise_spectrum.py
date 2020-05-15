@@ -31,6 +31,7 @@ class INS(UVFlag):
             order: Sets the order parameter for the INS object
             mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
             match_events_file: A path to a .yml file that has events caught by the match filter
+            spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
         """
 
         super().__init__(input, mode='metric', copy_flags=False,
@@ -44,6 +45,7 @@ class INS(UVFlag):
                              " currently support pseudo-Stokes spectra.")
 
         self.spectrum_type = spectrum_type
+        """The type of visibilities the spectrum was made from."""
         if self.spectrum_type not in ['cross', 'auto']:
             raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
 
