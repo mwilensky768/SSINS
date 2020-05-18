@@ -9,6 +9,7 @@ import yaml
 from SSINS import version
 from functools import reduce
 import warnings
+from itertools import combinations
 
 
 class INS(UVFlag):
@@ -18,7 +19,7 @@ class INS(UVFlag):
     """
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
-                 match_events_file=None):
+                 match_events_file=None, spectrum_type="cross"):
 
         """
         init function for the INS class.
@@ -30,19 +31,76 @@ class INS(UVFlag):
             order: Sets the order parameter for the INS object
             mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
             match_events_file: A path to a .yml file that has events caught by the match filter
+            spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
         """
 
         super().__init__(input, mode='metric', copy_flags=False,
                          waterfall=False, history='', label='')
+
+        # Used in _data_params to determine when not to return None
+        self._super_complete = True
+
+        if np.any(self.polarization_array > 0):
+            raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
+                             " currently support pseudo-Stokes spectra.")
+
+        self.spectrum_type = spectrum_type
+        """The type of visibilities the spectrum was made from."""
+        if self.spectrum_type not in ['cross', 'auto']:
+            raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
+
+        spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+
+        self.order = order
+        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+
         if self.type == 'baseline':
 
-            # Manually flag autos
-            input.data_array[input.ant_1_array == input.ant_2_array] = np.ma.masked
+            """Type of visibilities used in spectrum. Either cross or auto. No mixing allowed."""
+            self.history += spec_type_str
+
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
-            self.weights_array = np.logical_not(input.data_array.mask)
+            self.weights_array = np.logical_not(input.data_array.mask).astype(float)
             """The number of baselines that contributed to each element of the metric_array"""
+
+            cross_bool = self.ant_1_array != self.ant_2_array
+            auto_bool = self.ant_1_array == self.ant_2_array
+
+            if self.spectrum_type == "cross":
+
+                has_crosses = np.any(cross_bool)
+                if not has_crosses:
+                    raise ValueError("Requested spectrum type is 'cross', but no cross"
+                                     " correlations exist. Check SS input.")
+
+                has_autos = np.any(auto_bool)
+                if has_autos:
+                    warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
+                    self.select(blt_inds=np.where(cross_bool)[0])
+
+            elif self.spectrum_type == "auto":
+                has_autos = np.any(auto_bool)
+                if not has_autos:
+                    raise ValueError("Requested spectrum type is 'auto', but no autos"
+                                     " exist. Check SS input.")
+
+                has_crosses = np.any(cross_bool)
+                if has_crosses:
+                    warnings.warn("Requested spectrum type is 'auto'. Removing"
+                                  " crosses before averaging.")
+                    self.select(blt_inds=np.where(auto_bool)[0])
+
             super().to_waterfall(method='mean')
+        # Make sure the right type of spectrum is being used, otherwise raise errors.
+        # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
+        elif spec_type_str not in self.history:
+            if "Initialized spectrum_type:" in self.history:
+                raise ValueError("Requested spectrum type disagrees with saved spectrum. "
+                                 "Make opposite choice on initialization.")
+            elif self.spectrum_type == "auto":
+                raise ValueError("Reading in a 'cross' spectrum as 'auto'. Check"
+                                 " spectrum_type for INS initialization.")
         if not hasattr(self.metric_array, 'mask'):
             self.metric_array = np.ma.masked_array(self.metric_array)
         if mask_file is None:
@@ -60,8 +118,6 @@ class INS(UVFlag):
         else:
             self.match_events = self.match_events_read(match_events_file)
 
-        self.order = order
-        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         self.metric_ms = self.mean_subtract()
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
@@ -84,9 +140,21 @@ class INS(UVFlag):
             MS (masked array): The mean-subtracted data array.
         """
 
-        # This constant is determined by the Rayleigh distribution, which
-        # describes the ratio of its rms to its mean
-        C = 4 / np.pi - 1
+        if self.spectrum_type == 'cross':
+            # This constant is determined by the Rayleigh distribution, which
+            # describes the ratio of its rms to its mean
+            C = 4 / np.pi - 1
+        else:
+            # This involves another constant that results from the folded normal distribution
+            # which describes the amplitudes of the auto-pols.
+            # The cross-pols have Rayleigh distributed amplitudes.
+            C_ray = 4 / np.pi - 1
+            C_fold = np.pi / 2 - 1
+            C_pol_map = {-1: C_fold, -2: C_fold, -3: C_ray, -4: C_ray,
+                         -5: C_fold, -6: C_fold, -7: C_ray, -8: C_ray}
+
+            C = np.array([C_pol_map[pol] for pol in self.polarization_array])
+
         if not self.order:
             coeffs = self.metric_array[:, freq_slice].mean(axis=0)
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
@@ -351,7 +419,7 @@ class INS(UVFlag):
         """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
 
         # Prevents a bug that occurs during __init__
-        if not hasattr(self, 'metric_ms'):
+        if not hasattr(self, '_super_complete'):
             return(None)
         else:
             UVFlag_params = super(INS, self)._data_params
