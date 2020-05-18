@@ -42,6 +42,8 @@ class SS(UVData):
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
         """
+        warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
+                      " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
         super().read(filename, **kwargs)
 
@@ -55,6 +57,9 @@ class SS(UVData):
                 warnings.warn("diff on read defaults to False now. Please double"
                               " check SS.read call and ensure the appropriate"
                               " keyword arguments for your intended use case.")
+                if flag_choice is not None:
+                    warnings.warn("flag_choice will be ignored on read since"
+                                  " diff is being skipped.")
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
@@ -71,16 +76,22 @@ class SS(UVData):
             INS: An INS from which to apply flags - only used if flag_choice='INS'
             custom: A custom flag array from which to apply flags - only used if flag_choice='custom'
         """
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.data_array = np.ma.masked_array(self.data_array)
         self.flag_choice = flag_choice
         self.MLE = None
         if flag_choice is 'original':
             self.data_array.mask = np.copy(self.flag_array)
         elif flag_choice is 'INS':
+            if not np.all(INS.time_array == np.unique(self.time_array)):
+                raise ValueError("INS object and SS object have incompatible time arrays. Cannot apply flags.")
             self.data_array.mask[:] = False
-            ind = np.where(INS.metric_array.mask)
-            for i in range(len(ind[0])):
-                self.data_array[ind[0][i] * self.Nbls:(ind[0][i] + 1) * self.Nbls,
-                                :, ind[1][i], ind[2][i]] = np.ma.masked
+            for time_ind, time in enumerate(INS.time_array):
+                freq_inds, pol_inds = np.where(INS.metric_array.mask[time_ind])
+                # Skip if nothing to flag
+                if len(freq_inds) > 0:
+                    blt_inds = np.where(self.time_array == time)
+                    self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
         elif flag_choice is 'custom':
             self.data_array.mask[:] = False
             if custom is not None:
@@ -182,6 +193,8 @@ class SS(UVData):
             prob: The probability to land in each bin based on the maximum likelihood model
         """
 
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.apply_flags()
         if self.MLE is None:
             self.MLE_calc()
         if bins is 'auto':
@@ -224,6 +237,8 @@ class SS(UVData):
 
         """
 
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.apply_flags()
         where_band = np.logical_and(np.absolute(self.data_array) > min(band),
                                     np.absolute(self.data_array) < max(band))
         where_band_mask = np.logical_and(np.logical_not(self.data_array.mask),
