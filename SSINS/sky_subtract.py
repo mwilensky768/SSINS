@@ -193,6 +193,8 @@ class SS(UVData):
             prob: The probability to land in each bin based on the maximum likelihood model
         """
 
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.apply_flags()
         if self.MLE is None:
             self.MLE_calc()
         if bins is 'auto':
@@ -235,6 +237,8 @@ class SS(UVData):
 
         """
 
+        if not isinstance(self.data_array, np.ma.MaskedArray):
+            self.apply_flags()
         where_band = np.logical_and(np.absolute(self.data_array) > min(band),
                                     np.absolute(self.data_array) < max(band))
         where_band_mask = np.logical_and(np.logical_not(self.data_array.mask),
