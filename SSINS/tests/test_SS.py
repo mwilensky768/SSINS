@@ -93,13 +93,19 @@ def test_apply_flags():
     assert np.all(ss.data_array.mask), "The custom flag array was not applied"
     assert ss.flag_choice is 'custom', "The flag choice attribute was not changed"
 
-    # Read an INS in (no flags by default) and flag a channel, test if it applies correctly
+    # Read an INS in (no flags by default) and flag a channel for two times stuff, see if applied correctly
     ins = INS(insfile)
-    ins.metric_array.mask[:, 0] = True
+    ins.metric_array.mask[[2, 4], 1, :] = True
     ss.apply_flags(flag_choice='INS', INS=ins)
-    assert np.all(ss.data_array.mask[:, 0, 0]), "Not all of the 0th channel was flagged."
-    assert not np.any(ss.data_array.mask[:, 0, 1:]), "Some of the channels other than the 0th were flagged"
+    assert np.all(ss.data_array.mask[2::ss.Ntimes, :, 1, :]), "The 2nd time was not flagged."
+    assert np.all(ss.data_array.mask[4::ss.Ntimes, :, 1, :]), "The 4th time was not flagged."
+    assert not np.any(ss.data_array.mask[:, :, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
     assert ss.flag_choice is 'INS'
+
+    # Make a bad time array to test an error
+    ins.time_array = ins.time_array + 1
+    with pytest.raises(ValueError):
+        ss.apply_flags(flag_choice='INS', INS=ins)
 
     # Make flag_choice custom but do not provide array - should unflag everything and issue a warning
     with pytest.warns(UserWarning, match="Custom flags were chosen, but custom flags were None type. Setting flag_choice to None and unmasking data."):
@@ -126,6 +132,14 @@ def test_mixture_prob():
 
     # Check that they sum to close to 1
     assert np.isclose(np.sum(mixture_prob), 1), "Probabilities did not add up to close to 1"
+
+    # Do a new read, but don't diff. Run and check mask.
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    mixture_prob = ss.mixture_prob(bins='auto')
+
+    assert ss.flag_choice is None
 
 
 def test_rev_ind():
@@ -156,6 +170,14 @@ def test_rev_ind():
 
     # Check no other points were picked up
     assert np.count_nonzero(wf_hist) == 1, "The algorithm found other data"
+
+    # Do a new read, but don't diff. Run and check mask.
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    rev_ind_hist = ss.rev_ind(band)
+
+    assert ss.flag_choice is None
 
 
 def test_write():
@@ -225,3 +247,20 @@ def test_read_multifiles():
 
     for path in flist:
         os.remove(path)
+
+
+def test_newmask():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    assert not isinstance(ss.data_array, np.ma.MaskedArray)
+
+    ss.apply_flags()
+
+    assert ss.flag_choice is None
+    assert isinstance(ss.data_array, np.ma.MaskedArray)

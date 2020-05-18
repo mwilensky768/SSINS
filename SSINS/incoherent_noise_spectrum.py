@@ -56,8 +56,10 @@ class INS(UVFlag):
 
         if self.type == 'baseline':
 
-            """Type of visibilities used in spectrum. Either cross or auto. No mixing allowed."""
             self.history += spec_type_str
+            # Check if the data has a mask yet. If not, mask it and set flag_choice to None.
+            if not isinstance(input.data_array, np.ma.MaskedArray):
+                input.apply_flags()
 
             self.metric_array = np.abs(input.data_array)
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""

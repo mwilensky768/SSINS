@@ -30,11 +30,7 @@ version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 
 # Make the SS object
 ss = SS()
-ss.read(args.filename, ant_str='cross', diff=False)
-if args.no_diff:
-    ss.diff()
-else:
-    ss.data_array = np.ma.masked_array(ss.data_array)
+ss.read(args.filename, ant_str='cross', diff=args.no_diff)
 
 # Make the INS object
 ins = INS(ss)
@@ -72,5 +68,7 @@ ins.history += "Flagged using apply_match_test on SSINS %s." % version_hist_subs
 # Write outputs
 ins.write(args.prefix, output_type='mask', sep='.', clobber=args.clobber)
 uvf.history += ins.history
-ins.write(args.prefix, output_type='flags', sep='.', uvf=uvf, clobber=args.clobber)
+# "flags" are not helpful if no differencing was done
+if args.no_diff:
+    ins.write(args.prefix, output_type='flags', sep='.', uvf=uvf, clobber=args.clobber)
 ins.write(args.prefix, output_type='match_events', sep='.', clobber=args.clobber)
