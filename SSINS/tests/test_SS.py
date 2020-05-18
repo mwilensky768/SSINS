@@ -133,6 +133,14 @@ def test_mixture_prob():
     # Check that they sum to close to 1
     assert np.isclose(np.sum(mixture_prob), 1), "Probabilities did not add up to close to 1"
 
+    # Do a new read, but don't diff. Run and check mask.
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    mixture_prob = ss.mixture_prob(bins='auto')
+
+    assert ss.flag_choice is None
+
 
 def test_rev_ind():
 
@@ -162,6 +170,14 @@ def test_rev_ind():
 
     # Check no other points were picked up
     assert np.count_nonzero(wf_hist) == 1, "The algorithm found other data"
+
+    # Do a new read, but don't diff. Run and check mask.
+    ss = SS()
+    ss.read(testfile, diff=False)
+
+    rev_ind_hist = ss.rev_ind(band)
+
+    assert ss.flag_choice is None
 
 
 def test_write():
