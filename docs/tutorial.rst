@@ -268,7 +268,14 @@ Flagging an INS using a match_filter (MF)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
   True
 
-(g) Writing flags to an mwaf file
+(g) Applying time-propagated flags from INS to a UVData object and write new file
+*********************************************************************************
+::
+  >>> from pyuvdata import utils as uvutils
+  >>> uvutils.apply_uvflag(uvd, uvf)
+  >>> uvd.write_uvfits('SSINS/data/tutorial_test_writeout.uvfits')
+
+(h) Writing flags to an mwaf file
 *********************************
 ::
   >>> # We can add or replace flags from an existing mwaf file
@@ -368,3 +375,10 @@ Extra Flagging Bits
   ...               'TV8': [1.88e8, 1.95e8],
   ...               'TV9': [1.95e8, 2.02e8]}
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
+
+(d) Writing out flags to a visibility file from a UVData object
+***************************************************************
+::
+  >>> ss = SS()
+  >>> ss.read(filepath, times=times, flag_choice='original', diff=True)
+  >>> ss.write('SSINS/data/tutorial_test_writeout_2.uvfits', 'uvfits', UV=uvd)
