@@ -49,7 +49,7 @@ def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
         uvd_obj.read(box_files + metafits_file, **kwargs)
         uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency")
 
-    return(uvd_obj, uvf_obj)
+    return(uvf_obj)
 
 
 parser = argparse.ArgumentParser()
@@ -69,17 +69,19 @@ gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
 
-_, ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
-                       phase_to_pointing_center=True, ant_str='cross', diff=True,
-                       flag_choice='original', flag_init=True)
+ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
+                    phase_to_pointing_center=True, ant_str='cross', diff=True,
+                    flag_choice='original', flag_init=True)
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
 if args.rfi_flag:
 
-    uvd, uvf = low_mem_setup(UVData, UVFlag, gpu_files, metafits_file,
-                             correct_cable_len=True, phase_to_pointing_center=True,
-                             ant_str='cross', read_data=False)
+    uvd = UVData()
+    uvd.read(gpu_files + metafits_file, correct_cable_len=True,
+             phase_to_pointing_center=True, ant_str='cross', read_data=False,
+             flag_init=True)
+    uvf = UVFlag(uvd, waterfall=True, mode='flag')
 
     num_init_flag = np.sum(ins.metric_array.mask)
     int_time = uvd.integration_time[0]
