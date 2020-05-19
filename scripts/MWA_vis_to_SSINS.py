@@ -63,6 +63,10 @@ parser.add_argument('-r', '--rfi_flag', action='store_true',
                     help='Do rfi flagging.')
 parser.add_argument('-m', '--write_mwaf', action='store_true',
                     help='If RFI flagging is requested, also write out an mwaf file')
+parser.add_argument('-s', '--start_flag', type=float, default=2.0,
+                    help='The number of seconds to flag at the beginning of the obs.')
+parser.add_argument('-e', '--end_flag', type=float, default=2.0,
+                    help='The number of seconds to flag at the end of the obs.')
 args = parser.parse_args()
 
 gpu_files = [path for path in args.filelist if ".fits" in path]
@@ -71,7 +75,8 @@ metafits_file = [path for path in args.filelist if ".metafits" in path]
 
 ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
                     phase_to_pointing_center=True, ant_str='cross', diff=True,
-                    flag_choice='original', flag_init=True)
+                    flag_choice='original', flag_init=True,
+                    start_flag=args.start_flag, end_flag=args.end_flag)
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
@@ -86,7 +91,7 @@ if args.rfi_flag:
     num_init_flag = np.sum(ins.metric_array.mask)
     int_time = uvd.integration_time[0]
     print(f"Using int_time {int_time}")
-    num_int_flag = 4.0 / int_time
+    num_int_flag = (args.start_flag + args.end_flag) / int_time
 
     with open(f"{DATA_PATH}/MWA_EoR_Highband_shape_dict.yml", "r") as shape_file:
         shape_dict = yaml.safe_load(shape_file)
