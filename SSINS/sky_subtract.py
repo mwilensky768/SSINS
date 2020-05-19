@@ -275,30 +275,32 @@ class SS(UVData):
             write_kwargs: A keyword dictionary for the selected UVData write method. See pyuvdata documentation for write keywords.
         """
 
+        if self.blt_order != 'baseline':
+            warnings.warn("Reordering data array to baseline order to propagate flags.")
+            self.reorder_blts(order='baseline')
         if UV is None:
             UV = UVData()
             UV.read(filename_in, **read_kwargs)
 
-        # Test that assumptions abouts blts axis are ok
-        assert UV.Nblts == UV.Nbls * UV.Ntimes, 'Nblts != Nbls * Ntimes for UV object.'
-        cond = np.all([UV.baseline_array[:UV.Nbls] == UV.baseline_array[k * UV.Nbls:(k + 1) * UV.Nbls]
-                       for k in range(1, UV.Ntimes)])
-        assert cond, 'Baseline array slices do not match in each time! The baselines are out of order.'
+        # Option to keep old flags
+        if not combine:
+            UV.flag_array[:] = 0
 
         # Check nsample_array for issue
         if np.any(UV.nsample_array == 0) and (file_type_out is 'uvfits'):
             warnings.warn("Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0.")
             UV.nsample_array[UV.nsample_array == 0] = nsample_default
 
-        # Option to keep old flags
-        if not combine:
-            UV.flag_array[:] = 0
-
-        # Propagate the new flags
-        for i in range(self.Ntimes):
-            # This actually does not invert properly but I think it's the best way
-            UV.flag_array[i * self.Nbls: (i + 1) * self.Nbls][self.data_array.mask[i * self.Nbls: (i + 1) * self.Nbls]] = 1
-            UV.flag_array[(i + 1) * self.Nbls: (i + 2) * self.Nbls][self.data_array.mask[i * self.Nbls: (i + 1) * self.Nbls]] = 1
+        # index accumulator
+        ind_acc = 0
+        if UV.blt_order != 'baseline':
+            UV.reorder_blts(order='baseline')
+        for bl in np.unique(self.baseline_array):
+            new_flags = self.get_data(bl, squeeze='none').mask
+            end_ind = new_flags.shape[0] + 1 + ind_acc
+            UV.flag_array[ind_acc:end_ind - 1][new_flags] = 1
+            UV.flag_array[ind_acc + 1:end_ind][new_flags] = 1
+            ind_acc = end_ind
 
         # Write file
         getattr(UV, 'write_%s' % file_type_out)(filename_out, **write_kwargs)
