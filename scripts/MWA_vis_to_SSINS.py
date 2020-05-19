@@ -49,7 +49,7 @@ def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
         uvd_obj.read(box_files + metafits_file, **kwargs)
         uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency")
 
-    return(uvf_obj)
+    return(uvd_obj, uvf_obj)
 
 
 parser = argparse.ArgumentParser()
@@ -69,24 +69,29 @@ gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
 
-ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
-                    phase_to_pointing_center=True, ant_str='cross', diff=True,
-                    flag_choice='original', flag_init=True)
+_, ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
+                       phase_to_pointing_center=True, ant_str='cross', diff=True,
+                       flag_choice='original', flag_init=True)
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
 if args.rfi_flag:
+
+    uvd, uvf = low_mem_setup(UVData, UVFlag, gpu_files, metafits_file,
+                             correct_cable_len=True, phase_to_pointing_center=True,
+                             ant_str='cross', read_data=False)
+
+    num_init_flag = np.sum(ins.metric_array.mask)
+    int_time = uvd.integration_time[0]
+    print(f"Using int_time {int_time}")
+    num_int_flag = 4.0 / int_time
+
     with open(f"{DATA_PATH}/MWA_EoR_Highband_shape_dict.yml", "r") as shape_file:
         shape_dict = yaml.safe_load(shape_file)
     sig_thresh = {shape: 5 for shape in shape_dict}
     sig_thresh["narrow"] = 5
     sig_thresh["streak"] = 10
     print(f"Flagging these shapes: {shape_dict}")
-
-    num_init_flag = np.sum(ins.metric_array.mask)
-    int_time = ss.integration_time[0] / 2
-    print(f"Using int_time {int_time}")
-    num_int_flag = 4.0 / int_time
 
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=20)
     mf.apply_match_test(ins, apply_samp_thresh=True)
@@ -96,10 +101,6 @@ if args.rfi_flag:
         yaml.safe_dump(occ_dict, occ_file)
 
     ins.write(prefix, output_type='mask', clobber=True)
-
-    uvf = low_mem_setup(UVData, UVFlag, gpu_files, metafits_file,
-                        correct_cable_len=True, phase_to_pointing_center=True,
-                        ant_str='cross', read_data=False)
 
     ins.write(prefix, output_type='flags', uvf=uvf, clobber=True)
     ins.write(prefix, output_type='match_events', clobber=True)
