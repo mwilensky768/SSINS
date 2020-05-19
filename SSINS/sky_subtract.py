@@ -296,16 +296,20 @@ class SS(UVData):
         if UV.blt_order != 'baseline':
             UV.reorder_blts(order='baseline')
         for bl in np.unique(self.baseline_array):
-            uv_times = UV.get_times(bl)
-            self_times = self.get_times(bl)
-            if not np.all(self_times == 0.5 * (uv_times[:-1] + uv_times[1:])):
-                raise ValueError("Times were not compatible between SS and UVData objects."
-                                 " Check that inputs were read identically.")
-            new_flags = self.get_data(bl, squeeze='none').mask
-            end_ind = new_flags.shape[0] + 1 + ind_acc
-            UV.flag_array[ind_acc:end_ind - 1][new_flags] = 1
-            UV.flag_array[ind_acc + 1:end_ind][new_flags] = 1
-            ind_acc = end_ind
+            try:
+                uv_times = UV.get_times(bl)
+                self_times = self.get_times(bl)
+                time_compat = np.all(self_times == 0.5 * (uv_times[:-1] + uv_times[1:]))
+                assert time_compat
+            except:
+                raise ValueError("UVData and SS objects were found to be incompatible."
+                                 " Check that the SS and UVData objects were read identically!")
+            else:
+                new_flags = self.get_data(bl, squeeze='none').mask
+                end_ind = new_flags.shape[0] + 1 + ind_acc
+                UV.flag_array[ind_acc:end_ind - 1][new_flags] = 1
+                UV.flag_array[ind_acc + 1:end_ind][new_flags] = 1
+                ind_acc = end_ind
 
         # Write file
         getattr(UV, 'write_%s' % file_type_out)(filename_out, **write_kwargs)

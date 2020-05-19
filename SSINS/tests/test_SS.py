@@ -211,6 +211,13 @@ def test_write():
     assert not np.any(UV.flag_array[new_blt_inds, :, 64:128, :]), "More flags were made than expected"
     os.remove(outfile)
 
+    # Test bad read.
+    bad_uv_filepath = os.path.join(DATA_PATH, '1061312640_mix.uvfits')
+    bad_uv = UVData()
+    bad_uv.read(bad_uv_filepath)
+    with pytest.raises(ValueError, match="UVData and SS objects were found to be incompatible."):
+        ss.write(outfile, 'uvfits', bad_uv)
+
 
 def test_read_multifiles():
     obs = '1061313128_99bl_1pol_half_time'
