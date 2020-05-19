@@ -183,15 +183,16 @@ def test_rev_ind():
 def test_write():
 
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     file_type = 'uvfits'
     outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
 
     ss = SS()
     ss.read(testfile, diff=True)
 
+    blt_inds = np.where(ss.time_array == np.unique(ss.time_array)[10])
     custom = np.zeros_like(ss.data_array.mask)
-    custom[:ss.Nbls] = 1
+    custom[blt_inds, :, 64:128, :] = 1
 
     # Flags the first time and no others
     ss.apply_flags(flag_choice='custom', custom=custom)
@@ -203,8 +204,11 @@ def test_write():
     # Check if the flags propagated correctly
     UV = UVData()
     UV.read(outfile)
-    assert np.all(UV.flag_array[:2 * UV.Nbls]), "Not all expected flags were propagated"
-    assert not np.any(UV.flag_array[2 * UV.Nbls:]), "More flags were made than expected"
+    blt_inds = np.isin(UV.time_array, np.unique(UV.time_array)[10:12])
+    assert np.all(UV.flag_array[blt_inds, :, 64:128, :]), "Not all expected flags were propagated"
+
+    new_blt_inds = np.logical_not(np.isin(UV.time_array, np.unique(UV.time_array)[10:12]))
+    assert not np.any(UV.flag_array[new_blt_inds, :, 64:128, :]), "More flags were made than expected"
     os.remove(outfile)
 
 
