@@ -303,7 +303,7 @@ class SS(UVData):
                 assert time_compat
             except Exception:
                 raise ValueError("UVData and SS objects were found to be incompatible."
-                                 " Check that the SS and UVData objects were read identically!")
+                                 " Check that the SS and UVData objects were read appropriately!")
 
             new_flags = self.get_data(bl, squeeze='none').mask
             end_ind = new_flags.shape[0] + 1 + ind_acc
