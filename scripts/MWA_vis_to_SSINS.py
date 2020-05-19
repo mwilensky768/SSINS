@@ -37,14 +37,20 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
 
 
 def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
-    init_files = [path for path in gpu_files if "gpubox01" in path]
+    gpu_files_arr = np.array(gpu_files)
+    chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
+
+    init_str_list = [f"gpubox{chan}" for chan in chan_list[:3]]
+    init_files = list(gpu_files_arr[np.isin(gpu_files, init_str_list)])
+
     uvd_obj = uvd_type()
     uvd_obj.read(init_files + metafits_file, **kwargs)
-    uvd_obj.history += "Applied cable corrections and phased to pointing center."
     uvf_obj = uvf_type(uvd_obj)
-    for chan_num in range(2, 25):
-        boxstr = f"{chan_num}".zfill(2)
-        box_files = [path for path in gpu_files if f"gpubox{boxstr}" in path]
+
+    for chan_group in range(1, 8):
+        str_list = [f"gpubox{chan}" for chan in chan_list[3 * chan_group: 3 * (chan_group + 1)]]
+        box_files = list(gpu_files_arr[np.isin(gpu_files, str_list)])
+
         uvd_obj = uvd_type()
         uvd_obj.read(box_files + metafits_file, **kwargs)
         uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency")
