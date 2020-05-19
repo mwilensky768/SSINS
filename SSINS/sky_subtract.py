@@ -301,15 +301,15 @@ class SS(UVData):
                 self_times = self.get_times(bl)
                 time_compat = np.all(self_times == 0.5 * (uv_times[:-1] + uv_times[1:]))
                 assert time_compat
-            except:
+            except Exception:
                 raise ValueError("UVData and SS objects were found to be incompatible."
                                  " Check that the SS and UVData objects were read identically!")
-            else:
-                new_flags = self.get_data(bl, squeeze='none').mask
-                end_ind = new_flags.shape[0] + 1 + ind_acc
-                UV.flag_array[ind_acc:end_ind - 1][new_flags] = 1
-                UV.flag_array[ind_acc + 1:end_ind][new_flags] = 1
-                ind_acc = end_ind
+
+            new_flags = self.get_data(bl, squeeze='none').mask
+            end_ind = new_flags.shape[0] + 1 + ind_acc
+            UV.flag_array[ind_acc:end_ind - 1][new_flags] = 1
+            UV.flag_array[ind_acc + 1:end_ind][new_flags] = 1
+            ind_acc = end_ind
 
         # Write file
         getattr(UV, 'write_%s' % file_type_out)(filename_out, **write_kwargs)
