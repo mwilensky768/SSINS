@@ -37,23 +37,30 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
 
 
 def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
-    gpu_files_arr = np.array(gpu_files)
+    
     chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
 
     init_str_list = [f"gpubox{chan}" for chan in chan_list[:3]]
-    init_files = list(gpu_files_arr[np.isin(gpu_files, init_str_list)])
+    init_files = []
+    for st in init_str_list:
+        init_files += [path for path in gpu_files if st in path]
 
+    print(f"init box files are {init_files}")
     uvd_obj = uvd_type()
     uvd_obj.read(init_files + metafits_file, **kwargs)
     uvf_obj = uvf_type(uvd_obj)
 
     for chan_group in range(1, 8):
         str_list = [f"gpubox{chan}" for chan in chan_list[3 * chan_group: 3 * (chan_group + 1)]]
-        box_files = list(gpu_files_arr[np.isin(gpu_files, str_list)])
+        box_files = []
+        for st in str_list:
+            box_files += [path for path in gpu_files if st in path]
 
+        print(f"box files for this iteration are {box_files}")
         uvd_obj = uvd_type()
         uvd_obj.read(box_files + metafits_file, **kwargs)
-        uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency")
+        uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency", inplace=True)
+        print(f"INS nfreqs is {uvf_obj.Nfreqs}")
 
     return(uvf_obj)
 
@@ -114,7 +121,8 @@ if args.rfi_flag:
         yaml.safe_dump(occ_dict, occ_file)
 
     ins.write(prefix, output_type='mask', clobber=True)
-
+    print(ins.Nfreqs)
+    print(uvf.Nfreqs)
     ins.write(prefix, output_type='flags', uvf=uvf, clobber=True)
     ins.write(prefix, output_type='match_events', clobber=True)
     if args.write_mwaf:
