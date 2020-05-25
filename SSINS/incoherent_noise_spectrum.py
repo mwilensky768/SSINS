@@ -240,8 +240,11 @@ class INS(UVFlag):
             raise ValueError("UVFlag object must be in flag mode to write flags from INS object.")
         if uvf.type != 'waterfall':
             raise ValueError("UVFlag object must be in waterfall mode to write flags from INS object.")
-        test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
-        if not np.all(self.time_array == test_times):
+        try:
+            test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
+            time_compat = np.all(self.time_array == test_times)
+            assert time_compat
+        except Exception:
             raise ValueError("UVFlag object's times do not match those of INS object.")
 
         new_flags = self.mask_to_flags()
