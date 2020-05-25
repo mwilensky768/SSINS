@@ -5,7 +5,7 @@ SSINS is a python package intended for radio frequency interference flagging in 
 ## Dependencies
 
 **python3** is now required. Support for python2 has been dropped.
-**pyuvdata 1.4.2 or better**.  
+**pyuvdata 2.0.2 or better**.  
 **pyuvdata has its own dependencies!** and some of those listed below are shared.  
 See https://github.com/RadioAstronomySoftwareGroup/pyuvdata.  
 
