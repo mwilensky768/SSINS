@@ -495,10 +495,16 @@ class INS(UVFlag):
                                                      check_extra=check_extra,
                                                      run_check_acceptability=run_check_acceptability)
 
-        this = super(INS, this).__add__(other, inplace=False, axis=axis,
-                                        run_check=run_check,
-                                        check_extra=cgeck_extra,
-                                        run_check_acceptability=run_check_acceptability)
+        if inplace:
+            super(INS, this).__add__(other, inplace=True, axis=axis,
+                                     run_check=run_check,
+                                     check_extra=check_extra,
+                                     run_check_acceptability=run_check_acceptability)
+        else:
+            this = super(INS, this).__add__(other, inplace=False, axis=axis,
+                                            run_check=run_check,
+                                            check_extra=check_extra,
+                                            run_check_acceptability=run_check_acceptability)
 
         this.metric_array.mask = np.copy(mask_uvf.flag_array)
         this.metric_ms = this.mean_subtract()
