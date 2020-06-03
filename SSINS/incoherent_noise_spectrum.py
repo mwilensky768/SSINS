@@ -510,6 +510,14 @@ class INS(UVFlag):
             return this
 
     def _make_mask_copy(self):
+        """
+        Makes a new INS in flag mode that copies self whose flags are the mask of
+        self. Useful for holding the mask temporarily during concatenation etc.
+
+        Returns:
+            mask_uvf_copy: A copy of self in flag_mode that holds the mask in
+                its flag_array
+        """
         mask_uvf_copy = self.copy()
         mask_uvf_copy.to_flag()
         mask_uvf_copy.flag_array = np.copy(self.metric_array.mask)
