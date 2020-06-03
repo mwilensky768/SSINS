@@ -316,9 +316,7 @@ class INS(UVFlag):
             del z_uvf
 
         elif output_type == 'mask':
-            mask_uvf = self.copy()
-            mask_uvf.to_flag()
-            mask_uvf.flag_array = np.copy(self.metric_array.mask)
+            mask_uvf = self._make_mask_copy()
             super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del mask_uvf
 
