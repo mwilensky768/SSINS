@@ -459,7 +459,10 @@ class INS(UVFlag):
         immediately afterwards.
         """
 
+        mask_uvf = self._make_mask_copy()
         super(INS, self).select(**kwargs)
+        super(INS, mask_uvf).select(**kwargs)
+        self.metric_array.mask = np.copy(mask_uvf.flag_array)
         self.metric_ms = self.mean_subtract()
 
     def __add__(self, other, inplace=False, axis="time", run_check=True,
