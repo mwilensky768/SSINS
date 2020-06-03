@@ -463,3 +463,55 @@ class INS(UVFlag):
 
         super(INS, self).select(**kwargs)
         self.metric_ms = self.mean_subtract()
+
+    def __add__(self, other, inplace=False, axis="time", run_check=True,
+                check_extra=True, run_check_acceptability=True):
+        """
+        Wrapper around UVFlag.__add__ that keeps track of the masks on the data.
+            Args:
+                other: Another INS object to add
+                inplace: Whether to do the addition inplace or return a new INS
+                axis: The axis over which to concatenate the objects
+                run_check: Option to check for the existence and proper shapes
+                    of parameters after combining two objects.
+                check_extra: Option to check optional parameters as well as required ones.
+                run_check_acceptability: Option to check acceptable range of the
+                    values of parameters after combining two objects.
+
+            Returns:
+                ins: if not inplace, a new INS object
+
+        """
+        if inplace:
+            this = self
+        else:
+            this = self.copy()
+
+        mask_uvf_this = this._make_mask_copy()
+        mask_uvf_other = other._make_mask_copy()
+
+        mask_uvf = super(INS, mask_uvf_this).__add__(mask_uvf_other,
+                                                     inplace=False,
+                                                     axis=axis,
+                                                     run_check=run_check,
+                                                     check_extra=check_extra,
+                                                     run_check_acceptability=run_check_acceptability)
+
+        this = super(INS, this).__add__(other, inplace=False, axis=axis,
+                                        run_check=run_check,
+                                        check_extra=cgeck_extra,
+                                        run_check_acceptability=run_check_acceptability)
+
+        this.metric_array.mask = np.copy(mask_uvf.flag_array)
+        this.metric_ms = this.mean_subtract()
+        this.sig_array = np.ma.copy(this.metric_ms)
+
+        if not inplace:
+            return this
+
+    def _make_mask_copy(self):
+        mask_uvf_copy = self.copy()
+        mask_uvf_copy.to_flag()
+        mask_uvf_copy.flag_array = np.copy(self.metric_array.mask)
+
+        return(mask_uvf_copy)
