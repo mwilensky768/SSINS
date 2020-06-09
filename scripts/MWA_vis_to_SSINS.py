@@ -4,6 +4,7 @@ from pyuvdata import UVData, UVFlag
 import yaml
 import argparse
 from astropy.io import fits
+from astropy.time import Time
 import numpy as np
 
 
@@ -26,7 +27,7 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
 
     for event in ins.match_events:
         if event[2] in ("narrow", "samp_thresh"):
-            occ_dict[event[2]] += 1. / total_valid
+            occ_dict[event[2]] += ins.Npols / total_valid
         else:
             occ_dict[event[2]] += 1. / (ins.metric_array.shape[0] - num_int_flag)
 
@@ -36,33 +37,94 @@ def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
     return(occ_dict)
 
 
+def get_gpubox_map(gpu_files):
+    chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
+    gpubox_map = {}
+    for chan in chan_list:
+        st = f"gpubox{chan}"
+        gpubox_map[chan] = sorted([path for path in gpu_files if st in path])
+    return gpubox_map
+
+
+def find_gpubox_file_starts_ends(gpu_files):
+    """MWA gpubox files don't necessarily start and end at the same time. pyuvdata
+    does handle an observation correctly when *all* gpubox files are provided,
+    but when only a few are provided (like the "low_mem_setup"), then unpacked
+    data may not have the same dimensions. This function provides the start and
+    end times for *all* gpuboxes, allowing the caller to remove data that
+    shouldn't belong.
+
+    """
+    times = {}
+    biggest_first = None
+    smallest_last = None
+    for chan, g in get_gpubox_map(gpu_files).items():
+        headstart = fits.getheader(g[0], 1)
+        headfin = fits.getheader(g[-1], -1)
+        first_time = headstart["TIME"] + headstart["MILLITIM"] / 1000.0
+        last_time = headfin["TIME"] + headfin["MILLITIM"] / 1000.0
+        times[chan] = (first_time, last_time)
+
+        if biggest_first is None:
+            biggest_first = first_time
+        elif biggest_first < first_time:
+            biggest_first = first_time
+        if smallest_last is None:
+            smallest_last = last_time
+        elif smallest_last > last_time:
+            smallest_last = last_time
+    times["first"] = biggest_first
+    times["last"] = smallest_last
+    return times
+
+
 def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
-    
+    times = find_gpubox_file_starts_ends(gpu_files)
     chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
 
-    init_str_list = [f"gpubox{chan}" for chan in chan_list[:3]]
     init_files = []
-    for st in init_str_list:
-        init_files += [path for path in gpu_files if st in path]
+    start_time = None
+    end_time = None
+    for chan in chan_list[:3]:
+        init_files += [path for path in gpu_files if f"gpubox{chan}" in path]
+        # Find the start time that pyuvdata will give to this subset of gpubox
+        # files.
+        t = times[chan]
+        if start_time is None:
+            start_time = t[0]
+        elif start_time > t[0]:
+            start_time = t[0]
+        if end_time is None:
+            end_time = t[1]
+        elif end_time < t[1]:
+            end_time = t[1]
+
+    gpubox0_header = fits.getheader(gpu_files[0], 1)
+    int_time = gpubox0_header["INTTIME"]
+
+    time_array = np.arange(start_time + int_time / 2.0,
+                           end_time + int_time / 2.0 + int_time,
+                           int_time)
+    jd_time_array = Time(time_array, format="unix", scale="utc").jd.astype(float)
 
     print(f"init box files are {init_files}")
     uvd_obj = uvd_type()
-    uvd_obj.read(init_files + metafits_file, **kwargs)
+    uvd_obj.read(init_files + metafits_file, times=jd_time_array, **kwargs)
     uvf_obj = uvf_type(uvd_obj)
 
     for chan_group in range(1, 8):
-        str_list = [f"gpubox{chan}" for chan in chan_list[3 * chan_group: 3 * (chan_group + 1)]]
         box_files = []
-        for st in str_list:
-            box_files += [path for path in gpu_files if st in path]
+        for chan in chan_list[3 * chan_group: 3 * (chan_group + 1)]:
+            box_files += [path for path in gpu_files if f"gpubox{chan}" in path]
 
         print(f"box files for this iteration are {box_files}")
         uvd_obj = uvd_type()
-        uvd_obj.read(box_files + metafits_file, **kwargs)
-        uvf_obj.__add__(uvf_type(uvd_obj), axis="frequency", inplace=True)
+        uvd_obj.read(box_files + metafits_file, times=jd_time_array, **kwargs)
+        uvf_obj = uvf_type(uvd_obj).__add__(uvf_obj, axis="frequency", inplace=False)
+        assert np.all(uvf_obj.freq_array[1:] > uvf_obj.freq_array[:-1]), "Frequencies are out of order for uvf object."
         print(f"INS nfreqs is {uvf_obj.Nfreqs}")
 
-    return(uvf_obj)
+    return(uvf_obj, jd_time_array)
 
 
 parser = argparse.ArgumentParser()
@@ -86,10 +148,10 @@ gpu_files = [path for path in args.filelist if ".fits" in path]
 mwaf_files = [path for path in args.filelist if ".mwaf" in path]
 metafits_file = [path for path in args.filelist if ".metafits" in path]
 
-ins = low_mem_setup(SS, INS, gpu_files, metafits_file, correct_cable_len=True,
-                    phase_to_pointing_center=True, ant_str='cross', diff=True,
-                    flag_choice='original', flag_init=True,
-                    start_flag=args.start_flag, end_flag=args.end_flag)
+ins, jd_times = low_mem_setup(SS, INS, gpu_files, metafits_file,
+                              correct_cable_len=True, phase_to_pointing_center=True,
+                              ant_str='cross', diff=True, flag_choice='original',
+                              flag_init=True, )
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
@@ -98,7 +160,7 @@ if args.rfi_flag:
     uvd = UVData()
     uvd.read(gpu_files + metafits_file, correct_cable_len=True,
              phase_to_pointing_center=True, ant_str='cross', read_data=False,
-             flag_init=True)
+             flag_init=True, times=jd_times)
     uvf = UVFlag(uvd, waterfall=True, mode='flag')
 
     num_init_flag = np.sum(ins.metric_array.mask)
