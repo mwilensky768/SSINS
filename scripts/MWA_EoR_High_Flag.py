@@ -5,6 +5,8 @@ from matplotlib import cm
 import numpy as np
 from time import time
 
+global inputargs
+
 def execbody (ins_filepath):
     slash_ind = ins_filepath.rfind('/')
     obsid = ins_filepath[slash_ind + 1: slash_ind + 11]
