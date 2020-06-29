@@ -4,30 +4,6 @@ from astropy.time import Time
 from matplotlib import cm
 import numpy as np
 from time import time
-from multiprocessing import Pool
-
-# note on performance: enabling the -p plots flag takes approximately an order
-# longer than only -w writing the data files: for raw processing of data, disabling
-# -p is recommended.
-
-# for best performance, set -t to the number of available cores on the machine;
-# scaling after six cores is limited
-
-# pool doesn't like being fed multiple arguments, so inputargs is global
-
-# note on multithread execution scaling: this script basically runs out of gains
-# at more than six cores allocated because of how the Pool scheduler works:
-# Pool allocates N workers to work on N elements on the list and then waits for
-# them *all* to return before issuing new work to threads.
-
-# Since the different datasets take different amounts of time to finish executing
-# many threads are stalled; with >6 cores allocated, most of the cores sit idle
-# as a batch of >6 data pieces is very likely to have a slow entry within it.
-
-# A CPU with aggressive turbo bins (capable of scaling a single thread very fast
-# on demand) may somewhat alleviate this problem.
-
-global inputargs
 
 def execbody (ins_filepath):
     slash_ind = ins_filepath.rfind('/')
@@ -107,7 +83,6 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true', help="Toggles verbose console output of file processing progress.")
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
     parser.add_argument('-g', '--gencsv', help="If nonnull, creates an output CSV file for occ_csv.py with the given name (pass with extension)")
-    parser.add_argument('-n', '--numthreads', type=int, default=4, help="Sets the number of threads to use for evaluation (default: 4)")
     inputargs = parser.parse_args()
 
     ins_file_list = util.make_obslist(inputargs.ins_file_list)
@@ -121,17 +96,9 @@ if __name__ == "__main__":
     if inputargs.verbose:
         start = time()
 
-    if inputargs.numthreads == 1: #single thread fallback
-        print("using single thread execution path")
-        for ins_filepath in ins_file_list:
-            execbody(ins_filepath)
-    else:#multithreaded execution
-        print("using multithreaded execution path: "+str(inputargs.numthreads)+" cores used")
-        filelist = []
-        for ins_filepath in ins_file_list:
-            filelist.append(ins_filepath)
-        p = Pool(inputargs.numthreads)
-        p.map(execbody, filelist)
+    print("using single thread execution path")
+    for ins_filepath in ins_file_list:
+        execbody(ins_filepath)
 
     #print out full length of run
     if inputargs.verbose:
