@@ -64,7 +64,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--shapes', nargs='*', help='The shapes to calculate occupancies for (pass as `-c SHAPE SHAPE SHAPE... <other inputargs>`')
     parser.add_argument('-c', '--csv', help='A csv whose columns are obsids, ins data files, ins masks, and yml files')
-    parser.add_argument('-o', '--outfile', help='The name of the output csv that contains occupancy information')
+    parser.add_argument('-o', '--outfile', help='The name of the output csv that contains occupancy information (use absolute path)')
     parser.add_argument('-i', '--ch_ignore', help='A text file of fine frequency channels to ignore in occupancy calculation')
     parser.add_argument('-t', '--time_ignore', help='Times to ignore when calculating occupancy')
     parser.add_argument('-v', '--verbose', action='store_true', help="Toggles verbose console output of file processing progress.")
