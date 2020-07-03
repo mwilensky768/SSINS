@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('-w', '--write', action='store_true', help="Toggles creation of output data files.")
     parser.add_argument('-v', '--verbose', action='store_true', help="Toggles verbose console output of file processing progress.")
     parser.add_argument('-p', '--plots', action='store_true', help="Toggles creation of plots.")
-    parser.add_argument('-g', '--gencsv', help="If nonnull, creates an output CSV file for occ_csv.py with the given name (pass with extension)")
+    parser.add_argument('-g', '--gencsv', help="If nonnull, creates an output CSV file for occ_csv.py with the given name (pass with file extension & full path)")
     inputargs = parser.parse_args()
 
     ins_file_list = util.make_obslist(inputargs.ins_file_list)
