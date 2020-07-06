@@ -153,7 +153,7 @@ class MF():
             INS: The INS to flag
             event_record (bool): If True, append events to INS.match_events
             apply_samp_thresh (bool): If True, call apply_samp_thresh() between iterations. Note this will not execute if the N_samp_thresh parameter is 0.
-            freq_broadvast (bool): If True, broadcast flags between iterations using the broadcast_dict
+            freq_broadcast (bool): If True, broadcast flags between iterations using the broadcast_dict
         """
 
         count = 1
