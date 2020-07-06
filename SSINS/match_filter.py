@@ -169,10 +169,10 @@ class MF():
                 INS.sig_array[event[:2]][nonmask] = INS.metric_ms[event[:2]][nonmask]
                 if event_record:
                     INS.match_events.append(event)
-                if (apply_samp_thresh and self.N_samp_thresh):
-                    self.apply_samp_thresh_test(INS, event_record=event_record)
                 if freq_broadcast:
                     self.freq_broadcast(INS, event_record=event_record)
+                if (apply_samp_thresh and self.N_samp_thresh):
+                    self.apply_samp_thresh_test(INS, event_record=event_record)
                 if not np.all(INS.metric_array[:, f_max, 0].mask):
                     INS.metric_ms[:, f_max] = INS.mean_subtract(freq_slice=f_max)
                 else:
