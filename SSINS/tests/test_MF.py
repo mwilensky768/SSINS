@@ -137,9 +137,9 @@ def test_apply_match_test():
 def test_samp_thresh():
 
     obs = '1061313128_99bl_1pol_half_time'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
-    out_prefix = os.path.join(DATA_PATH, '%s_test' % obs)
-    match_outfile = '%s_SSINS_match_events.yml' % out_prefix
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
 
     ins = INS(insfile)
 
@@ -183,3 +183,112 @@ def test_samp_thresh():
     with pytest.raises(ValueError):
         mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, N_samp_thresh=100)
         mf.apply_samp_thresh_test(ins)
+
+
+def test_freq_broadcast_whole_band():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict,
+            broadcast_dict=broadcast_dict, broadcast_streak=True)
+
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    assert np.all(ins.metric_array.mask[2])
+    assert np.all(ins.metric_array.mask[4])
+
+
+def test_freq_broadcast_whole_band():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict,
+            broadcast_dict=broadcast_dict, broadcast_streak=True)
+
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    assert np.all(ins.metric_array.mask[2])
+    assert np.all(ins.metric_array.mask[4])
+
+
+def test_freq_broadcast_whole_band():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=True)
+
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    assert np.all(ins.metric_array.mask[2])
+    assert np.all(ins.metric_array.mask[4])
+
+
+def test_freq_broadcast_subbands():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    broadcast_dict = {'sb1': [ins.freq_array[0], ins.freq_array[30]],
+                      'sb2': [ins.freq_array[30], ins.freq_array[60]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=False,
+            broadcast_dict=broadcast_dict)
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    print(np.where(ins.metric_array.mask[2, :30]))
+    assert np.all(ins.metric_array.mask[2, :30])
+    assert not np.any(ins.metric_array.mask[2, 30:])
+    assert np.all(ins.metric_array.mask[4, 30:60])
+    assert not np.any(ins.metric_array.mask[4, :30])
+    assert not np.any(ins.metric_array.mask[4, 60:])
