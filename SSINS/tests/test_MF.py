@@ -184,6 +184,34 @@ def test_samp_thresh():
         mf.apply_samp_thresh_test(ins, (slice(1, 2), slice(10, 11), 'narrow'))
 
 
+def test_samp_thresh_no_new_event():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    # Mock a simple metric_array and freq_array
+    ins.metric_array[:] = 1
+    ins.weights_array = np.copy(ins.metric_array)
+    ins.metric_ms = ins.mean_subtract()
+    ins.sig_array = np.ma.copy(ins.metric_ms)
+
+    # Arbitrarily flag enough data in channel 10
+    sig_thresh = {'narrow': 5}
+    mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
+    # Put in an outlier so it gets to samp_thresh_test
+    ins.metric_array[2, 9] = 100
+    ins.metric_array[1, 10] = 100
+    ins.metric_ms = ins.mean_subtract()
+    mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
+
+    event = mf.apply_samp_thresh_test(ins, ins.match_events[0], event_record=True)
+    assert event == ins.match_events[0]
+
+
 def test_freq_broadcast_whole_band():
 
     obs = '1061313128_99bl_1pol_half_time'
@@ -202,7 +230,7 @@ def test_freq_broadcast_whole_band():
                   'shape2': [ins.freq_array[40], ins.freq_array[50]]}
 
     mf = MF(ins.freq_array, 5, shape_dict=shape_dict,
-            broadcast_dict=broadcast_dict, broadcast_streak=True)
+            broadcast_streak=True)
 
     mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
 
@@ -240,3 +268,17 @@ def test_freq_broadcast_subbands():
     assert np.all(ins.metric_array.mask[4, 30:60])
     assert not np.any(ins.metric_array.mask[4, :30])
     assert not np.any(ins.metric_array.mask[4, 60:])
+
+
+def test_freq_broadcast_no_dict():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    mf = MF(ins.freq_array, 5)
+
+    with pytest.raises(ValueError, match="MF object does not have a broadcast_dict"):
+        mf.apply_match_test(ins, freq_broadcast=True)
