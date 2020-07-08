@@ -65,8 +65,7 @@ class MF():
         """A dictionary of subbands. Keys are a subband name, values are the lower and upper frequency bounds in Hz."""
 
         self.broadcast_slc_dict = self._shape_slicer(False, broadcast_streak,
-                                                     input_dict="broadcast_dict",
-                                                     check_overlap=True)
+                                                     input_dict="broadcast_dict")
         """A dictionary whose keys are the same as broadcast_dict and whose values are corresponding slices into the freq_array attribute"""
 
     def _shape_slicer(self, narrow, streak, input_dict="shape_dict"):
@@ -213,6 +212,7 @@ class MF():
         num_chan = event[1].stop - event[1].start
         num_flag = np.count_nonzero(INS.metric_array[:, event[1], 0].mask)
         num_unflagged = INS.Ntimes - num_flag
+        print(num_unflagged)
         if num_unflagged / num_chan < self.N_samp_thresh:
             INS.metric_array[:, event[1]] = np.ma.masked
             if event_record:
