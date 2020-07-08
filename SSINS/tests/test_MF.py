@@ -75,7 +75,7 @@ def test_match_test():
     t_max, f_max, R_max, shape_max = mf.match_test(ins)
     print(shape_max)
 
-    assert t_max == 5, "Wrong time"
+    assert t_max == slice(5, 6), "Wrong time"
     assert f_max == slice(0, 20), "Wrong freq"
     assert shape_max == 'streak', "Wrong shape"
 
@@ -116,9 +116,9 @@ def test_apply_match_test():
 
     assert np.all(test_mask == ins.metric_array.mask), "Flags are incorrect"
 
-    test_match_events_slc = [(5, slice(0, 20), 'streak'),
-                             (7, slice(7, 13), 'shape'),
-                             (3, slice(5, 6), 'narrow')]
+    test_match_events_slc = [(slice(5, 6), slice(0, 20), 'streak'),
+                             (slice(7, 8), slice(7, 13), 'shape'),
+                             (slice(3, 4), slice(5, 6), 'narrow')]
 
     for i, event in enumerate(test_match_events_slc):
         assert ins.match_events[i][:-1] == test_match_events_slc[i], "%ith event is wrong" % i
@@ -144,30 +144,29 @@ def test_samp_thresh():
     ins = INS(insfile)
 
     # Mock a simple metric_array and freq_array
-    ins.metric_array = np.ma.ones([10, 20, 1])
+    ins.metric_array[:] = 1
     ins.weights_array = np.copy(ins.metric_array)
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
-    ins.freq_array = np.zeros([1, 20])
-    ins.freq_array = np.arange(20)
 
     # Arbitrarily flag enough data in channel 10
     sig_thresh = {'narrow': 5}
     mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
-    ins.metric_array[3:, 10] = np.ma.masked
-    ins.metric_array[3:, 9] = np.ma.masked
+    ins.metric_array[4:, 10] = np.ma.masked
+    ins.metric_array[4:, 9] = np.ma.masked
     # Put in an outlier so it gets to samp_thresh_test
-    ins.metric_array[0, 11] = 10
+    ins.metric_array[2, 9] = 100
+    ins.metric_array[1, 10] = 100
     ins.metric_ms = ins.mean_subtract()
     bool_ind = np.zeros(ins.metric_array.shape, dtype=bool)
     bool_ind[:, 10] = 1
     bool_ind[:, 9] = 1
-    bool_ind[0, 11] = 1
 
     mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
-    test_match_events = [(0, slice(11, 12), 'narrow')]
-    test_match_events += [(ind, slice(9, 10), 'samp_thresh') for ind in range(3)]
-    test_match_events += [(ind, slice(10, 11), 'samp_thresh') for ind in range(3)]
+    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow'),
+                         (slice(0, ins.Ntimes), slice(10, 11), 'samp_thresh_narrow'),
+                         (slice(2, 3), slice(9, 10), 'narrow'),
+                         (slice(0, ins.Ntimes), slice(9, 10), 'samp_thresh_narrow')]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
@@ -182,7 +181,7 @@ def test_samp_thresh():
     # Test that exception is raised when N_samp_thresh is too high
     with pytest.raises(ValueError):
         mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, N_samp_thresh=100)
-        mf.apply_samp_thresh_test(ins)
+        mf.apply_samp_thresh_test(ins, (slice(1, 2), slice(10, 11), 'narrow'))
 
 
 def test_freq_broadcast_whole_band():
@@ -279,14 +278,14 @@ def test_freq_broadcast_subbands():
     shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
                   'shape2': [ins.freq_array[40], ins.freq_array[50]]}
 
-    broadcast_dict = {'sb1': [ins.freq_array[0], ins.freq_array[30]],
-                      'sb2': [ins.freq_array[30], ins.freq_array[60]]}
+    # boundaries are INCLUSIVE
+    broadcast_dict = {'sb1': [ins.freq_array[0], ins.freq_array[29]],
+                      'sb2': [ins.freq_array[30], ins.freq_array[59]]}
 
     mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=False,
             broadcast_dict=broadcast_dict)
     mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
 
-    print(np.where(ins.metric_array.mask[2, :30]))
     assert np.all(ins.metric_array.mask[2, :30])
     assert not np.any(ins.metric_array.mask[2, 30:])
     assert np.all(ins.metric_array.mask[4, 30:60])
