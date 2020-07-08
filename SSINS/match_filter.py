@@ -234,7 +234,7 @@ class MF():
             event: The event to broadcast flags for.
             event_record (bool): Whether to record a new event for this flagging entry.
         """
-        if self.broadcast_dict is None:
+        if self.broadcast_slc_dict == {}:
             raise ValueError("MF object does not have a broadcast_dict, but is "
                              " being asked to broadcast flags. Check "
                              " initialization of MF object.")
