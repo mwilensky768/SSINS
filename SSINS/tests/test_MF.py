@@ -269,6 +269,13 @@ def test_freq_broadcast_subbands():
     assert not np.any(ins.metric_array.mask[4, :30])
     assert not np.any(ins.metric_array.mask[4, 60:])
 
+    test_match_events = [(slice(2, 3), slice(10, 20), 'shape1'),
+                         (slice(2, 3), slice(0, 30), 'freq_broadcast_shape1'),
+                         (slice(4, 5), slice(40, 50), 'shape2'),
+                         (slice(4, 5), slice(30, 60), 'freq_broadcast_shape2')]
+    for event, test_event in zip(ins.match_events, test_match_events):
+        assert event[:3] == test_event
+
 
 def test_freq_broadcast_no_dict():
     obs = '1061313128_99bl_1pol_half_time'
