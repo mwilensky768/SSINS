@@ -410,8 +410,6 @@ class INS(UVFlag):
         match_events = []
         for i in range(len(yaml_dict['sig'])):
             # Convert bounds back to slice
-            print(yaml_dict['time_bounds'][i])
-            print(yaml_dict['freq_bounds'][i])
             time_slice = slice(*yaml_dict['time_bounds'][i])
             freq_slice = slice(*yaml_dict['freq_bounds'][i])
 
