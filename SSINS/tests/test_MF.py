@@ -185,7 +185,7 @@ def test_time_broadcast():
         mf.apply_samp_thresh_test(ins, (slice(1, 2), slice(10, 11), 'narrow'))
 
 
-def test_samp_thresh_no_new_event():
+def test_time_broadcast_no_new_event():
     """
     Tests that a new event is not added because the agression threshold is not
     exceeded.
@@ -296,3 +296,54 @@ def test_freq_broadcast_no_dict():
 
     with pytest.raises(ValueError, match="MF object does not have a broadcast_dict"):
         mf.apply_match_test(ins, freq_broadcast=True)
+
+
+def test_freq_broadcast_no_new_event():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    # Slice will go up to 21 since shapes are inclusive at the boundaries
+    # when boundary is on channel center
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]]}
+    broadcast_dict = {'sb2': [ins.freq_array[30], ins.freq_array[59]]}
+    test_event = (slice(2, 3), slice(10, 21), 'shape1', 10)
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=False,
+            broadcast_dict=broadcast_dict)
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+    event = mf.freq_broadcast(ins, event=test_event, event_record=True)
+    assert event == test_event
+    assert ins.match_events[0][:-1] == test_event[:-1]
+
+
+def test_N_samp_thresh_dep_error():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    with pytest.raises(ValueError, match="The N_samp_thresh parameter is now deprected."):
+        mf = MF(ins.freq_array, 5, N_samp_thresh=10)
+
+
+def test_apply_samp_thresh_dep_error_match_test():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    mf = MF(ins.freq_array, 5, tb_aggro=0.2)
+    with pytest.raises(ValueError, match="apply_samp_thresh has been deprecated"):
+        mf.apply_match_test(ins, apply_samp_thresh=True)
