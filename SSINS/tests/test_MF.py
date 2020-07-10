@@ -134,7 +134,7 @@ def test_apply_match_test():
     assert np.all(ins.metric_ms.mask[:, 7:13]), "All the times were not flagged for the shape"
 
 
-def test_samp_thresh():
+def test_time_broadcast():
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
@@ -151,9 +151,9 @@ def test_samp_thresh():
 
     # Arbitrarily flag enough data in channel 10
     sig_thresh = {'narrow': 5}
-    mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
-    ins.metric_array[4:, 10] = np.ma.masked
+    mf = MF(ins.freq_array, sig_thresh, streak=False, tb_aggro=0.5)
     ins.metric_array[4:, 9] = np.ma.masked
+    ins.metric_array[4:, 10] = np.ma.masked
     # Put in an outlier so it gets to samp_thresh_test
     ins.metric_array[2, 9] = 100
     ins.metric_array[1, 10] = 100
@@ -162,11 +162,12 @@ def test_samp_thresh():
     bool_ind[:, 10] = 1
     bool_ind[:, 9] = 1
 
-    mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
+    mf.apply_match_test(ins, event_record=True, time_broadcast=True)
+    print(ins.match_events)
     test_match_events = [(slice(1, 2), slice(10, 11), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(10, 11), 'samp_thresh_narrow'),
+                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow'),
                          (slice(2, 3), slice(9, 10), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(9, 10), 'samp_thresh_narrow')]
+                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow')]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
@@ -178,13 +179,17 @@ def test_samp_thresh():
     os.remove(match_outfile)
     assert ins.match_events == test_match_events_read
 
-    # Test that exception is raised when N_samp_thresh is too high
+    # Test that exception is raised when tb_aggro is too high
     with pytest.raises(ValueError):
-        mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, N_samp_thresh=100)
+        mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, tb_aggro=100)
         mf.apply_samp_thresh_test(ins, (slice(1, 2), slice(10, 11), 'narrow'))
 
 
 def test_samp_thresh_no_new_event():
+    """
+    Tests that a new event is not added because the agression threshold is not
+    exceeded.
+    """
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
@@ -199,16 +204,14 @@ def test_samp_thresh_no_new_event():
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
 
-    # Arbitrarily flag enough data in channel 10
     sig_thresh = {'narrow': 5}
-    mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
+    mf = MF(ins.freq_array, sig_thresh, streak=False, tb_aggro=0.5)
     # Put in an outlier so it gets to samp_thresh_test
-    ins.metric_array[2, 9] = 100
     ins.metric_array[1, 10] = 100
     ins.metric_ms = ins.mean_subtract()
-    mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
+    mf.apply_match_test(ins, event_record=True, time_broadcast=True)
 
-    event = mf.apply_samp_thresh_test(ins, ins.match_events[0], event_record=True)
+    event = mf.time_broadcast(ins, ins.match_events[0], event_record=True)
     assert event == ins.match_events[0]
 
 
@@ -252,6 +255,8 @@ def test_freq_broadcast_subbands():
     ins.metric_array[4, 40:50] = 10
     ins.metric_ms = ins.mean_subtract()
 
+    # Slice will go up to 21 since shapes are inclusive at the boundaries
+    # when boundary is on channel center
     shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
                   'shape2': [ins.freq_array[40], ins.freq_array[50]]}
 
@@ -269,10 +274,12 @@ def test_freq_broadcast_subbands():
     assert not np.any(ins.metric_array.mask[4, :30])
     assert not np.any(ins.metric_array.mask[4, 60:])
 
-    test_match_events = [(slice(2, 3), slice(10, 20), 'shape1'),
-                         (slice(2, 3), slice(0, 30), 'freq_broadcast_shape1'),
-                         (slice(4, 5), slice(40, 50), 'shape2'),
-                         (slice(4, 5), slice(30, 60), 'freq_broadcast_shape2')]
+    print(ins.match_events)
+
+    test_match_events = [(slice(2, 3), slice(10, 21), 'shape1'),
+                         (slice(2, 3), slice(0, 30), 'freq_broadcast_sb1'),
+                         (slice(4, 5), slice(40, 51), 'shape2'),
+                         (slice(4, 5), slice(30, 60), 'freq_broadcast_sb2')]
     for event, test_event in zip(ins.match_events, test_match_events):
         assert event[:3] == test_event
 
