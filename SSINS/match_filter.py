@@ -172,7 +172,7 @@ class MF():
         """
         if apply_samp_thresh is not None:
             raise ValueError("apply_samp_thresh has been deprecated in favor of"
-                             "the time_broadcast keyword.")
+                             " the time_broadcast keyword.")
 
         # Initialize the counter so the loop starts.
         count = 1
@@ -189,7 +189,7 @@ class MF():
                 INS.sig_array[event[:2]][nonmask] = INS.metric_ms[event[:2]][nonmask]
                 if event_record:
                     INS.match_events.append(event)
-                if (apply_samp_thresh and self.N_samp_thresh):
+                if time_broadcast:
                     event = self.time_broadcast(INS, event, event_record=event_record)
                 if freq_broadcast:
                     event = self.freq_broadcast(INS, event, event_record=event_record)
@@ -218,7 +218,7 @@ class MF():
         """
 
         # Find how many channels are already fully flagged, so we can ignore them
-        num_chans_all_flag = np.sum(np.all(INS.metric_array[:, event[1]], axis=(0, -1)))
+        num_chans_all_flag = np.sum(np.all(INS.metric_array.mask[:, event[1], :], axis=(0, -1)))
         # Find the total data volume and subtract off the data volume in channels that are totally flagged
         total = np.prod(INS.metric_array[:, event[1]].shape)
         total_invalid = num_chans_all_flag * INS.Ntimes * INS.Npols
@@ -233,7 +233,7 @@ class MF():
             INS.metric_array[:, event[1]] = np.ma.masked
             if event_record:
                 new_event = (slice(0, INS.Ntimes), event[1],
-                             f"samp_thresh_{event[2]}", None)
+                             f"time_broadcast_{event[2]}", None)
                 INS.match_events.append(new_event)
         else:
             new_event = event
@@ -267,13 +267,13 @@ class MF():
                 sbs.append(sb)
         if len(new_event_set) > 0:
             sb_string = "_"
-            sb_string.join(sbs)
+            sb_string = sb_string.join(sbs)
             # They should all be contiguous until discontiguous shapes are allowed
             new_event_slc = slice(min(new_event_set), max(new_event_set) + 1)
             INS.metric_array[event[0], new_event_slc] = np.ma.masked
             final_event = (event[0], new_event_slc, f"freq_broadcast")
             if event_record:
-                INS.match_events.append((event[0], sb_slc, f"freq_broadcast_{sb_string}", None))
+                INS.match_events.append((event[0], new_event_slc, f"freq_broadcast_{sb_string}", None))
         else:
             final_event = event
 
