@@ -3,7 +3,7 @@ Match Filter class
 """
 
 import numpy as np
-import time
+import warnings
 
 
 class MF():
@@ -12,8 +12,9 @@ class MF():
     Defines the Match Filter (MF) class.
     """
 
-    def __init__(self, freq_array, sig_thresh, shape_dict={}, N_samp_thresh=0,
-                 narrow=True, streak=True):
+    def __init__(self, freq_array, sig_thresh, shape_dict={}, tb_aggro=0,
+                 N_samp_thresh=None, narrow=True, streak=True, broadcast_dict={},
+                 broadcast_streak=False):
 
         """
         Args:
@@ -28,6 +29,12 @@ class MF():
                 other than 'streak' and 'narrow'. Values are frequency limits
                 of corresponding shape.
             N_samp_thresh (int): Sets the N_samp_thresh attribute of the filter
+            broadcast_dict (dict): Optional. Describes how to partition the band
+                when broadcasting over frequencies. The keys should be the names
+                of each subband to broadcast over, and the values should be the
+                edges of each subband (i.e. two-element lists).
+            broadcast_streak (bool): Optional, broadcast flags over whole
+                observing band.
             narrow (bool): If True, search for narrowband (single channel) RFI
             streak (bool): If True, search for broad RFI streaks that occupy the entire observing band
         """
@@ -37,13 +44,19 @@ class MF():
         self.freq_array = freq_array
         """A 1-d array of frequencies (in hz) for the filter to operate with"""
         self.shape_dict = shape_dict
-        """A dictionary of shapes. Keys are a shape name, values are the lower and upper frequency bounds in hz."""
+        """A dictionary of shapes. Keys are a shape name, values are the lower and upper frequency bounds in Hz."""
         self.sig_thresh = sig_thresh
         """A dictionary of significance thresholds to flag per shape. Keys are shapes and values are thresholds."""
-        self.N_samp_thresh = N_samp_thresh
-        """The threshold for flagging an entire channel when some flags exist and apply_samp_thresh() is called.
-           See apply_samp_thresh() documentation for exact meaning."""
-        self.slice_dict = self._shape_slicer(narrow, streak)
+        self.tb_aggro = tb_aggro
+        """The threshold for flagging an entire channel when some flags exist
+           and apply_samp_thresh() is called. Must be between 0 and 1. Represents
+           a fraction of unflagged data remaining."""
+        if (self.tb_aggro >= 1) or (self.tb_aggro < 0):
+            raise ValueError("tb_aggro parameter must be between 0 and 1.")
+        if N_samp_thresh is not None:
+            raise ValueError("The N_samp_thresh parameter is now deprected. See"
+                             " the tb_aggro parameter for its replacement.")
+        self.slice_dict = self._shape_slicer(narrow, streak, "shape_dict")
         """A dictionary whose keys are the same as shape_dict and whose values are corresponding slices into the freq_array attribute"""
         if type(self.sig_thresh) is dict:
             for shape in self.slice_dict:
@@ -54,8 +67,14 @@ class MF():
             for shape in self.slice_dict:
                 sig_thresh_dict[shape] = self.sig_thresh
             self.sig_thresh = sig_thresh_dict
+        self.broadcast_dict = broadcast_dict
+        """A dictionary of subbands. Keys are a subband name, values are the lower and upper frequency bounds in Hz."""
 
-    def _shape_slicer(self, narrow, streak):
+        self.broadcast_slc_dict = self._shape_slicer(False, broadcast_streak,
+                                                     input_dict="broadcast_dict")
+        """A dictionary whose keys are the same as broadcast_dict and whose values are corresponding slices into the freq_array attribute"""
+
+    def _shape_slicer(self, narrow, streak, input_dict="shape_dict"):
 
         """
         This function converts the frequency information in the shape_dict
@@ -65,21 +84,22 @@ class MF():
         Args:
             narrow (bool): If True, add the narrow shape to the dictionary
             streak (bool): If True, add the streak shape to the dictionary
+            input_dict (str): Which dict attribute to operate on.
 
         Returns:
             slice_dict: See slice_dict attribute
         """
 
         slice_dict = {}
-        for shape in self.shape_dict:
-            if min(self.freq_array) < min(self.shape_dict[shape]) or \
-               max(self.freq_array) > max(self.shape_dict[shape]):
-                min_chan = np.argmin(np.abs(self.freq_array - min(self.shape_dict[shape])))
-                max_chan = np.argmin(np.abs(self.freq_array - max(self.shape_dict[shape])))
+        for shape in getattr(self, input_dict):
+            if min(self.freq_array) <= min(getattr(self, input_dict)[shape]) or \
+               max(self.freq_array) >= max(getattr(self, input_dict)[shape]):
+                min_chan = np.argmin(np.abs(self.freq_array - min(getattr(self, input_dict)[shape])))
+                max_chan = np.argmin(np.abs(self.freq_array - max(getattr(self, input_dict)[shape])))
                 # May have to extend the edges depending on if the shape extends beyond the min and max chan infinitesimally
-                if (self.freq_array[min_chan] - min(self.shape_dict[shape]) > 0) and (min_chan > 0):
+                if (self.freq_array[min_chan] - min(getattr(self, input_dict)[shape]) > 0) and (min_chan > 0):
                     min_chan -= 1
-                if self.freq_array[max_chan] - max(self.shape_dict[shape]) < 0:
+                if self.freq_array[max_chan] - max(getattr(self, input_dict)[shape]) <= 0:
                     max_chan += 1
                 slice_dict[shape] = slice(min_chan, max_chan)
         if narrow:
@@ -116,6 +136,7 @@ class MF():
                 t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
                                            INS.metric_ms.shape)
                 sig = np.absolute(INS.metric_ms[t, f, p])
+                t = slice(t, t + 1)
                 f = slice(f, f + 1)
             else:
                 N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
@@ -123,14 +144,17 @@ class MF():
                 sliced_arr = np.absolute(INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
                 t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmax(),
                                         sliced_arr.shape)
+                t = slice(t, t + 1)
                 f = self.slice_dict[shape]
-                sig = sliced_arr[t, p]
+                # Pull out the number instead of a sliced arr
+                sig = sliced_arr[t, p][0]
             if sig > self.sig_thresh[shape]:
                 if sig > sig_max:
                     t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
         return(t_max, f_max, sig_max, shape_max)
 
-    def apply_match_test(self, INS, event_record=True, apply_samp_thresh=False):
+    def apply_match_test(self, INS, event_record=True, apply_samp_thresh=None,
+                         freq_broadcast=False, time_broadcast=False):
 
         """
         A method that uses the match_test() method to flag RFI. The champion
@@ -142,11 +166,18 @@ class MF():
         Args:
             INS: The INS to flag
             event_record (bool): If True, append events to INS.match_events
-            apply_samp_thresh (bool): If True, call apply_samp_thresh() between iterations. Note this will not execute if the N_samp_thresh parameter is 0.
+            apply_samp_thresh (bool): Deprecated in favor of the time_broadcast keyword.
+            freq_broadcast (bool): If True, broadcast flags between iterations using the broadcast_dict
+            time_broadcast (bool): If True, broadcasts flags in time if significant flagging in channels. Set tb_aggro parameter for aggression.
         """
+        if apply_samp_thresh is not None:
+            raise ValueError("apply_samp_thresh has been deprecated in favor of"
+                             " the time_broadcast keyword.")
 
+        # Initialize the counter so the loop starts.
         count = 1
         while count:
+            # If no events are found, this will remain 0, and the loop will end
             count = 0
             t_max, f_max, sig_max, shape_max = self.match_test(INS)
             if sig_max > -np.inf:
@@ -158,43 +189,92 @@ class MF():
                 INS.sig_array[event[:2]][nonmask] = INS.metric_ms[event[:2]][nonmask]
                 if event_record:
                     INS.match_events.append(event)
-                if (apply_samp_thresh and self.N_samp_thresh):
-                    self.apply_samp_thresh_test(INS, event_record=event_record)
-                if not np.all(INS.metric_array[:, f_max, 0].mask):
-                    INS.metric_ms[:, f_max] = INS.mean_subtract(freq_slice=f_max)
+                if time_broadcast:
+                    event = self.time_broadcast(INS, event, event_record=event_record)
+                if freq_broadcast:
+                    event = self.freq_broadcast(INS, event, event_record=event_record)
+                if not np.all(INS.metric_array[:, event[1]].mask):
+                    INS.metric_ms[:, event[1]] = INS.mean_subtract(freq_slice=event[1])
                 else:
-                    INS.metric_ms[:, f_max] = np.ma.masked
+                    INS.metric_ms[:, event[1]] = np.ma.masked
         nonmask_all = np.logical_not(INS.metric_ms.mask)
         INS.sig_array[nonmask_all] = INS.metric_ms[nonmask_all]
 
-    def apply_samp_thresh_test(self, INS, event_record=False):
+    def time_broadcast(self, INS, event, event_record=False):
         """
-        The sample threshold test. This tests to see if any channels have fewer
-        unflagged channels than the N_samp_thresh parameter. If so, the entire channel is
-        flagged. A ValueError is raised if the N_samp_thresh parameter is greater
-        than the number of times in the observation, due to the fact that this
-        will always lead to flagging the entire observation.
+        Broadcasts flags in time for a subband (determined by the passed event)
+        if the fraction of unflagged samples in the subband is less than the
+        tb_aggro parameter. If so, the entire subband is flagged for the whole
+        object. A ValueError is raised if the aggro parameter is greater
+        than or equal to 1, which will always flag everything.
 
         Args:
             INS: An INS to test
-            event_record (bool): If true, append events to INS.match_events
+            event: The event to check.
+            event_record (bool): If true, append events to INS.match_events.
+        Returns:
+            new_event: Possible new event if more flagging happened. Returns old
+                event if no additional flagging happened.
         """
 
-        if self.N_samp_thresh > INS.metric_array.shape[0]:
-            raise ValueError("N_samp_thresh parameter is set higher than "
-                             "the number of time samples. This will "
-                             "always result in flagging the entire "
-                             "observation. Aborting flagging.")
-        good_chans = np.where(np.logical_not(np.all(INS.metric_array[:, :, 0].mask, axis=0)))[0]
-        N_unflagged = INS.metric_array.shape[0] - np.count_nonzero(INS.metric_array.mask[:, good_chans, 0], axis=0)
-        if np.any(N_unflagged < self.N_samp_thresh):
-            good_chan_ind = np.where(N_unflagged < self.N_samp_thresh)[0]
+        # Find how many channels are already fully flagged, so we can ignore them
+        num_chans_all_flag = np.sum(np.all(INS.metric_array.mask[:, event[1], :], axis=(0, -1)))
+        # Find the total data volume and subtract off the data volume in channels that are totally flagged
+        total = np.prod(INS.metric_array[:, event[1]].shape)
+        total_invalid = num_chans_all_flag * INS.Ntimes * INS.Npols
+        total_valid = total - total_invalid
+        # Find the total flagged data volume and subtract off the invalid data
+        total_flag = np.sum(INS.metric_array[:, event[1]].mask)
+        total_flag_valid = total_flag - total_invalid
+        # Find the flag fraction, unflagged fraction, compare to aggro parameter
+        flag_frac = total_flag_valid / total_valid
+        unflag_frac = 1 - flag_frac
+        if unflag_frac < self.tb_aggro:
+            INS.metric_array[:, event[1]] = np.ma.masked
             if event_record:
-                for chan in good_chans[good_chan_ind]:
-                    event_times = np.nonzero(np.logical_not(INS.metric_array.mask[:, chan]))[0]
-                    INS.sig_array[event_times, chan] = INS.metric_ms[event_times, chan]
-                    for event_time in event_times:
-                        event = (event_time, slice(chan, chan + 1), 'samp_thresh',
-                                 None)
-                        INS.match_events.append(event)
-            INS.metric_array[:, good_chans[good_chan_ind]] = np.ma.masked
+                new_event = (slice(0, INS.Ntimes), event[1],
+                             f"time_broadcast_{event[2]}", None)
+                INS.match_events.append(new_event)
+        else:
+            new_event = event
+
+        return(new_event)
+
+    def freq_broadcast(self, INS, event, event_record=False):
+        """
+        Broadcast flags in frequency, regardless of flagging fraction. Determined,
+        by the broadcast_dict. An event will be recorded in the
+        match_filter saying which integration/band was flagged.
+
+        Args:
+            INS: The incoherent noise spectrum being worked on.
+            event: The event to broadcast flags for.
+            event_record (bool): Whether to record a new event for this flagging entry.
+        """
+        if self.broadcast_slc_dict == {}:
+            raise ValueError("MF object does not have a broadcast_dict, but is "
+                             " being asked to broadcast flags. Check "
+                             " initialization of MF object.")
+
+        new_event_set = set()
+        sbs = []
+        for sb in self.broadcast_slc_dict:
+            sb_slc = self.broadcast_slc_dict[sb]
+            event_set = set(np.arange(event[1].stop)[event[1]])
+            broad_set = set(np.arange(sb_slc.stop)[sb_slc])
+            if not event_set.isdisjoint(broad_set):
+                new_event_set = new_event_set.union(broad_set)
+                sbs.append(sb)
+        if len(new_event_set) > 0:
+            sb_string = "_"
+            sb_string = sb_string.join(sbs)
+            # They should all be contiguous until discontiguous shapes are allowed
+            new_event_slc = slice(min(new_event_set), max(new_event_set) + 1)
+            INS.metric_array[event[0], new_event_slc] = np.ma.masked
+            final_event = (event[0], new_event_slc, f"freq_broadcast")
+            if event_record:
+                INS.match_events.append((event[0], new_event_slc, f"freq_broadcast_{sb_string}", None))
+        else:
+            final_event = event
+
+        return(final_event)

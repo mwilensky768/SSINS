@@ -349,21 +349,42 @@ Extra Flagging Bits
 (a) Flagging all times for highly contaminated channels
 *******************************************************
 ::
-  >>> # Suppose you want to flag all times with fewer than 20 clean time integrations remaining
+  >>> # Suppose you want to flag any channels with less than 40% clean data
   >>> # Construct a MF as follows
   >>> sig_thresh = {'narrow': 5, 'streak': 5}
-  >>> mf = MF(ins.freq_array, sig_thresh, N_samp_thresh=20)
-  >>> mf.apply_match_test(ins, apply_samp_thresh=True) # doctest: +SKIP
+  >>> mf = MF(ins.freq_array, sig_thresh, tb_aggro=0.4)
+  >>> mf.apply_match_test(ins, time_broadcast=True) # doctest: +SKIP
+
+(b) Broadcasting flags over subbands
+************************************
+::
+  >>> # Suppose you want to spread flags over certain subbands if RFI is found in those subbands
+  >>> # For instance: maybe you want to flag a whole TV band if anything is found in it
+  >>> # Make a broadcast_dict (this is a South Africa example)
+  >>> broadcast_dict = {'TV4': [174e6, 182e6], 'TV5': [182e6, 190e6], 'TV6': [190e6, 192e6]}
+  >>> mf = MF(ins.freq_array, 5, broadcast_dict=broadcast_dict)
+  >>> # Note that intervals in SSINS are INCLUSIVE on both ends
+
+(c) Broadcasting flags over subbands, with guard bands
+******************************************************
+  >>> # Depending on the channelization, these subbands may overlap
+  >>> # This means events found at the very edge of one subbands may induce flags in the other, unless a guard band is thrown in
+  >>> # An example 100 kHz guard band program might look like this
+  >>> guard_width = 100e3
+  >>> broadcast_dict = {'TV4': [174e6, 182e6 - guard_width],
+  >>>                   'guard_4_5': [182e6 - guard_width, 182e6 + guard_width],
+  >>>                   'TV5': [182e6 + guard_width, 190e6 - guard_width]}
+  >>> mf = MF(ins.freq_array, 5, broadcast_dict=broadcast_dict)
 
 
-(b) Calculating occupancy
+(d) Calculating occupancy
 *************************
 ::
   >>> # The total occupancy can be calculated from the flag mask with a one-liner
   >>> occ = np.mean(ins.metric_array.mask)
 
 
-(c) Setting different significance thresholds per shape
+(e) Setting different significance thresholds per shape
 *******************************************************
 ::
   >>> # One may pass a dictionary of significance thresholds to set different
@@ -376,7 +397,7 @@ Extra Flagging Bits
   ...               'TV9': [1.95e8, 2.02e8]}
   >>> mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
 
-(d) Writing out flags to a visibility file from a UVData object
+(f) Writing out flags to a visibility file from a UVData object
 ***************************************************************
 ::
   >>> ss = SS()

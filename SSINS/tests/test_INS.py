@@ -189,16 +189,16 @@ def test_write():
 
     ins = INS(ss)
     # Mock some events
-    ins.match_events.append((0, slice(1, 3), 'shape', 5))
-    ins.match_events.append((1, slice(1, 3), 'shape', 5))
+    ins.match_events.append((slice(0, 1), slice(1, 3), 'shape', 5))
+    ins.match_events.append((slice(1, 2), slice(1, 3), 'shape', 5))
     ins.metric_array[:2, 1:3] = np.ma.masked
     ins.metric_ms = ins.mean_subtract()
 
-    ins.write(prefix, output_type='data')
-    ins.write(prefix, output_type='z_score')
-    ins.write(prefix, output_type='mask')
-    ins.write(prefix, output_type='match_events')
-    ins.write(prefix, output_type='data', sep='.')
+    ins.write(prefix, output_type='data', clobber=True)
+    ins.write(prefix, output_type='z_score', clobber=True)
+    ins.write(prefix, output_type='mask', clobber=True)
+    ins.write(prefix, output_type='match_events', clobber=True)
+    ins.write(prefix, output_type='data', sep='.', clobber=True)
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='bad_label')
     with pytest.raises(ValueError):
