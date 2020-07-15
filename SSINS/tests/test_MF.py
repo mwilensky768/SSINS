@@ -75,7 +75,7 @@ def test_match_test():
     t_max, f_max, R_max, shape_max = mf.match_test(ins)
     print(shape_max)
 
-    assert t_max == 5, "Wrong time"
+    assert t_max == slice(5, 6), "Wrong time"
     assert f_max == slice(0, 20), "Wrong freq"
     assert shape_max == 'streak', "Wrong shape"
 
@@ -116,9 +116,9 @@ def test_apply_match_test():
 
     assert np.all(test_mask == ins.metric_array.mask), "Flags are incorrect"
 
-    test_match_events_slc = [(5, slice(0, 20), 'streak'),
-                             (7, slice(7, 13), 'shape'),
-                             (3, slice(5, 6), 'narrow')]
+    test_match_events_slc = [(slice(5, 6), slice(0, 20), 'streak'),
+                             (slice(7, 8), slice(7, 13), 'shape'),
+                             (slice(3, 4), slice(5, 6), 'narrow')]
 
     for i, event in enumerate(test_match_events_slc):
         assert ins.match_events[i][:-1] == test_match_events_slc[i], "%ith event is wrong" % i
@@ -134,40 +134,40 @@ def test_apply_match_test():
     assert np.all(ins.metric_ms.mask[:, 7:13]), "All the times were not flagged for the shape"
 
 
-def test_samp_thresh():
+def test_time_broadcast():
 
     obs = '1061313128_99bl_1pol_half_time'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
-    out_prefix = os.path.join(DATA_PATH, '%s_test' % obs)
-    match_outfile = '%s_SSINS_match_events.yml' % out_prefix
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
 
     ins = INS(insfile)
 
     # Mock a simple metric_array and freq_array
-    ins.metric_array = np.ma.ones([10, 20, 1])
+    ins.metric_array[:] = 1
     ins.weights_array = np.copy(ins.metric_array)
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
-    ins.freq_array = np.zeros([1, 20])
-    ins.freq_array = np.arange(20)
 
     # Arbitrarily flag enough data in channel 10
     sig_thresh = {'narrow': 5}
-    mf = MF(ins.freq_array, sig_thresh, streak=False, N_samp_thresh=5)
-    ins.metric_array[3:, 10] = np.ma.masked
-    ins.metric_array[3:, 9] = np.ma.masked
+    mf = MF(ins.freq_array, sig_thresh, streak=False, tb_aggro=0.5)
+    ins.metric_array[4:, 9] = np.ma.masked
+    ins.metric_array[4:, 10] = np.ma.masked
     # Put in an outlier so it gets to samp_thresh_test
-    ins.metric_array[0, 11] = 10
+    ins.metric_array[2, 9] = 100
+    ins.metric_array[1, 10] = 100
     ins.metric_ms = ins.mean_subtract()
     bool_ind = np.zeros(ins.metric_array.shape, dtype=bool)
     bool_ind[:, 10] = 1
     bool_ind[:, 9] = 1
-    bool_ind[0, 11] = 1
 
-    mf.apply_match_test(ins, event_record=True, apply_samp_thresh=True)
-    test_match_events = [(0, slice(11, 12), 'narrow')]
-    test_match_events += [(ind, slice(9, 10), 'samp_thresh') for ind in range(3)]
-    test_match_events += [(ind, slice(10, 11), 'samp_thresh') for ind in range(3)]
+    mf.apply_match_test(ins, event_record=True, time_broadcast=True)
+    print(ins.match_events)
+    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow'),
+                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow'),
+                         (slice(2, 3), slice(9, 10), 'narrow'),
+                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow')]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
@@ -179,7 +179,171 @@ def test_samp_thresh():
     os.remove(match_outfile)
     assert ins.match_events == test_match_events_read
 
-    # Test that exception is raised when N_samp_thresh is too high
+    # Test that exception is raised when tb_aggro is too high
     with pytest.raises(ValueError):
-        mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, N_samp_thresh=100)
-        mf.apply_samp_thresh_test(ins)
+        mf = MF(ins.freq_array, {'narrow': 5, 'streak': 5}, tb_aggro=100)
+        mf.apply_samp_thresh_test(ins, (slice(1, 2), slice(10, 11), 'narrow'))
+
+
+def test_time_broadcast_no_new_event():
+    """
+    Tests that a new event is not added because the agression threshold is not
+    exceeded.
+    """
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    # Mock a simple metric_array and freq_array
+    ins.metric_array[:] = 1
+    ins.weights_array = np.copy(ins.metric_array)
+    ins.metric_ms = ins.mean_subtract()
+    ins.sig_array = np.ma.copy(ins.metric_ms)
+
+    sig_thresh = {'narrow': 5}
+    mf = MF(ins.freq_array, sig_thresh, streak=False, tb_aggro=0.5)
+    # Put in an outlier so it gets to samp_thresh_test
+    ins.metric_array[1, 10] = 100
+    ins.metric_ms = ins.mean_subtract()
+    mf.apply_match_test(ins, event_record=True, time_broadcast=True)
+
+    event = mf.time_broadcast(ins, ins.match_events[0], event_record=True)
+    assert event == ins.match_events[0]
+
+
+def test_freq_broadcast_whole_band():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict,
+            broadcast_streak=True)
+
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    assert np.all(ins.metric_array.mask[2])
+    assert np.all(ins.metric_array.mask[4])
+
+
+def test_freq_broadcast_subbands():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_array[4, 40:50] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    # Slice will go up to 21 since shapes are inclusive at the boundaries
+    # when boundary is on channel center
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]],
+                  'shape2': [ins.freq_array[40], ins.freq_array[50]]}
+
+    # boundaries are INCLUSIVE
+    broadcast_dict = {'sb1': [ins.freq_array[0], ins.freq_array[29]],
+                      'sb2': [ins.freq_array[30], ins.freq_array[59]]}
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=False,
+            broadcast_dict=broadcast_dict)
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+
+    assert np.all(ins.metric_array.mask[2, :30])
+    assert not np.any(ins.metric_array.mask[2, 30:])
+    assert np.all(ins.metric_array.mask[4, 30:60])
+    assert not np.any(ins.metric_array.mask[4, :30])
+    assert not np.any(ins.metric_array.mask[4, 60:])
+
+    print(ins.match_events)
+
+    test_match_events = [(slice(2, 3), slice(10, 21), 'shape1'),
+                         (slice(2, 3), slice(0, 30), 'freq_broadcast_sb1'),
+                         (slice(4, 5), slice(40, 51), 'shape2'),
+                         (slice(4, 5), slice(30, 60), 'freq_broadcast_sb2')]
+    for event, test_event in zip(ins.match_events, test_match_events):
+        assert event[:3] == test_event
+
+
+def test_freq_broadcast_no_dict():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    mf = MF(ins.freq_array, 5)
+
+    with pytest.raises(ValueError, match="MF object does not have a broadcast_dict"):
+        mf.apply_match_test(ins, freq_broadcast=True)
+
+
+def test_freq_broadcast_no_new_event():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    # spoof the metric array
+    ins.metric_array[:] = 1
+    ins.metric_array[2, 10:20] = 10
+    ins.metric_ms = ins.mean_subtract()
+
+    # Slice will go up to 21 since shapes are inclusive at the boundaries
+    # when boundary is on channel center
+    shape_dict = {'shape1': [ins.freq_array[10], ins.freq_array[20]]}
+    broadcast_dict = {'sb2': [ins.freq_array[30], ins.freq_array[59]]}
+    test_event = (slice(2, 3), slice(10, 21), 'shape1', 10)
+
+    mf = MF(ins.freq_array, 5, shape_dict=shape_dict, broadcast_streak=False,
+            broadcast_dict=broadcast_dict)
+    mf.apply_match_test(ins, event_record=True, freq_broadcast=True)
+    event = mf.freq_broadcast(ins, event=test_event, event_record=True)
+    assert event == test_event
+    assert ins.match_events[0][:-1] == test_event[:-1]
+
+
+def test_N_samp_thresh_dep_error():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+
+    with pytest.raises(ValueError, match="The N_samp_thresh parameter is now deprected."):
+        mf = MF(ins.freq_array, 5, N_samp_thresh=10)
+
+
+def test_apply_samp_thresh_dep_error_match_test():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    match_outfile = f'{out_prefix}_SSINS_match_events.yml'
+
+    ins = INS(insfile)
+    mf = MF(ins.freq_array, 5, tb_aggro=0.2)
+    with pytest.raises(ValueError, match="apply_samp_thresh has been deprecated"):
+        mf.apply_match_test(ins, apply_samp_thresh=True)

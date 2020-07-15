@@ -326,12 +326,13 @@ class INS(UVFlag):
             flag_uvf.write(filename, clobber=clobber, data_compression=data_compression)
 
         elif output_type == 'match_events':
-            yaml_dict = {'time_ind': [],
+            yaml_dict = {'time_bounds': [],
                          'freq_bounds': [],
                          'shape': [],
                          'sig': []}
             for event in self.match_events:
-                yaml_dict['time_ind'].append(int(event[0]))
+                time_bounds = [int(event[0].start), int(event[0].stop)]
+                yaml_dict['time_bounds'].append(time_bounds)
                 # Convert slice object to just its bounds
                 freq_bounds = [int(event[1].start), int(event[1].stop)]
                 yaml_dict['freq_bounds'].append(freq_bounds)
@@ -407,12 +408,12 @@ class INS(UVFlag):
             yaml_dict = yaml.safe_load(infile)
 
         match_events = []
-        for i in range(len(yaml_dict['time_ind'])):
+        for i in range(len(yaml_dict['sig'])):
             # Convert bounds back to slice
-            freq_slice = slice(yaml_dict['freq_bounds'][i][0],
-                               yaml_dict['freq_bounds'][i][1])
+            time_slice = slice(*yaml_dict['time_bounds'][i])
+            freq_slice = slice(*yaml_dict['freq_bounds'][i])
 
-            match_events.append((yaml_dict['time_ind'][i],
+            match_events.append((time_slice,
                                  freq_slice,
                                  yaml_dict['shape'][i],
                                  yaml_dict['sig'][i]))
