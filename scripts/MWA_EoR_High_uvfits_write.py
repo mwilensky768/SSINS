@@ -20,7 +20,7 @@ args = parser.parse_args()
 if not os.path.exists(args.outdir):
     os.makedirs(args.outdir)
 
-print("The filelist is %s" % args.uvd)
+print(f"The filelist is {args.uvd}")
 indir = args.uvd[0][:args.uvd[0].rfind('/')]
 if indir == args.outdir:
     raise ValueError("indir and outdir are the same")
@@ -35,45 +35,53 @@ if args.rfi_flag:
 
         ins = INS(ss)
 
-        prefix = '%s/%s' % (args.outdir, args.obsid)
+        prefix = f'{args.outdir}/{args.obsid}'
         ins.write(prefix)
+
         freqs = np.arange(1.7e8, 2e8, 5e6)
-        xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array, sig_fig=0)
+        xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array,
+                                                     sig_fig=0)
         yticks = [0, 20, 40]
         yticklabels = []
         for tick in yticks:
             yticklabels.append(Time(ins.time_array[tick], format='jd').iso[:-4])
-        Catalog_Plot.INS_plot(ins, prefix,
-                              xticks=xticks, yticks=yticks, xticklabels=xticklabels,
-                              yticklabels=yticklabels, data_cmap=cm.plasma,
-                              ms_vmin=-5, ms_vmax=5, title=args.obsid,
-                              xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
+        Catalog_Plot.INS_plot(ins, prefix, xticks=xticks, yticks=yticks,
+                              xticklabels=xticklabels, yticklabels=yticklabels,
+                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
+                              title=args.obsid, xlabel='Frequency (Mhz)',
+                              ylabel='Time (UTC)')
+
         # Try to save memory - hope for garbage collector
         del ss
+
         # Set up MF flagging for routine shapes
         shape_dict = {'TV6': [1.74e8, 1.81e8], 'TV7': [1.81e8, 1.88e8],
                       'TV8': [1.88e8, 1.95e8], 'TV9': [1.95e8, 2.02e8]}
         sig_thresh = {shape: 5 for shape in shape_dict}
         sig_thresh['narrow'] = 5
-        sig_thresh['streak'] = 8
+        sig_thresh['streak'] = 10
         mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict,
-                N_samp_thresh=len(ins.time_array) // 2)
-        mf.apply_match_test(ins, apply_samp_thresh=False)
-        mf.apply_samp_thresh_test(ins, event_record=True)
-        Catalog_Plot.INS_plot(ins, '%s_flagged' % prefix,
-                              xticks=xticks, yticks=yticks, xticklabels=xticklabels,
+                tb_aggro=0.5, broadcast_streak=True)
+
+        # Do the flagging
+        mf.apply_match_test(ins, event_record=True, time_broadcast=True,
+                            freq_broadcast=True)
+        ins.write(prefix, output_type='mask')
+
+        Catalog_Plot.INS_plot(ins, f'{prefix}_flagged', xticks=xticks,
+                              yticks=yticks, xticklabels=xticklabels,
                               yticklabels=yticklabels, data_cmap=cm.plasma,
                               ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
-        ins.write(prefix, output_type='mask')
 
     uvd = UVData()
     uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
+    uvd.frequency_average(2)
 
 if np.any(uvd.nsample_array == 0):
     uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
 
-uvd.write_uvfits('%s/%s.uvfits' % (args.outdir, args.obsid), spoof_nonessential=True)
+uvd.write_uvfits(f'{args.outdir}/{args.obsid}.uvfits', spoof_nonessential=True)
