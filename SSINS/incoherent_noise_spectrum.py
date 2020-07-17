@@ -97,7 +97,7 @@ class INS(UVFlag):
                                   " crosses before averaging.")
                     self.select(blt_inds=np.where(auto_bool)[0])
 
-            super().to_waterfall(method='mean', return_weights_square=use_integration_weights)
+            super().to_waterfall(method='mean', return_weights_square=True)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
         elif spec_type_str not in self.history:
@@ -162,8 +162,9 @@ class INS(UVFlag):
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
         if not self.order:
-            coeffs = self.metric_array[:, freq_slice].mean(axis=0)
-            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
+            coeffs = self.metric_array[:, freq_slice].average(axis=0, weights=self.weights_array)
+            weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
+            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
             MS = np.zeros_like(self.metric_array[:, freq_slice])
             coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
