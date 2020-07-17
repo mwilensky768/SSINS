@@ -189,13 +189,16 @@ class INS(UVFlag):
                         # Channels which share a mask (indexed into good_chans)
                         chans = np.where(mask_inv == mask_ind)[0]
                         y = good_data[:, chans]
-                        coeff = np.ma.polyfit(x, y, self.order)
+                        w = self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]]
+                        w_sq = self.weights_square_array[:, freq_slice, pol_ind][:, good_chans[chans]]
+                        coeff = np.ma.polyfit(x, y, self.order, w=w)
                         coeffs[:, good_chans[chans], pol_ind] = coeff
                         # Make the fit spectrum
                         mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
                                      for poly_ind in range(self.order + 1)],
                                     axis=0)
-                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * np.sqrt(self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]] / C)
+                        weights_factor = w / np.sqrt(C * w_sq)
+                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * weights_factor
             else:
                 MS[:] = np.ma.masked
 
