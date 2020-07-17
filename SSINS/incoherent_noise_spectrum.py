@@ -97,7 +97,7 @@ class INS(UVFlag):
                                   " crosses before averaging.")
                     self.select(blt_inds=np.where(auto_bool)[0])
 
-            super().to_waterfall(method='mean')
+            super().to_waterfall(method='mean', return_weights_square=use_integration_weights)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
         elif spec_type_str not in self.history:
