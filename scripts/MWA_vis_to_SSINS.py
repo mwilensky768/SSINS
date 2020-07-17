@@ -1,4 +1,4 @@
-from SSINS import INS, SS, MF
+from SSINS import INS, SS, MF, Catalog_Plot as cp
 from SSINS.data import DATA_PATH
 from pyuvdata import UVData, UVFlag
 import yaml
@@ -142,6 +142,8 @@ parser.add_argument('-s', '--start_flag', type=float, default=2.0,
                     help='The number of seconds to flag at the beginning of the obs.')
 parser.add_argument('-e', '--end_flag', type=float, default=2.0,
                     help='The number of seconds to flag at the end of the obs.')
+parser.add_argument('-p', '--plot', action='store_true',
+                    help='Plot the INS object')
 args = parser.parse_args()
 
 gpu_files = [path for path in args.filelist if ".fits" in path]
@@ -154,6 +156,9 @@ ins, jd_times = low_mem_setup(SS, INS, gpu_files, metafits_file,
                               flag_init=True, )
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
+
+if args.plot:
+    cp.INS_plot(ins, prefix, file_ext='pdf')
 
 if args.rfi_flag:
 
