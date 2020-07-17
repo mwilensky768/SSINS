@@ -19,7 +19,8 @@ class INS(UVFlag):
     """
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
-                 match_events_file=None, spectrum_type="cross"):
+                 match_events_file=None, spectrum_type="cross",
+                 use_integration_weights=False):
 
         """
         init function for the INS class.
@@ -32,6 +33,7 @@ class INS(UVFlag):
             mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
             match_events_file: A path to a .yml file that has events caught by the match filter
             spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
+            use_integration_weights: Whether to use the integration time and nsample array to compute the weights
         """
 
         super().__init__(input, mode='metric', copy_flags=False,
@@ -65,6 +67,8 @@ class INS(UVFlag):
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask).astype(float)
             """The number of baselines that contributed to each element of the metric_array"""
+            if use_integration_weights:
+                self.weights_array *= input.nsample_array * input.integration_time
 
             cross_bool = self.ant_1_array != self.ant_2_array
             auto_bool = self.ant_1_array == self.ant_2_array
