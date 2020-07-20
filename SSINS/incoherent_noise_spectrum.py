@@ -34,6 +34,11 @@ class INS(UVFlag):
             match_events_file: A path to a .yml file that has events caught by the match filter
             spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
             use_integration_weights: Whether to use the integration time and nsample array to compute the weights
+            nsample_default: The default nsample value to fill zeros in the
+                nsample_array with when there are some nsample=0. Important when
+                working with data from uvfits files, which combine information
+                from the flag_array and nsample_array in the weights field of
+                the uvfits file.
         """
 
         super().__init__(input, mode='metric', copy_flags=False,
