@@ -132,6 +132,10 @@ class INS(UVFlag):
         else:
             self.match_events = self.match_events_read(match_events_file)
 
+        # For backwards compatibilty before weights_square_array was a thing
+        # Works because weights are all 1 or 0 before this feature was added
+        if self.weights_square_array is None:
+            self.weights_square_array = self.weights_array
         self.metric_ms = self.mean_subtract()
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
