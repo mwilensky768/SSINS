@@ -20,7 +20,7 @@ class INS(UVFlag):
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
                  match_events_file=None, spectrum_type="cross",
-                 use_integration_weights=False):
+                 use_integration_weights=False, nsample_default=1):
 
         """
         init function for the INS class.
@@ -68,7 +68,10 @@ class INS(UVFlag):
             self.weights_array = np.logical_not(input.data_array.mask).astype(float)
             """The number of baselines that contributed to each element of the metric_array"""
             if use_integration_weights:
-                self.weights_array *= input.nsample_array * input.integration_time
+                # Set nsample default if some are zero
+                input.nsample_array[input.nsample_array == 0] = nsample_default
+                # broadcast problems with single pol
+                self.weights_array *= (input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
 
             cross_bool = self.ant_1_array != self.ant_2_array
             auto_bool = self.ant_1_array == self.ant_2_array
@@ -162,7 +165,7 @@ class INS(UVFlag):
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
         if not self.order:
-            coeffs = self.metric_array[:, freq_slice].average(axis=0, weights=self.weights_array)
+            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array)
             weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
@@ -447,4 +450,5 @@ class INS(UVFlag):
         """
 
         super(INS, self).select(**kwargs)
-        self.metric_ms = self.mean_subtract()
+        if hasattr(self, 'metric_ms'):
+            self.metric_ms = self.mean_subtract()
