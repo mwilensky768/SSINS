@@ -198,9 +198,10 @@ def test_time_broadcast_no_new_event():
 
     ins = INS(insfile)
 
-    # Mock a simple metric_array and freq_array
+    # Mock a simple metric_array and freq_array (and weights...)
     ins.metric_array[:] = 1
     ins.weights_array = np.copy(ins.metric_array)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
 

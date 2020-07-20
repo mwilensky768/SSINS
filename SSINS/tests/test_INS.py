@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pytest
 from pyuvdata import UVData, UVFlag
+from datetime import datetime
 
 
 def test_init():
@@ -82,17 +83,20 @@ def test_polyfit():
     ins = INS(ss, order=1)
 
     # Mock some data for which the polyfit is exact
-    x = np.arange(1, 11)
-    ins.metric_array = np.ma.masked_array([[3 * x + 5 for i in range(3)]])
+    x = np.arange(1, ins.Ntimes + 1)
+    for ind in range(ins.Nfreqs):
+        ins.metric_array[:, ind, 0] = 3 * x + 5
     ins.metric_array.mask = np.zeros(ins.metric_array.shape, dtype=bool)
-    ins.metric_array = np.swapaxes(ins.metric_array, 0, 2)
     ins.weights_array = np.ones(ins.metric_array.shape)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms, coeffs = ins.mean_subtract(return_coeffs=True)
     test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
     test_coeffs[0, :] = 3
     test_coeffs[1, :] = 5
+    print(np.amin(ins.metric_ms))
+    print(np.amax(ins.metric_ms))
 
-    assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
+    assert np.all(np.allclose(ins.metric_ms, np.zeros(ins.metric_ms.shape))), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
 
     ins.metric_array[:] = np.ma.masked
