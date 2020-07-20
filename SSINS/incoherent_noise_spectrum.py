@@ -135,7 +135,7 @@ class INS(UVFlag):
         # For backwards compatibilty before weights_square_array was a thing
         # Works because weights are all 1 or 0 before this feature was added
         if self.weights_square_array is None:
-            self.weights_square_array = self.weights_array
+            self.weights_square_array = np.copy(self.weights_array)
         self.metric_ms = self.mean_subtract()
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
@@ -174,7 +174,7 @@ class INS(UVFlag):
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
         if not self.order:
-            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array)
+            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
             weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
@@ -183,34 +183,27 @@ class INS(UVFlag):
             # Make sure x is not zero so that np.polyfit can proceed without nans
             x = np.arange(1, self.metric_array.shape[0] + 1)
             # We want to iterate over only a subset of the frequencies, so we need to investigate
-            y_0 = self.metric_array[:, freq_slice, 0]
+            y_0 = self.metric_array[:, freq_slice]
             # Find which channels are not fully masked (only want to iterate over those)
             # This gives an array of channel indexes into the freq_slice
             good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
             # Only do this if there are unmasked channels
             if len(good_chans) > 0:
-                # Want to group things by unique mask for fastest implementation
-                # mask_inv tells us which channels have the same mask (indexed into good_chans)
-                unique_masks, mask_inv = np.unique(y_0[:, good_chans].mask, axis=1,
-                                                   return_inverse=True)
-                # np.ma.polyfit only takes 2d args, so have to iterate over pols
-                for pol_ind in range(self.metric_array.shape[-1]):
-                    good_data = self.metric_array[:, freq_slice, pol_ind][:, good_chans]
-                    # Iterate over the unique masks grouping channels for fastest implementation
-                    for mask_ind in range(unique_masks.shape[1]):
-                        # Channels which share a mask (indexed into good_chans)
-                        chans = np.where(mask_inv == mask_ind)[0]
-                        y = good_data[:, chans]
-                        w = self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]]
-                        w_sq = self.weights_square_array[:, freq_slice, pol_ind][:, good_chans[chans]]
+                # np.ma.polyfit does not take 2-d weights (!!!) so we just do the slow implementation and go chan by chan, pol-by-pol
+                for chan in good_chans:
+                    for pol_ind in range(self.Npols):
+                        y = self.metric_array[:, chan, pol_ind]
+                        w = self.weights_array[:, chan, pol_ind]
+                        w_sq = self.weights_square_array[:, chan, pol_ind]
+                        # Make the fit
                         coeff = np.ma.polyfit(x, y, self.order, w=w)
-                        coeffs[:, good_chans[chans], pol_ind] = coeff
-                        # Make the fit spectrum
-                        mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
+                        coeffs[:, chan, pol_ind] = coeff
+                        # Do the magic
+                        mu = np.sum([coeff[poly_ind] * x**(self.order - poly_ind)
                                      for poly_ind in range(self.order + 1)],
                                     axis=0)
                         weights_factor = w / np.sqrt(C * w_sq)
-                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * weights_factor
+                        MS[:, chan, pol_ind] = (y / mu - 1) * weights_factor
             else:
                 MS[:] = np.ma.masked
 
