@@ -169,3 +169,22 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
     else:
         ax.set_ylim(ylim)
     ax.tick_params(labelsize=font_size)
+
+def line_plot(fig, ax, data, yscale='log', xscale='linear', label = '',
+                legend = 'true', color = 'blue', width = 3):
+
+    """
+    A function that plots a 2d line plot, useful for plotting 1d power spectra.
+
+    Args
+        fig: The figure object to modify
+        ax: The axis object to modify
+        data: The data to be histogrammed
+        bins: The bins for the histogram. See numpy.histogram documentation
+        yscale ('log' or 'linear'): The scale for the vertical axis. Default is 'log'
+        xscale ('log' or 'linear'): The scale for the horizontal axis. Default is 'linear'
+        label: The legend label for the data
+        legend: If True, show the legend
+        color: color of the line to be plotted
+        width: width in px of the line
+    """
