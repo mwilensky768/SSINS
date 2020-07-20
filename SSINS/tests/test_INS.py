@@ -371,3 +371,19 @@ def test_mix_spectrum():
     ss.polarization_array[0] = 1
     with pytest.raises(ValueError, match="SS input has pseudo-Stokes data. SSINS does not"):
         ins = INS(ss, spectrum_type="auto")
+
+
+def test_use_integration_weights():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=True)
+
+    ins = INS(ss, use_integration_weights=True)
+
+    # These will not be equal if weights are not binary to begin with
+    # The accuracy of return_weights_square is already checked in pyuvdata
+    assert not np.all(ins.weights_array == ins.weights_square_array)
