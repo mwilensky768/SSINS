@@ -93,8 +93,6 @@ def test_polyfit():
     test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
     test_coeffs[0, :] = 3
     test_coeffs[1, :] = 5
-    print(np.amin(ins.metric_ms))
-    print(np.amax(ins.metric_ms))
 
     assert np.all(np.allclose(ins.metric_ms, np.zeros(ins.metric_ms.shape))), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
@@ -294,8 +292,10 @@ def test_data_params():
     obs = '1061313128_99bl_1pol_half_time_SSINS'
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     ins = INS(testfile)
+    test_params = ['metric_array', 'weights_array', 'weights_square_array',
+                   'metric_ms', 'sig_array']
 
-    assert ins._data_params == ['metric_array', 'weights_array', 'metric_ms', 'sig_array']
+    assert ins._data_params == test_params
 
 
 def test_spectrum_type_file_init():
