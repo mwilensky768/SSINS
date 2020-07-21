@@ -371,9 +371,10 @@ Extra Flagging Bits
   >>> # This means events found at the very edge of one subbands may induce flags in the other, unless a guard band is thrown in
   >>> # An example 100 kHz guard band program might look like this
   >>> guard_width = 100e3
-  >>> broadcast_dict = {'TV4': [174e6, 182e6 - guard_width],
-  >>>                   'guard_4_5': [182e6 - guard_width, 182e6 + guard_width],
-  >>>                   'TV5': [182e6 + guard_width, 190e6 - guard_width]}
+  >>> broadcast_dict = {}
+  >>> broadcast_dict['TV4'] = [174e6, 182e6 - guard_width]
+  >>> broadcast_dict['guard_4_5'] = [182e6 - guard_width, 182e6 + guard_width]
+  >>> broadcast_dict['TV5'] = [182e6 + guard_width, 190e6 - guard_width]
   >>> mf = MF(ins.freq_array, 5, broadcast_dict=broadcast_dict)
 
 
