@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pytest
 from pyuvdata import UVData, UVFlag
+from datetime import datetime
 
 
 def test_init():
@@ -82,17 +83,18 @@ def test_polyfit():
     ins = INS(ss, order=1)
 
     # Mock some data for which the polyfit is exact
-    x = np.arange(1, 11)
-    ins.metric_array = np.ma.masked_array([[3 * x + 5 for i in range(3)]])
+    x = np.arange(1, ins.Ntimes + 1)
+    for ind in range(ins.Nfreqs):
+        ins.metric_array[:, ind, 0] = 3 * x + 5
     ins.metric_array.mask = np.zeros(ins.metric_array.shape, dtype=bool)
-    ins.metric_array = np.swapaxes(ins.metric_array, 0, 2)
     ins.weights_array = np.ones(ins.metric_array.shape)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms, coeffs = ins.mean_subtract(return_coeffs=True)
     test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
     test_coeffs[0, :] = 3
     test_coeffs[1, :] = 5
 
-    assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
+    assert np.all(np.allclose(ins.metric_ms, np.zeros(ins.metric_ms.shape))), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
 
     ins.metric_array[:] = np.ma.masked
@@ -290,8 +292,10 @@ def test_data_params():
     obs = '1061313128_99bl_1pol_half_time_SSINS'
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     ins = INS(testfile)
+    test_params = ['metric_array', 'weights_array', 'weights_square_array',
+                   'metric_ms', 'sig_array']
 
-    assert ins._data_params == ['metric_array', 'weights_array', 'metric_ms', 'sig_array']
+    assert ins._data_params == test_params
 
 
 def test_spectrum_type_file_init():
@@ -367,3 +371,19 @@ def test_mix_spectrum():
     ss.polarization_array[0] = 1
     with pytest.raises(ValueError, match="SS input has pseudo-Stokes data. SSINS does not"):
         ins = INS(ss, spectrum_type="auto")
+
+
+def test_use_integration_weights():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=True)
+
+    ins = INS(ss, use_integration_weights=True)
+
+    # These will not be equal if weights are not binary to begin with
+    # The accuracy of return_weights_square is already checked in pyuvdata
+    assert not np.all(ins.weights_array == ins.weights_square_array)
