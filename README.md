@@ -30,3 +30,7 @@ Once pyuvdata and all dependencies of that are installed, simply clone this repo
 Docs are available at: https://ssins.readthedocs.io/en/latest/  
 
 There are also tutorials available here: https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial  
+
+## Contact
+
+Please feel free to email questions to mjw768@uw.edu
