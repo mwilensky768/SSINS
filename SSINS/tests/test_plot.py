@@ -8,6 +8,8 @@ import pytest
 
 def test_INS_plot():
 
+    matplotlib = pytest.importorskip("matplotlib")
+
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
@@ -44,6 +46,8 @@ def test_INS_plot():
 
 def test_sig_plot():
 
+    matplotlib = pytest.importorskip("matplotlib")
+
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
@@ -77,6 +81,8 @@ def test_sig_plot():
 
 def test_VDH_plot():
 
+    matplotlib = pytest.importorskip("matplotlib")
+
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
@@ -103,6 +109,9 @@ def test_VDH_plot():
 
 
 def test_VDH_no_model():
+
+    matplotlib = pytest.importorskip("matplotlib")
+
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
