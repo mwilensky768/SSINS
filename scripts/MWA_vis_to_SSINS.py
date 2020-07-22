@@ -180,8 +180,8 @@ if args.rfi_flag:
     sig_thresh["streak"] = 10
     print(f"Flagging these shapes: {shape_dict}")
 
-    mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, N_samp_thresh=20)
-    mf.apply_match_test(ins, apply_samp_thresh=True)
+    mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, tb_aggro=0.4)
+    mf.apply_match_test(ins, time_broadcast=True)
 
     occ_dict = calc_occ(ins, num_init_flag, num_int_flag, shape_dict)
     with open(f"{prefix}_occ.yml", "w") as occ_file:
