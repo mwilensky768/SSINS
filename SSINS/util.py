@@ -49,32 +49,39 @@ def red_event_sort(match_events, shape_tuples):
     return(match_events)
 
 
-def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
+def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0):
     """
     Calculates the fraction of times an event was caught by the flagger for
-    each type of event. Narrowband occupancy levels are calculated over the whole
-    spectrum, instead of just the channel a particular event may have belonged to.
+    each type of event. Does not take care of frequency broadcasted events.
 
     Args:
-        match_events; A list of events caught by the match_filter
-        Ntimes: The number of time integrations in the observation
-        shape_list: The list of shapes to calculate the occupation fractions for
-        Nfreqs: Number of frequencies in the observation. Only required if looking for narrow occupancy levels.
+        ins: The flagged incoherent noise spectrum in question
+        mf: The match filter used to flag the INS
+        num_init_flag: The number of initially flagged samples
+        num_int_flag: The number of fully flagged integrations in the starting flags
+        num_chan_flag: The number of channels fully flagged before the match filter.
 
     Returns:
-        match_event_frac: A dictionary with shapes for keys and occupancy fractions for values
+        occ_dict: A dictionary with shapes for keys and occupancy fractions for values
     """
-    match_event_frac = {shape: 0 for shape in shape_list}
+    occ_dict = {shape: 0. for shape in mf.slice_dict}
 
-    if match_events:
-        shapes, counts = np.unique(np.array(match_events)[:, -2], return_counts=True)
-        for i, shape in enumerate(shapes):
-            if shape is 'narrow':
-                match_event_frac[shape] = counts[i] / (Ntimes * Nfreqs)
-            else:
-                match_event_frac[shape] = counts[i] / Ntimes
+    for shape in occ_dict:
+        relevant_events = [event for event in ins.match_events if shape in event.shape]
+        num_time_event = sum([(event.time_slice.stop - event.time_slice.start) for event in relevant_events])
+        occ_dict[shape] = num_time_event / (ins.Ntimes - num_int_flag)
+        if shape == "narrow":
+            occ_dict[shape] /= (ins.Nfreqs - num_chan_flag)
 
-    return(match_event_frac)
+    # Figure out the total occupancy sans initial flags
+    total_data = np.prod(ins.metric_array.shape)
+    total_valid = total_data - num_init_flag
+    total_flag = np.sum(ins.metric_array.mask)
+    total_RFI = total_flag - num_init_flag
+    total_occ = total_RFI / total_valid
+    occ_dict['total'] = total_occ
+
+    return(occ_dict)
 
 
 def make_obslist(obsfile):
