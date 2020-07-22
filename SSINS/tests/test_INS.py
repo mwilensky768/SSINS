@@ -285,7 +285,6 @@ def test_select():
     assert ins.metric_array.shape[1] == 24
     for param in ins._data_params:
         assert getattr(ins, param).shape == ins.metric_array.shape
-    print(np.unique(np.where(ins.metric_array.mask)[0]))
     # Check that the mask is propagated
     assert np.all(ins.metric_array.mask[4, :12])
     assert np.count_nonzero(ins.metric_array.mask) == 12
@@ -390,3 +389,25 @@ def test_use_integration_weights():
     # These will not be equal if weights are not binary to begin with
     # The accuracy of return_weights_square is already checked in pyuvdata
     assert not np.all(ins.weights_array == ins.weights_square_array)
+
+
+def test_add():
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+
+    truth_ins = INS(testfile)
+
+    first_ins = INS(testfile)
+    first_ins.select(freq_chans=np.arange(192))
+
+    second_ins = INS(testfile)
+    second_ins.select(freq_chans=np.arange(192, 384))
+
+    combo_ins = first_ins.__add__(second_ins, axis='frequency')
+    first_ins.__add__(second_ins, axis='frequency', inplace=True)
+
+    # Check consistency
+    assert np.all(combo_ins.metric_array.data == first_ins.metric_array.data)
+    assert np.all(combo_ins.metric_array.mask == first_ins.metric_array.mask)
+    assert np.all(combo_ins.metric_array.data == truth_ins.metric_array.data)
+    assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
