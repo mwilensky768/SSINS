@@ -4,6 +4,7 @@ Match Filter class
 
 import numpy as np
 import warnings
+from collections import namedtuple
 
 Event = namedtuple("Event", ["time_slice", "freq_slice", "shape", "sig"])
 
@@ -273,9 +274,9 @@ class MF():
             # They should all be contiguous until discontiguous shapes are allowed
             new_event_slc = slice(min(new_event_set), max(new_event_set) + 1)
             INS.metric_array[event[0], new_event_slc] = np.ma.masked
-            final_event = Event(event[0], new_event_slc, f"freq_broadcast_{sb_string}")
+            final_event = Event(event[0], new_event_slc, f"freq_broadcast_{sb_string}", None)
             if event_record:
-                INS.match_events.append((event[0], new_event_slc, f"freq_broadcast_{sb_string}", None))
+                INS.match_events.append(final_event)
         else:
             final_event = event
 
