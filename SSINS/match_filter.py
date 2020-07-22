@@ -154,7 +154,10 @@ class MF():
             if sig > self.sig_thresh[shape]:
                 if sig > sig_max:
                     t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
-        return(t_max, f_max, sig_max, shape_max)
+
+        event = Event(t_max, f_max, sig_max, shape_max)
+
+        return(event)
 
     def apply_match_test(self, INS, event_record=True, apply_samp_thresh=None,
                          freq_broadcast=False, time_broadcast=False):
@@ -182,10 +185,9 @@ class MF():
         while count:
             # If no events are found, this will remain 0, and the loop will end
             count = 0
-            t_max, f_max, sig_max, shape_max = self.match_test(INS)
-            if sig_max > -np.inf:
+            event = self.match_test(INS)
+            if event.sig > -np.inf:
                 count += 1
-                event = Event(t_max, f_max, shape_max, sig_max)
                 INS.metric_array[event[:2]] = np.ma.masked
                 # Only adjust those values in the sig_array that are not already assigned
                 nonmask = np.logical_not(INS.metric_ms.mask[event[:2]])
