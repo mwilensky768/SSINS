@@ -55,13 +55,13 @@ def test_match_test():
     ins = INS(insfile)
 
     # Mock a simple metric_array and freq_array
-    ins.metric_array = np.ma.ones([10, 20, 1])
+    ins.metric_array[:] = np.ones_like(ins.metric_array)
     ins.weights_array = np.copy(ins.metric_array)
-    ins.freq_array = np.zeros([1, 20])
-    ins.freq_array = np.arange(20)
+    ins.weights_square_array = np.copy(ins.weights_array)
 
     # Make a shape dictionary for a shape that will be injected later
-    shape = [7.9, 12.1]
+    ch_wid = ins.freq_array[1] - ins.freq_array[0]
+    shape = [ins.freq_array[8] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
     shape_dict = {'shape': shape}
     sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
@@ -73,10 +73,9 @@ def test_match_test():
     ins.metric_ms = ins.mean_subtract()
 
     t_max, f_max, R_max, shape_max = mf.match_test(ins)
-    print(shape_max)
 
     assert t_max == slice(5, 6), "Wrong time"
-    assert f_max == slice(0, 20), "Wrong freq"
+    assert f_max == slice(0, ins.Nfreqs), "Wrong freq"
     assert shape_max == 'streak', "Wrong shape"
 
 
@@ -88,13 +87,13 @@ def test_apply_match_test():
     ins = INS(insfile)
 
     # Mock a simple metric_array and freq_array
-    ins.metric_array = np.ma.ones([10, 20, 1])
+    ins.metric_array[:] = np.ones_like(ins.metric_array)
     ins.weights_array = np.copy(ins.metric_array)
-    ins.freq_array = np.zeros([1, 20])
-    ins.freq_array = np.arange(20)
+    ins.weights_square_array = np.copy(ins.weights_array)
 
     # Make a shape dictionary for a shape that will be injected later
-    shape = [7.9, 12.1]
+    ch_wid = ins.freq_array[1] - ins.freq_array[0]
+    shape = [ins.freq_array[8] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
     shape_dict = {'shape': shape}
     sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
@@ -116,12 +115,12 @@ def test_apply_match_test():
 
     assert np.all(test_mask == ins.metric_array.mask), "Flags are incorrect"
 
-    test_match_events_slc = [(slice(5, 6), slice(0, 20), 'streak'),
+    test_match_events_slc = [(slice(5, 6), slice(0, ins.Nfreqs), 'streak'),
                              (slice(7, 8), slice(7, 13), 'shape'),
                              (slice(3, 4), slice(5, 6), 'narrow')]
 
     for i, event in enumerate(test_match_events_slc):
-        assert ins.match_events[i][:-1] == test_match_events_slc[i], "%ith event is wrong" % i
+        assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
 
     assert not np.any([ins.match_events[i][-1] < 5 for i in range(3)]), "Some significances were less than 5"
 
@@ -146,6 +145,7 @@ def test_time_broadcast():
     # Mock a simple metric_array and freq_array
     ins.metric_array[:] = 1
     ins.weights_array = np.copy(ins.metric_array)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
 
@@ -198,9 +198,10 @@ def test_time_broadcast_no_new_event():
 
     ins = INS(insfile)
 
-    # Mock a simple metric_array and freq_array
+    # Mock a simple metric_array and freq_array (and weights...)
     ins.metric_array[:] = 1
     ins.weights_array = np.copy(ins.metric_array)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms = ins.mean_subtract()
     ins.sig_array = np.ma.copy(ins.metric_ms)
 
