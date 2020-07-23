@@ -49,9 +49,10 @@ def test_calc_occ():
     ins.weights_array[:] = 10
     ins.weights_square_array[:] = 10
     # Make some outliers
-    # Narrowband in 1th and 31th frequency
+    # Narrowband in 1th, 26th, and 31th frequency
     ins.metric_array[1, 1, :] = 100
     ins.metric_array[1, 30, :] = 100
+    ins.metric_array[3:14, 26, :] = 100
     # Arbitrary shape in 2, 3, 4
     ins.metric_array[3:14, 2:25, :] = 100
     ins.metric_array[[0, -1], :, :] = np.ma.masked
@@ -72,6 +73,7 @@ def test_calc_occ():
                              lump_narrowband=False)
     assert occ_dict["streak"] == 0
     assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6))] == 0.05
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[26] * 10**(-6))] == 1
     assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6))] == 0.05
     assert occ_dict["shape"] == 1
 
@@ -79,7 +81,7 @@ def test_calc_occ():
                              lump_narrowband=True)
 
     # total narrow over total valid
-    assert occ_dict["narrow"] == 2 / 600
+    assert occ_dict["narrow"] == 24 / 600
     assert occ_dict["streak"] == 0
     assert occ_dict["shape"] == 1
     assert "narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
