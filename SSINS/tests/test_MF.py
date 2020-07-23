@@ -72,7 +72,7 @@ def test_match_test():
     ins.metric_array[7, 7:13] = 10
     ins.metric_ms = ins.mean_subtract()
 
-    t_max, f_max, R_max, shape_max = mf.match_test(ins)
+    t_max, f_max, shape_max, sig_max = mf.match_test(ins)
 
     assert t_max == slice(5, 6), "Wrong time"
     assert f_max == slice(0, ins.Nfreqs), "Wrong freq"

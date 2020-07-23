@@ -21,8 +21,7 @@ def event_count(event_list, time_range, freq_range=None):
     return(len(shape_set))
 
 
-def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
-             lump_narrowband=True):
+def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
     """
     Calculates the fraction of times an event was caught by the flagger for
     each type of event. Does not take care of frequency broadcasted events.
@@ -32,7 +31,6 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
         mf: The match filter used to flag the INS
         num_init_flag: The number of initially flagged samples
         num_int_flag: The number of fully flagged integrations in the starting flags
-        num_chan_flag: The number of channels fully flagged before the match filter.
         lump_narrowband: Whether to combine narrowband occupancies into a single number.
             Will slightly overestimate if n_int_flag > 0.
 
@@ -48,7 +46,9 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
     total_RFI = total_flag - num_init_flag
     total_occ = total_RFI / total_valid
 
-    for shape in occ_dict:
+    init_shapes = list(occ_dict.keys())
+
+    for shape in init_shapes:
         relevant_events = [event for event in ins.match_events if shape in event.shape]
         time_range = np.arange(ins.Ntimes)
 
@@ -60,14 +60,14 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
             else:
                 # Need to pull out the unique frequencies that were identified
                 new_event_shapes = []
-                for event in relavent_events:
+                for event in relevant_events:
                     _ind = event.shape.rfind("_")
                     if event.shape[_ind + 1:] not in new_event_shapes:
                         new_event_shapes.append(event.shape[_ind + 1:])
                 # need to iterate over unique frequencies
                 for subshape in new_event_shapes:
                     subshape_key = f"narrow_{subshape}"
-                    subshape_relevant_events = [event for event in relavent_events if subshape in event.shape]
+                    subshape_relevant_events = [event for event in relevant_events if subshape in event.shape]
                     occ_dict[subshape_key] = event_count(subshape_relevant_events,
                                                          time_range) / (ins.Ntimes - num_int_flag)
 
@@ -78,7 +78,7 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
             if occ_dict[shape] > 1:
                 occ_dict[shape] = 1
 
-    if not lump_narrow:
+    if not lump_narrowband:
         occ_dict.pop("narrow")
 
     occ_dict['total'] = total_occ
