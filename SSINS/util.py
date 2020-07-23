@@ -7,6 +7,20 @@ import os
 from SSINS.match_filter import Event
 
 
+def event_count(event_list, time_range, freq_range=None):
+    shape_set = set()
+    for event in event_list:
+        if freq_range is None:
+            shape_set = shape_set.union(time_range[event.time_slice])
+        else:
+            ntimes_event = event.time_slice.stop - event.time_slice.start
+            event_set = set(zip(time_range[event.time_slice],
+                                np.repeat(freq_range[event.freq_slice], ntimes_event)))
+            shape_set = shape_set.union(event_set)
+
+    return(len(shape_set))
+
+
 def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
              lump_narrowband=True):
     """
@@ -36,47 +50,31 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, num_chan_flag=0,
 
     for shape in occ_dict:
         relevant_events = [event for event in ins.match_events if shape in event.shape]
-        shape_set = set()
         time_range = np.arange(ins.Ntimes)
+
         if shape == "narrow":
             if lump_narrowband:
                 freq_range = np.arange(ins.Nfreqs)
-                for event in relevant_events:
-                    ntimes_event = event.time_slice.stop - event.time_slice.start
-                    event_set = set(zip(time_range[event.time_slice],
-                                        np.repeat(freq_range[event.freq_slice], ntimes_event)))
-                    shape_set = shape_set.union(event_set)
                 # The length of the shape_set tells you how many points were flagged, without overcounting
-                occ_dict[shape] = len(shape_set) / total_valid
+                occ_dict[shape] = event_count(relevant_events, time_range, freq_range) / total_valid
             else:
-                # Need to relabel them by frequency
-                relabeled_events = []
-                for event_ind, event in enumerate(relevant_events):
-                    event_freq = (ins.freq_array[event.freq_slice] * 10**(-6))[0]
-                    relabeled_event = Event(event.time_slice, event.freq_slice,
-                                            "%s_%.3fMHz" % (event.shape, event_freq),
-                                            event.sig)
-                    relabeled_events.append(relabeled_event)
                 # Need to pull out the unique frequencies that were identified
                 new_event_shapes = []
-                for event in relabeled_events:
+                for event in relavent_events:
                     _ind = event.shape.rfind("_")
                     if event.shape[_ind + 1:] not in new_event_shapes:
                         new_event_shapes.append(event.shape[_ind + 1:])
                 # need to iterate over unique frequencies
                 for subshape in new_event_shapes:
                     subshape_key = f"narrow_{subshape}"
-                    shape_set = set()
-                    subshape_relevant_events = [event for event in relabeled_events if subshape in event.shape]
-                    for event in subshape_relevant_events:
-                        shape_set = shape_set.union(time_range[event.time_slice])
-                    occ_dict[subshape_key] = len(shape_set) / (ins.Ntimes - num_int_flag)
+                    subshape_relevant_events = [event for event in relavent_events if subshape in event.shape]
+                    occ_dict[subshape_key] = event_count(subshape_relevant_events,
+                                                         time_range) / (ins.Ntimes - num_int_flag)
+
                     if occ_dict[subshape_key] > 1:
                         occ_dict[subshape_key] = 1
         else:
-            for event in relevant_events:
-                shape_set = shape_set.union(time_range[event.time_slice])
-            occ_dict[shape] = len(shape_set) / (ins.Ntimes - num_int_flag)
+            occ_dict[shape] = event_count(relevant_events, time_range) / (ins.Ntimes - num_int_flag)
             if occ_dict[shape] > 1:
                 occ_dict[shape] = 1
 
