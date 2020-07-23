@@ -381,8 +381,12 @@ Extra Flagging Bits
 (d) Calculating occupancy
 *************************
 ::
-  >>> # The total occupancy can be calculated from the flag mask with a one-liner
-  >>> occ = np.mean(ins.metric_array.mask)
+  >>> # A dictionary that reports the occupancy of the shapes found by the flagger can be calculated
+  >>> # See util.calc_occ docs
+  >>> occ_dict = util.calc_occ(ins, mf, 0) # doctest: +SKIP
+  >>> # This can then be written to a yaml
+  >>> with open("SSINS/data/test_occ.yml", "w") as yaml_file: # doctest: +SKIP
+  ...    yaml.safe_dump(occ_dict, yaml_file) # doctest: +SKIP
 
 
 (e) Setting different significance thresholds per shape
