@@ -94,16 +94,14 @@ class MF():
         """
 
         slice_dict = {}
+        ch_wid = self.freq_array[1] - self.freq_array[0]
         for shape in getattr(self, input_dict):
             if min(self.freq_array) <= min(getattr(self, input_dict)[shape]) or \
                max(self.freq_array) >= max(getattr(self, input_dict)[shape]):
+                # Assuming frequencies represent channel centers at that fine channel bandpass has sharp cutoff at midpoint
                 min_chan = np.argmin(np.abs(self.freq_array - min(getattr(self, input_dict)[shape])))
-                max_chan = np.argmin(np.abs(self.freq_array - max(getattr(self, input_dict)[shape])))
-                # May have to extend the edges depending on if the shape extends beyond the min and max chan infinitesimally
-                if (self.freq_array[min_chan] - min(getattr(self, input_dict)[shape]) > 0) and (min_chan > 0):
-                    min_chan -= 1
-                if self.freq_array[max_chan] - max(getattr(self, input_dict)[shape]) <= 0:
-                    max_chan += 1
+                # Extend by 1 so that it is inclusive at the upper boundary
+                max_chan = np.argmin(np.abs(self.freq_array - max(getattr(self, input_dict)[shape]))) + 1
                 slice_dict[shape] = slice(min_chan, max_chan)
         if narrow:
             slice_dict['narrow'] = None
@@ -153,12 +151,12 @@ class MF():
                 sig = sliced_arr[t, p][0]
             if sig > self.sig_thresh[shape]:
                 if sig > sig_max:
-                    t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
+                    t_max, f_max, shape_max, sig_max = (t, f, shape, sig)
 
         if shape_max == "narrow":
             shape_max = "narrow_%.3f" % (INS.freq_array[f_max][0] * 10**(-6))
 
-        event = Event(t_max, f_max, sig_max, shape_max)
+        event = Event(t_max, f_max, shape_max, sig_max)
 
         return(event)
 
@@ -237,7 +235,7 @@ class MF():
         # Find the flag fraction, unflagged fraction, compare to aggro parameter
         flag_frac = total_flag_valid / total_valid
         unflag_frac = 1 - flag_frac
-        if unflag_frac < self.tb_aggro:
+        if unflag_frac <= self.tb_aggro:
             INS.metric_array[:, event[1]] = np.ma.masked
             if event_record:
                 new_event = Event(slice(0, INS.Ntimes), event[1],
