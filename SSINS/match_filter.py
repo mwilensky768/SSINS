@@ -155,6 +155,9 @@ class MF():
                 if sig > sig_max:
                     t_max, f_max, sig_max, shape_max = (t, f, sig, shape)
 
+        if shape_max == "narrow":
+            shape_max = "narrow_%.3f" % (INS.freq_array[f_max][0] * 10**(-6))
+
         event = Event(t_max, f_max, sig_max, shape_max)
 
         return(event)
