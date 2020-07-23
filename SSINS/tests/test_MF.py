@@ -164,10 +164,10 @@ def test_time_broadcast():
 
     mf.apply_match_test(ins, event_record=True, time_broadcast=True)
     print(ins.match_events)
-    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow'),
-                         (slice(2, 3), slice(9, 10), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow')]
+    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow_%.3fMHz' % (ins.freq_array[10] * 10 ** (-6))),
+                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow_%.3fMHz' % (ins.freq_array[10] * 10 ** (-6))),
+                         (slice(2, 3), slice(9, 10), 'narrow_%.3fMHz' % (ins.freq_array[9] * 10 ** (-6))),
+                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow_%.3fMHz' % (ins.freq_array[9] * 10 ** (-6)))]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
