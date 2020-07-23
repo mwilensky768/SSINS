@@ -71,8 +71,8 @@ def test_calc_occ():
     occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
                              lump_narrowband=False)
     assert occ_dict["streak"] == 0
-    assert occ_dict["narrow_%.3f" % (ins.freq_array[1] * 10**(-6))] == 0.05
-    assert occ_dict["narrow_%.3f" % (ins.freq_array[30] * 10**(-6))] == 0.05
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6))] == 0.05
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6))] == 0.05
     assert occ_dict["shape"] == 1
 
     occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
@@ -82,8 +82,8 @@ def test_calc_occ():
     assert occ_dict["narrow"] == 2 / 600
     assert occ_dict["streak"] == 0
     assert occ_dict["shape"] == 1
-    assert "narrow_%.3f" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
-    assert "narrow_%.3f" % (ins.freq_array[30] * 10**(-6)) not in occ_dict.keys()
+    assert "narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
+    assert "narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6)) not in occ_dict.keys()
 
 
 def test_make_ticks():

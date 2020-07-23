@@ -93,7 +93,7 @@ def test_apply_match_test():
 
     # Make a shape dictionary for a shape that will be injected later
     ch_wid = ins.freq_array[1] - ins.freq_array[0]
-    shape = [ins.freq_array[8] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
+    shape = [ins.freq_array[7] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
     shape_dict = {'shape': shape}
     sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
@@ -117,7 +117,7 @@ def test_apply_match_test():
 
     test_match_events_slc = [(slice(5, 6), slice(0, ins.Nfreqs), 'streak'),
                              (slice(7, 8), slice(7, 13), 'shape'),
-                             (slice(3, 4), slice(5, 6), 'narrow')]
+                             (slice(3, 4), slice(5, 6), 'narrow_%.3fMHz' % (ins.freq_array[5] * 10 ** (-6)))]
 
     for i, event in enumerate(test_match_events_slc):
         assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
