@@ -72,7 +72,7 @@ def test_match_test():
     ins.metric_array[7, 7:13] = 10
     ins.metric_ms = ins.mean_subtract()
 
-    t_max, f_max, R_max, shape_max = mf.match_test(ins)
+    t_max, f_max, shape_max, sig_max = mf.match_test(ins)
 
     assert t_max == slice(5, 6), "Wrong time"
     assert f_max == slice(0, ins.Nfreqs), "Wrong freq"
@@ -93,7 +93,7 @@ def test_apply_match_test():
 
     # Make a shape dictionary for a shape that will be injected later
     ch_wid = ins.freq_array[1] - ins.freq_array[0]
-    shape = [ins.freq_array[8] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
+    shape = [ins.freq_array[7] - 0.2 * ch_wid, ins.freq_array[12] + 0.2 * ch_wid]
     shape_dict = {'shape': shape}
     sig_thresh = {'shape': 5, 'narrow': 5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
@@ -117,7 +117,7 @@ def test_apply_match_test():
 
     test_match_events_slc = [(slice(5, 6), slice(0, ins.Nfreqs), 'streak'),
                              (slice(7, 8), slice(7, 13), 'shape'),
-                             (slice(3, 4), slice(5, 6), 'narrow')]
+                             (slice(3, 4), slice(5, 6), 'narrow_%.3fMHz' % (ins.freq_array[5] * 10 ** (-6)))]
 
     for i, event in enumerate(test_match_events_slc):
         assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
@@ -164,10 +164,10 @@ def test_time_broadcast():
 
     mf.apply_match_test(ins, event_record=True, time_broadcast=True)
     print(ins.match_events)
-    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow'),
-                         (slice(2, 3), slice(9, 10), 'narrow'),
-                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow')]
+    test_match_events = [(slice(1, 2), slice(10, 11), 'narrow_%.3fMHz' % (ins.freq_array[10] * 10 ** (-6))),
+                         (slice(0, ins.Ntimes), slice(10, 11), 'time_broadcast_narrow_%.3fMHz' % (ins.freq_array[10] * 10 ** (-6))),
+                         (slice(2, 3), slice(9, 10), 'narrow_%.3fMHz' % (ins.freq_array[9] * 10 ** (-6))),
+                         (slice(0, ins.Ntimes), slice(9, 10), 'time_broadcast_narrow_%.3fMHz' % (ins.freq_array[9] * 10 ** (-6)))]
     # Test stuff
     assert np.all(ins.metric_array.mask == bool_ind), "The right flags were not applied"
     for i, event in enumerate(test_match_events):
