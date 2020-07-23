@@ -1,4 +1,4 @@
-from SSINS import INS, SS, MF, Catalog_Plot as cp
+from SSINS import INS, SS, MF, util, Catalog_Plot as cp
 from SSINS.data import DATA_PATH
 from pyuvdata import UVData, UVFlag
 import yaml
@@ -6,35 +6,6 @@ import argparse
 from astropy.io import fits
 from astropy.time import Time
 import numpy as np
-
-
-def calc_occ(ins, num_init_flag, num_int_flag, shape_dict):
-
-    occ_dict = {}
-    # Figure out the total occupancy sans initial flags
-    total_data = np.prod(ins.metric_array.shape)
-    total_valid = total_data - num_init_flag
-    total_flag = np.sum(ins.metric_array.mask)
-    total_RFI = total_flag - num_init_flag
-    total_occ = total_RFI / total_valid
-    occ_dict['total'] = total_occ
-
-    # initialize
-    for shape in shape_dict:
-        occ_dict[shape] = 0
-    for shape in ['streak', 'narrow', 'samp_thresh']:
-        occ_dict[shape] = 0
-
-    for event in ins.match_events:
-        if event[2] in ("narrow", "samp_thresh"):
-            occ_dict[event[2]] += ins.Npols / total_valid
-        else:
-            occ_dict[event[2]] += 1. / (ins.metric_array.shape[0] - num_int_flag)
-
-    for item in occ_dict:
-        occ_dict[item] = float(occ_dict[item])
-
-    return(occ_dict)
 
 
 def get_gpubox_map(gpu_files):
@@ -183,7 +154,8 @@ if args.rfi_flag:
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, tb_aggro=0.4)
     mf.apply_match_test(ins, time_broadcast=True)
 
-    occ_dict = calc_occ(ins, num_init_flag, num_int_flag, shape_dict)
+    occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=num_int_flag,
+                             lump_narrowband=True)
     with open(f"{prefix}_occ.yml", "w") as occ_file:
         yaml.safe_dump(occ_dict, occ_file)
 
