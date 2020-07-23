@@ -10,6 +10,7 @@ from SSINS import version
 from functools import reduce
 import warnings
 from itertools import combinations
+from SSINS.match_filter import Event
 
 
 class INS(UVFlag):
@@ -447,10 +448,10 @@ class INS(UVFlag):
             time_slice = slice(*yaml_dict['time_bounds'][i])
             freq_slice = slice(*yaml_dict['freq_bounds'][i])
 
-            match_events.append((time_slice,
-                                 freq_slice,
-                                 yaml_dict['shape'][i],
-                                 yaml_dict['sig'][i]))
+            match_events.append(Event(time_slice,
+                                      freq_slice,
+                                      yaml_dict['shape'][i],
+                                      yaml_dict['sig'][i]))
 
         return(match_events)
 
