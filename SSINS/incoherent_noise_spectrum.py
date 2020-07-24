@@ -10,6 +10,7 @@ from SSINS import version
 from functools import reduce
 import warnings
 from itertools import combinations
+from SSINS.match_filter import Event
 
 
 class INS(UVFlag):
@@ -19,7 +20,8 @@ class INS(UVFlag):
     """
 
     def __init__(self, input, history='', label='', order=0, mask_file=None,
-                 match_events_file=None, spectrum_type="cross"):
+                 match_events_file=None, spectrum_type="cross",
+                 use_integration_weights=False, nsample_default=1):
 
         """
         init function for the INS class.
@@ -32,6 +34,12 @@ class INS(UVFlag):
             mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
             match_events_file: A path to a .yml file that has events caught by the match filter
             spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
+            use_integration_weights: Whether to use the integration time and nsample array to compute the weights
+            nsample_default: The default nsample value to fill zeros in the
+                nsample_array with when there are some nsample=0. Important when
+                working with data from uvfits files, which combine information
+                from the flag_array and nsample_array in the weights field of
+                the uvfits file.
         """
 
         super().__init__(input, mode='metric', copy_flags=False,
@@ -65,6 +73,11 @@ class INS(UVFlag):
             """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
             self.weights_array = np.logical_not(input.data_array.mask).astype(float)
             """The number of baselines that contributed to each element of the metric_array"""
+            if use_integration_weights:
+                # Set nsample default if some are zero
+                input.nsample_array[input.nsample_array == 0] = nsample_default
+                # broadcast problems with single pol
+                self.weights_array *= (input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
 
             cross_bool = self.ant_1_array != self.ant_2_array
             auto_bool = self.ant_1_array == self.ant_2_array
@@ -93,7 +106,7 @@ class INS(UVFlag):
                                   " crosses before averaging.")
                     self.select(blt_inds=np.where(auto_bool)[0])
 
-            super().to_waterfall(method='mean')
+            super().to_waterfall(method='mean', return_weights_square=True)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
         elif spec_type_str not in self.history:
@@ -120,6 +133,10 @@ class INS(UVFlag):
         else:
             self.match_events = self.match_events_read(match_events_file)
 
+        # For backwards compatibilty before weights_square_array was a thing
+        # Works because weights are all 1 or 0 before this feature was added
+        if self.weights_square_array is None:
+            self.weights_square_array = np.copy(self.weights_array)
         self.metric_ms = self.mean_subtract()
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
@@ -158,39 +175,36 @@ class INS(UVFlag):
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
         if not self.order:
-            coeffs = self.metric_array[:, freq_slice].mean(axis=0)
-            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * np.sqrt(self.weights_array[:, freq_slice] / C)
+            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
+            weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
+            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
             MS = np.zeros_like(self.metric_array[:, freq_slice])
             coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
             # Make sure x is not zero so that np.polyfit can proceed without nans
             x = np.arange(1, self.metric_array.shape[0] + 1)
             # We want to iterate over only a subset of the frequencies, so we need to investigate
-            y_0 = self.metric_array[:, freq_slice, 0]
+            y_0 = self.metric_array[:, freq_slice]
             # Find which channels are not fully masked (only want to iterate over those)
             # This gives an array of channel indexes into the freq_slice
             good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
             # Only do this if there are unmasked channels
             if len(good_chans) > 0:
-                # Want to group things by unique mask for fastest implementation
-                # mask_inv tells us which channels have the same mask (indexed into good_chans)
-                unique_masks, mask_inv = np.unique(y_0[:, good_chans].mask, axis=1,
-                                                   return_inverse=True)
-                # np.ma.polyfit only takes 2d args, so have to iterate over pols
-                for pol_ind in range(self.metric_array.shape[-1]):
-                    good_data = self.metric_array[:, freq_slice, pol_ind][:, good_chans]
-                    # Iterate over the unique masks grouping channels for fastest implementation
-                    for mask_ind in range(unique_masks.shape[1]):
-                        # Channels which share a mask (indexed into good_chans)
-                        chans = np.where(mask_inv == mask_ind)[0]
-                        y = good_data[:, chans]
-                        coeff = np.ma.polyfit(x, y, self.order)
-                        coeffs[:, good_chans[chans], pol_ind] = coeff
-                        # Make the fit spectrum
-                        mu = np.sum([np.outer(x**(self.order - poly_ind), coeff[poly_ind])
+                # np.ma.polyfit does not take 2-d weights (!!!) so we just do the slow implementation and go chan by chan, pol-by-pol
+                for chan in good_chans:
+                    for pol_ind in range(self.Npols):
+                        y = self.metric_array[:, chan, pol_ind]
+                        w = self.weights_array[:, chan, pol_ind]
+                        w_sq = self.weights_square_array[:, chan, pol_ind]
+                        # Make the fit
+                        coeff = np.ma.polyfit(x, y, self.order, w=w)
+                        coeffs[:, chan, pol_ind] = coeff
+                        # Do the magic
+                        mu = np.sum([coeff[poly_ind] * x**(self.order - poly_ind)
                                      for poly_ind in range(self.order + 1)],
                                     axis=0)
-                        MS[:, good_chans[chans], pol_ind] = (y / mu - 1) * np.sqrt(self.weights_array[:, freq_slice, pol_ind][:, good_chans[chans]] / C)
+                        weights_factor = w / np.sqrt(C * w_sq)
+                        MS[:, chan, pol_ind] = (y / mu - 1) * weights_factor
             else:
                 MS[:] = np.ma.masked
 
@@ -260,7 +274,7 @@ class INS(UVFlag):
 
     def write(self, prefix, clobber=False, data_compression='lzf',
               output_type='data', mwaf_files=None, mwaf_method='add',
-              Ncoarse=24, sep='_', uvf=None):
+              metafits_file=None, Ncoarse=24, sep='_', uvf=None):
 
         """
         Writes attributes specified by output_type argument to appropriate files
@@ -285,8 +299,12 @@ class INS(UVFlag):
                 match_events - Writes the match_events attribute out to a human-readable yml file
 
                 mwaf - Writes an mwaf file by converting mask to flags.
-            mwaf_files (seq): A list of paths to mwaf files to use as input for each coarse channel
-            mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags to current flags in input file or replace them entirely
+            mwaf_files (seq): A list of paths to mwaf files to use as input for
+                each coarse channel
+            mwaf_method ('add' or 'replace'): Choose whether to add SSINS flags
+                to current flags in input file or replace them entirely
+            metafits_file (str): A path to the metafits file if writing mwaf outputs.
+                Required only if writing mwaf files.
             sep (str): Determines the separator in the filename of the output file.
         """
 
@@ -312,9 +330,7 @@ class INS(UVFlag):
             del z_uvf
 
         elif output_type == 'mask':
-            mask_uvf = self.copy()
-            mask_uvf.to_flag()
-            mask_uvf.flag_array = np.copy(self.metric_array.mask)
+            mask_uvf = self._make_mask_copy()
             super(INS, mask_uvf).write(filename, clobber=clobber, data_compression=data_compression)
             del mask_uvf
 
@@ -347,15 +363,34 @@ class INS(UVFlag):
         elif output_type == 'mwaf':
             if mwaf_files is None:
                 raise ValueError("mwaf_files is set to None. This must be a sequence of existing mwaf filepaths.")
+            if metafits_file is None:
+                raise ValueError("If writing mwaf files, must supply corresponding metafits file.")
 
             from astropy.io import fits
             flags = self.mask_to_flags()[:, :, 0]
+            with fits.open(metafits_file) as meta_hdu_list:
+                coarse_chans = meta_hdu_list[0].header["CHANNELS"].split(",")
+                coarse_chans = np.sort([int(chan) for chan in coarse_chans])
+            # Coarse channels need to be mapped properly
+            # Up to coarse channel 128, the channels go in the right order
+            # Then they go in reverse order
+            # The number of properly ordered channels
+            num_less = np.count_nonzero(coarse_chans <= 128)
+            # Numbers associated with filenames
+            box_keys = [str(ind).zfill(2) for ind in range(1, len(coarse_chans) + 1)]
+            # Channel index associated with each box
+            box_vals = np.zeros(len(coarse_chans), dtype=int)
+            # The first num_less go in frequency-increasing order
+            box_vals[:num_less] = np.arange(num_less)
+            # The rest go in frequency-decreasing order
+            box_vals[num_less:] = np.arange(len(coarse_chans) - 1, num_less - 1, -1)
+            box_label_to_chan_ind_map = dict(zip(box_keys, box_vals))
             for path in mwaf_files:
                 if not os.path.exists(path):
                     raise IOError("filepath %s in mwaf_files was not found in system." % path)
                 path_ind = path.rfind('_') + 1
                 boxstr = path[path_ind:path_ind + 2]
-                boxint = int(boxstr) - 1
+                chan_ind = box_label_to_chan_ind_map[boxstr]
                 with fits.open(path) as mwaf_hdu:
                     NCHANS = mwaf_hdu[0].header['NCHANS']
                     NSCANS = mwaf_hdu[0].header['NSCANS']
@@ -374,7 +409,7 @@ class INS(UVFlag):
                     # Repeat in freq
                     freq_time_rep_flags = np.repeat(time_rep_flags, freq_div, axis=1)
                     # Repeat in bls
-                    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
+                    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * chan_ind: NCHANS * (chan_ind + 1)], Nbls, axis=1)
                     # This shape is on MWA wiki. Reshape to this shape.
                     new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
                     if mwaf_method == 'add':
@@ -413,10 +448,10 @@ class INS(UVFlag):
             time_slice = slice(*yaml_dict['time_bounds'][i])
             freq_slice = slice(*yaml_dict['freq_bounds'][i])
 
-            match_events.append((time_slice,
-                                 freq_slice,
-                                 yaml_dict['shape'][i],
-                                 yaml_dict['sig'][i]))
+            match_events.append(Event(time_slice,
+                                      freq_slice,
+                                      yaml_dict['shape'][i],
+                                      yaml_dict['sig'][i]))
 
         return(match_events)
 
@@ -438,5 +473,75 @@ class INS(UVFlag):
         immediately afterwards.
         """
 
+        mask_uvf = self._make_mask_copy()
         super(INS, self).select(**kwargs)
-        self.metric_ms = self.mean_subtract()
+        super(INS, mask_uvf).select(**kwargs)
+        self.metric_array.mask = np.copy(mask_uvf.flag_array)
+        if hasattr(self, 'metric_ms'):
+            self.metric_ms = self.mean_subtract()
+
+    def __add__(self, other, inplace=False, axis="time", run_check=True,
+                check_extra=True, run_check_acceptability=True):
+        """
+        Wrapper around UVFlag.__add__ that keeps track of the masks on the data.
+            Args:
+                other: Another INS object to add
+                inplace: Whether to do the addition inplace or return a new INS
+                axis: The axis over which to concatenate the objects
+                run_check: Option to check for the existence and proper shapes
+                    of parameters after combining two objects.
+                check_extra: Option to check optional parameters as well as required ones.
+                run_check_acceptability: Option to check acceptable range of the
+                    values of parameters after combining two objects.
+
+            Returns:
+                ins: if not inplace, a new INS object
+
+        """
+        if inplace:
+            this = self
+        else:
+            this = self.copy()
+
+        mask_uvf_this = this._make_mask_copy()
+        mask_uvf_other = other._make_mask_copy()
+
+        mask_uvf = super(INS, mask_uvf_this).__add__(mask_uvf_other,
+                                                     inplace=False,
+                                                     axis=axis,
+                                                     run_check=run_check,
+                                                     check_extra=check_extra,
+                                                     run_check_acceptability=run_check_acceptability)
+
+        if inplace:
+            super(INS, this).__add__(other, inplace=True, axis=axis,
+                                     run_check=run_check,
+                                     check_extra=check_extra,
+                                     run_check_acceptability=run_check_acceptability)
+        else:
+            this = super(INS, this).__add__(other, inplace=False, axis=axis,
+                                            run_check=run_check,
+                                            check_extra=check_extra,
+                                            run_check_acceptability=run_check_acceptability)
+
+        this.metric_array.mask = np.copy(mask_uvf.flag_array)
+        this.metric_ms = this.mean_subtract()
+        this.sig_array = np.ma.copy(this.metric_ms)
+
+        if not inplace:
+            return this
+
+    def _make_mask_copy(self):
+        """
+        Makes a new INS in flag mode that copies self whose flags are the mask of
+        self. Useful for holding the mask temporarily during concatenation etc.
+
+        Returns:
+            mask_uvf_copy: A copy of self in flag_mode that holds the mask in
+                its flag_array
+        """
+        mask_uvf_copy = self.copy()
+        mask_uvf_copy.to_flag()
+        mask_uvf_copy.flag_array = np.copy(self.metric_array.mask)
+
+        return(mask_uvf_copy)

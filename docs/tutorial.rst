@@ -371,17 +371,22 @@ Extra Flagging Bits
   >>> # This means events found at the very edge of one subbands may induce flags in the other, unless a guard band is thrown in
   >>> # An example 100 kHz guard band program might look like this
   >>> guard_width = 100e3
-  >>> broadcast_dict = {'TV4': [174e6, 182e6 - guard_width],
-  >>>                   'guard_4_5': [182e6 - guard_width, 182e6 + guard_width],
-  >>>                   'TV5': [182e6 + guard_width, 190e6 - guard_width]}
+  >>> broadcast_dict = {}
+  >>> broadcast_dict['TV4'] = [174e6, 182e6 - guard_width]
+  >>> broadcast_dict['guard_4_5'] = [182e6 - guard_width, 182e6 + guard_width]
+  >>> broadcast_dict['TV5'] = [182e6 + guard_width, 190e6 - guard_width]
   >>> mf = MF(ins.freq_array, 5, broadcast_dict=broadcast_dict)
 
 
 (d) Calculating occupancy
 *************************
 ::
-  >>> # The total occupancy can be calculated from the flag mask with a one-liner
-  >>> occ = np.mean(ins.metric_array.mask)
+  >>> # A dictionary that reports the occupancy of the shapes found by the flagger can be calculated
+  >>> # See util.calc_occ docs
+  >>> occ_dict = util.calc_occ(ins, mf, 0) # doctest: +SKIP
+  >>> # This can then be written to a yaml
+  >>> with open("SSINS/data/test_occ.yml", "w") as yaml_file: # doctest: +SKIP
+  ...    yaml.safe_dump(occ_dict, yaml_file) # doctest: +SKIP
 
 
 (e) Setting different significance thresholds per shape

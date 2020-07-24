@@ -1,4 +1,5 @@
-from SSINS import util
+from SSINS import util, INS, MF
+from SSINS.match_filter import Event
 from SSINS.data import DATA_PATH
 import os
 import numpy as np
@@ -20,36 +21,71 @@ def test_obslist():
     os.remove(outfile)
 
 
-def test_red_event_sort():
+def test_event_count():
 
-    # Make up a simple event list with five shapes, where shape_a is redundant
-    # with shape_b and shape_c with shape_d
-    match_events = [(0, 0, slice(10, 20), 'shape_a', 10), (0, 0, slice(9, 21), 'shape_b', 10),
-                    (1, 0, slice(9, 21), 'shape_b', 10), (2, 0, slice(10, 20), 'shape_a', 10),
-                    (0, 0, slice(30, 40), 'shape_c', 10), (2, 0, slice(20, 30), 'shape_e', 10),
-                    (0, 0, slice(29, 31), 'shape_d', 10)]
+    time_range = np.arange(10)
+    freq_range = np.arange(10)
+    event_list = [Event(slice(0, 1), slice(2, 3), "narrow_170.000MHz", 10),
+                  Event(slice(2, 3), slice(2, 3), "narrow_170.000MHz", 10)]
 
-    # The first and last event should be removed if we prioritize shape_b over shape_a and shape_c over shape_d
-    answer = [(0, 0, slice(9, 21), 'shape_b', 10), (1, 0, slice(9, 21), 'shape_b', 10),
-              (2, 0, slice(10, 20), 'shape_a', 10), (0, 0, slice(30, 40), 'shape_c', 10),
-              (2, 0, slice(20, 30), 'shape_e', 10)]
+    assert util.event_count(event_list, time_range) == 2
 
-    test_output = util.red_event_sort(match_events, [('shape_b', 'shape_a'), ('shape_c', 'shape_d')])
-    assert test_output == answer, "The events were not sorted properly"
+    event_list.append(Event(slice(0, 11), slice(2, 3), "narrow_170.000MHz", None))
+
+    assert util.event_count(event_list, time_range) == 10
 
 
-def test_match_fraction():
-    # Make up a simple event list belonging to some fictitious data with 5 times and 100 frequencies
-    events = [(1, slice(0, 10), 'shape_1', 10),
-              (2, slice(0, 10), 'shape_1', 10),
-              (3, slice(10, 20), 'shape_2', 10),
-              (4, slice(30, 30), 'narrow', 10)]
-    Ntimes = 5
-    Nfreqs = 100
-    # Make the event_fraction dictionary
-    event_frac = util.event_fraction(events, Ntimes, ['shape_1', 'shape_2'], Nfreqs)
+def test_calc_occ():
 
-    assert event_frac == {'shape_1': 2 / 5, 'shape_2': 1 / 5, 'narrow': 1 / (Ntimes * Nfreqs)}, "Event fraction not calculated correctly"
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+
+    ins = INS(testfile)
+
+    # Mock some flaggable data
+    ins.select(freq_chans=np.arange(32), times=ins.time_array[:22])
+
+    ins.metric_array[:] = 1
+    ins.weights_array[:] = 10
+    ins.weights_square_array[:] = 10
+    # Make some outliers
+    # Narrowband in 1th, 26th, and 31th frequency
+    ins.metric_array[1, 1, :] = 100
+    ins.metric_array[1, 30, :] = 100
+    ins.metric_array[3:14, 26, :] = 100
+    # Arbitrary shape in 2, 3, 4
+    ins.metric_array[3:14, 2:25, :] = 100
+    ins.metric_array[[0, -1], :, :] = np.ma.masked
+    ins.metric_array[:, [0, -1], :] = np.ma.masked
+    ins.metric_ms = ins.mean_subtract()
+
+    num_int_flag = 2
+    num_chan_flag = 2
+
+    num_init_flag = np.sum(ins.metric_array.mask)
+
+    ch_wid = ins.freq_array[1] - ins.freq_array[0]
+    shape_dict = {"shape": [ins.freq_array[2] + 0.1 * ch_wid, ins.freq_array[24] - 0.1 * ch_wid]}
+    mf = MF(ins.freq_array, 5, tb_aggro=0.5, shape_dict=shape_dict)
+    mf.apply_match_test(ins, time_broadcast=True)
+
+    occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
+                             lump_narrowband=False)
+    assert occ_dict["streak"] == 0
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6))] == 0.05
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[26] * 10**(-6))] == 1
+    assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6))] == 0.05
+    assert occ_dict["shape"] == 1
+
+    occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
+                             lump_narrowband=True)
+
+    # total narrow over total valid
+    assert occ_dict["narrow"] == 24 / 600
+    assert occ_dict["streak"] == 0
+    assert occ_dict["shape"] == 1
+    assert "narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
+    assert "narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6)) not in occ_dict.keys()
 
 
 def test_make_ticks():

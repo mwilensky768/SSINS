@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pytest
 from pyuvdata import UVData, UVFlag
+from datetime import datetime
 
 
 def test_init():
@@ -82,17 +83,18 @@ def test_polyfit():
     ins = INS(ss, order=1)
 
     # Mock some data for which the polyfit is exact
-    x = np.arange(1, 11)
-    ins.metric_array = np.ma.masked_array([[3 * x + 5 for i in range(3)]])
+    x = np.arange(1, ins.Ntimes + 1)
+    for ind in range(ins.Nfreqs):
+        ins.metric_array[:, ind, 0] = 3 * x + 5
     ins.metric_array.mask = np.zeros(ins.metric_array.shape, dtype=bool)
-    ins.metric_array = np.swapaxes(ins.metric_array, 0, 2)
     ins.weights_array = np.ones(ins.metric_array.shape)
+    ins.weights_square_array = np.copy(ins.weights_array)
     ins.metric_ms, coeffs = ins.mean_subtract(return_coeffs=True)
     test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
     test_coeffs[0, :] = 3
     test_coeffs[1, :] = 5
 
-    assert np.all(ins.metric_ms == np.zeros(ins.metric_ms.shape)), "The polyfit was not exact"
+    assert np.all(np.allclose(ins.metric_ms, np.zeros(ins.metric_ms.shape))), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
 
     ins.metric_array[:] = np.ma.masked
@@ -226,40 +228,38 @@ def test_write_mwaf():
     ins = INS(testfile)
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
+    metafits_file = os.path.join(DATA_PATH, '1061313128.metafits')
 
     # Compatible shape with mwaf file
     ins.metric_array = np.ma.ones([55, 384, 1])
-    ins.metric_array[50, 16 * 11: 16 * (11 + 1)] = np.ma.masked
+    ins.metric_array[50, 16 * 12: int(16 * (12 + 0.5))] = np.ma.masked
 
-    # metadata from the input file, hardcoded for testing purposes
-    time_div = 4
-    freq_div = 2
+    # metadata from the input file
     NCHANS = 32
-    boxint = 11
     Nbls = 8256
     NSCANS = 224
-    flags = ins.mask_to_flags()
-    # Repeat in time
-    time_rep_flags = np.repeat(flags, time_div, axis=0)
-    # Repeat in freq
-    freq_time_rep_flags = np.repeat(time_rep_flags, freq_div, axis=1)
-    # Repeat in bls
-    freq_time_bls_rep_flags = np.repeat(freq_time_rep_flags[:, np.newaxis, NCHANS * boxint: NCHANS * (boxint + 1)], Nbls, axis=1)
-    # This shape is on MWA wiki. Reshape to this shape.
-    new_flags = freq_time_bls_rep_flags.reshape((NSCANS * Nbls, NCHANS))
+
+    # hard code the answer
+    new_flags = np.zeros((NSCANS * Nbls, NCHANS), dtype=bool)
+    new_flags[Nbls * 200:Nbls * 208, :16] = 1
 
     # Test some defensive errors
     with pytest.raises(IOError):
-        ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files)
+        ins.write(prefix, output_type='mwaf', mwaf_files=bad_mwaf_files,
+                  metafits_file=metafits_file)
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files,
-                  mwaf_method='bad_method')
+                  mwaf_method='bad_method', metafits_file=metafits_file)
     with pytest.raises(ValueError):
-        ins.write(prefix, output_type='mwaf', mwaf_files=None)
+        ins.write(prefix, output_type='mwaf', mwaf_files=None,
+                  metafits_file=metafits_file)
+    with pytest.raises(ValueError):
+        ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files)
 
-    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files)
+    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
+              metafits_file=metafits_file)
     ins.write('%s_replace' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
-              mwaf_method='replace')
+              mwaf_method='replace', metafits_file=metafits_file)
 
     with fits.open(mwaf_files[0]) as old_mwaf_hdu:
         with fits.open('%s_add_12.mwaf' % prefix) as add_mwaf_hdu:
@@ -276,6 +276,7 @@ def test_select():
     obs = '1061313128_99bl_1pol_half_time_SSINS'
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     ins = INS(testfile)
+    ins.metric_array.mask[7, :12] = True
 
     Ntimes = len(ins.time_array)
     ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24))
@@ -284,14 +285,19 @@ def test_select():
     assert ins.metric_array.shape[1] == 24
     for param in ins._data_params:
         assert getattr(ins, param).shape == ins.metric_array.shape
+    # Check that the mask is propagated
+    assert np.all(ins.metric_array.mask[4, :12])
+    assert np.count_nonzero(ins.metric_array.mask) == 12
 
 
 def test_data_params():
     obs = '1061313128_99bl_1pol_half_time_SSINS'
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     ins = INS(testfile)
+    test_params = ['metric_array', 'weights_array', 'weights_square_array',
+                   'metric_ms', 'sig_array']
 
-    assert ins._data_params == ['metric_array', 'weights_array', 'metric_ms', 'sig_array']
+    assert ins._data_params == test_params
 
 
 def test_spectrum_type_file_init():
@@ -367,3 +373,41 @@ def test_mix_spectrum():
     ss.polarization_array[0] = 1
     with pytest.raises(ValueError, match="SS input has pseudo-Stokes data. SSINS does not"):
         ins = INS(ss, spectrum_type="auto")
+
+
+def test_use_integration_weights():
+
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=True)
+
+    ins = INS(ss, use_integration_weights=True)
+
+    # These will not be equal if weights are not binary to begin with
+    # The accuracy of return_weights_square is already checked in pyuvdata
+    assert not np.all(ins.weights_array == ins.weights_square_array)
+
+
+def test_add():
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+
+    truth_ins = INS(testfile)
+
+    first_ins = INS(testfile)
+    first_ins.select(freq_chans=np.arange(192))
+
+    second_ins = INS(testfile)
+    second_ins.select(freq_chans=np.arange(192, 384))
+
+    combo_ins = first_ins.__add__(second_ins, axis='frequency')
+    first_ins.__add__(second_ins, axis='frequency', inplace=True)
+
+    # Check consistency
+    assert np.all(combo_ins.metric_array.data == first_ins.metric_array.data)
+    assert np.all(combo_ins.metric_array.mask == first_ins.metric_array.mask)
+    assert np.all(combo_ins.metric_array.data == truth_ins.metric_array.data)
+    assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
