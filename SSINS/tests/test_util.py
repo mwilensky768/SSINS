@@ -3,7 +3,7 @@ from SSINS.match_filter import Event
 from SSINS.data import DATA_PATH
 import os
 import numpy as np
-import scipy.stats
+import yaml
 
 
 def test_obslist():
@@ -86,6 +86,12 @@ def test_calc_occ():
     assert occ_dict["shape"] == 1
     assert "narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
     assert "narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6)) not in occ_dict.keys()
+
+    yml_outpath = os.path.join(DATA_PATH, "test_occ_.yml")
+    with open(yml_outpath, "w") as occ_file:
+        yaml.safe_dump(occ_dict, occ_file)
+
+    os.remove(yml_outpath)
 
 
 def test_make_ticks():
