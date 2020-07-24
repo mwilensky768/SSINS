@@ -30,11 +30,18 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         xticks: The ticks for the horizontal axis
         yticks: The ticks for the vertical axis
         log: If True, set a logarithmic scale for the colormap
+        symlog: If True, set a symmetric logarithmic scale for the colormap
+        linthresh: region for symlog (if enabled) to act linearly to avoid divergence at zero
         xticklabels: The labels for the xticks
         yticklabels: The labels for the yticks
         mask_color: The color for masked data values, if any
         cbar_ticks: The tickmarks for the colorbar
         font_size: Font size is set globally with this parameter.
+
+    Note for arguments midpoint, log, symlog, linthresh:
+        * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
+        * If multiple of these arguments are passed, default is linear (midpoint) followed by log, symlog.
+        * Linthresh only applies when using symmetrical log (symlog) and will be ignored otherwise.
     """
 
     from matplotlib import colors, cm
@@ -64,7 +71,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
             result, is_scalar = self.process_value(value)
             x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
             return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
-
+    # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
@@ -85,7 +92,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     ax.set_title(title, fontsize=font_size)
     ax.set_xlabel(xlabel, fontsize=font_size)
     ax.set_ylabel(ylabel, fontsize=font_size)
-
+    #set ticks if they were passed in the arguments
     if xticks is not None:
         ax.set_xticks(xticks)
     if yticks is not None:
