@@ -82,6 +82,8 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
         occ_dict.pop("narrow")
 
     occ_dict['total'] = total_occ
+    for item in occ_dict:
+        occ_dict[item] = float(occ_dict[item])
 
     return(occ_dict)
 
