@@ -1,6 +1,6 @@
 """
-Some utility functions. Some are utilized within the main code and some are just
-nice to have around.
+Some utility functions. These are not used in the main code but are potentially
+useful for scripts.
 """
 import numpy as np
 import os
@@ -78,6 +78,7 @@ def event_fraction(match_events, Ntimes, shape_list, Nfreqs=None):
 
 
 def make_obslist(obsfile):
+    #due to the newline character, raw string is needed `r"""`
     r"""
     Makes a python list from a text file whose lines are separated by "\\n"
 
