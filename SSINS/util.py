@@ -139,7 +139,7 @@ def make_ticks_labels(freqs, freq_array, sig_fig=1):
     return(ticks, labels)
 
 
-def combine_ins(ins1, ins2, inplace=True):
+def combine_ins(ins1, ins2, inplace=False):
     """
     This utility function combines INS for the same obs that have been averaged
     over different baselines.
@@ -157,7 +157,7 @@ def combine_ins(ins1, ins2, inplace=True):
         raise ValueError("The spectra do not have the same frequencies.")
 
     if not np.array_equal(ins1.polarization_array, ins2.polarization_array):
-        raise ValueErrpr("The spectra do not have the same pols.")
+        raise ValueError("The spectra do not have the same pols.")
 
     if not ins1.spectrum_type == ins2.spectrum_type:
         raise ValueError(f"ins1 is of type {ins1.spectrum_type} while ins2 is of type {ins2.spectrum_type}")
