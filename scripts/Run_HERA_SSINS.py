@@ -23,24 +23,40 @@ parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
 parser.add_argument("-x", "--no_diff", action='store_false',
                     help="Flag to turn off differencing. Use if files are already time-differenced.")
+parser.add_argument("-N", "--num_baselines", type=int, default=0,
+                    help="The number of baselines to read in at a time")
 args = parser.parse_args()
 
 version_info_list = [f'{key}: {version.version_info[key]}, ' for key in version.version_info]
 version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 
-# Make the SS object
-ss = SS()
-ss.read(args.filename, ant_str='cross', diff=args.no_diff)
-
-# Make the INS object
-ins = INS(ss)
-
-# Clear some memory?? and make the uvflag object for storing flags later
-del ss
+# Make the uvflag object for storing flags later, and grab bls for partial I/O
 uvd = UVData()
 uvd.read(args.filename, read_data=False)
+bls = uvd.get_antpairs()
 uvf = UVFlag(uvd, waterfall=True, mode='flag')
 del uvd
+
+# Make the SS object
+ss = SS()
+if args.num_baselines > 0:
+    ss.read(args.filename, ant_str='cross', bls=bls[:args.num_baselines],
+            diff=args.no_diff)
+    ins = INS(ss)
+    Nbls = len(bls)
+    for slice_ind in range(args.num_baselines, Nbls, args.num_baselines):
+        ss = SS()
+        ss.read(args.filename, ant_str='cross',
+                bls=bls[slice_ind:slice_ind + args.num_baselines],
+                diff=args.no_diff)
+        new_ins = INS(ss)
+        ins = util.combine_ins(ins, new_ins)
+else:
+    ss.read(args.filename, ant_str='cross', diff=args.no_diff)
+    ins = INS(ss)
+
+# Clear some memory??
+del ss
 
 # Write the raw data and z-scores to h5 format
 ins.write(args.prefix, sep='.', clobber=args.clobber)
