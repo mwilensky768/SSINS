@@ -15,6 +15,7 @@ parser.add_argument('-d', '--outdir', help='The output directory')
 parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files')
 parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
 parser.add_argument('-f', '--rfi_flag', action='store_true', help="Whether or not to do rfi flagging with SSINS")
+parser.add_argument('-c', '--correct', action='store_true', help="Whether to correct digital gains and bandpass shape")
 args = parser.parse_args()
 
 if not os.path.exists(args.outdir):
@@ -30,8 +31,13 @@ if args.rfi_flag:
         ins = INS(args.insfile, mask_file=args.maskfile)
     else:
         ss = SS()
-        ss.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                flag_choice='original', diff=True)
+        if args.correct:
+            ss.read(args.uvd, phase_to_pointing_center=True,
+                    correct_cable_len=True, flag_choice='original', diff=True)
+        else:
+            ss.read(args.uvd, phase_to_pointing_center=True,
+                    correct_cable_len=True, flag_choice='original', diff=True,
+                    remove_dig_gains=False, remove_coarse_band=False)
 
         ins = INS(ss)
 
@@ -75,7 +81,11 @@ if args.rfi_flag:
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
     uvd = UVData()
-    uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True)
+    if args.correct:
+        uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True)
+    else:
+        uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
+                 remove_dig_gains=False, remove_coarse_band=False)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
