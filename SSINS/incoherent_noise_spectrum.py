@@ -92,7 +92,7 @@ class INS(UVFlag):
                 has_autos = np.any(auto_bool)
                 if has_autos:
                     warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
-                    self.select(blt_inds=np.where(cross_bool)[0])
+                    self.select(ant_str="cross")
 
             elif self.spectrum_type == "auto":
                 has_autos = np.any(auto_bool)
@@ -104,7 +104,7 @@ class INS(UVFlag):
                 if has_crosses:
                     warnings.warn("Requested spectrum type is 'auto'. Removing"
                                   " crosses before averaging.")
-                    self.select(blt_inds=np.where(auto_bool)[0])
+                    self.select(ant_str="auto")
 
             super().to_waterfall(method='mean', return_weights_square=True)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
