@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from SSINS import SS, INS, version, MF
+from SSINS import SS, INS, version, MF, util
 from SSINS.data import DATA_PATH
 from functools import reduce
 import numpy as np
@@ -40,14 +40,13 @@ del uvd
 # Make the SS object
 ss = SS()
 if args.num_baselines > 0:
-    ss.read(args.filename, ant_str='cross', bls=bls[:args.num_baselines],
+    ss.read(args.filename, bls=bls[:args.num_baselines],
             diff=args.no_diff)
     ins = INS(ss)
     Nbls = len(bls)
     for slice_ind in range(args.num_baselines, Nbls, args.num_baselines):
         ss = SS()
-        ss.read(args.filename, ant_str='cross',
-                bls=bls[slice_ind:slice_ind + args.num_baselines],
+        ss.read(args.filename, bls=bls[slice_ind:slice_ind + args.num_baselines],
                 diff=args.no_diff)
         new_ins = INS(ss)
         ins = util.combine_ins(ins, new_ins)
