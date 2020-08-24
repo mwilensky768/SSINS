@@ -5,6 +5,8 @@ useful for scripts.
 import numpy as np
 import os
 from SSINS.match_filter import Event
+import copy
+import warnings
 
 
 def event_count(event_list, time_range, freq_range=None):
@@ -89,7 +91,7 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
 
 
 def make_obslist(obsfile):
-    #due to the newline character, raw string is needed `r"""`
+    # due to the newline character, raw string is needed `r"""`
     r"""
     Makes a python list from a text file whose lines are separated by "\\n"
 
@@ -135,3 +137,48 @@ def make_ticks_labels(freqs, freq_array, sig_fig=1):
     labels = [('%.' + str(sig_fig) + 'f') % (10**-6 * freq) for freq in freqs]
 
     return(ticks, labels)
+
+
+def combine_ins(ins1, ins2, inplace=False):
+    """
+    This utility function combines INS for the same obs that have been averaged
+    over different baselines.
+
+    Args:
+        ins1: The first spectrum for the combination
+        ins2: The second spectrum for the combination
+        inplace: Whether to do the operation inplace on ins1 or not.
+    """
+
+    if not np.array_equal(ins1.time_array, ins2.time_array):
+        raise ValueError("The spectra do not have matching time arrays.")
+
+    if not np.array_equal(ins1.freq_array, ins2.freq_array):
+        raise ValueError("The spectra do not have the same frequencies.")
+
+    if not np.array_equal(ins1.polarization_array, ins2.polarization_array):
+        raise ValueError("The spectra do not have the same pols.")
+
+    if not ins1.spectrum_type == ins2.spectrum_type:
+        raise ValueError(f"ins1 is of type {ins1.spectrum_type} while ins2 is of type {ins2.spectrum_type}")
+
+    if (not np.array_equal(ins1.metric_ms, ins1.sig_array)) or (not np.array_equal(ins2.metric_ms, ins2.sig_array)):
+        warnings.warn("sig_array attribute will be reset after combinging INS")
+
+    if inplace:
+        this = ins1
+    else:
+        this = copy.deepcopy(ins1)
+
+    new_weights = this.weights_array + ins2.weights_array
+    new_weights_square = this.weights_square_array + ins2.weights_square_array
+    new_metric = (this.weights_array * this.metric_array + ins2.weights_array * ins2.metric_array) / new_weights
+
+    this.metric_array = new_metric
+    this.weights_array = new_weights
+    this.weights_square_array = new_weights_square
+
+    this.metric_ms = this.mean_subtract()
+    this.sig_array = np.ma.copy(this.metric_ms)
+
+    return(this)
