@@ -1,9 +1,10 @@
-from SSINS import util, INS, MF
+from SSINS import util, INS, MF, SS
 from SSINS.match_filter import Event
 from SSINS.data import DATA_PATH
 import os
 import numpy as np
 import yaml
+import pytest
 
 
 def test_obslist():
@@ -107,3 +108,110 @@ def test_make_ticks():
 
     assert np.all(ticks == test_ticks), "The ticks are not equal"
     assert np.all(labels == test_labels), "The labels are not equal"
+
+
+def test_combine_ins():
+    obs = "1061313128_99bl_1pol_half_time"
+    testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
+
+    ss = SS()
+    ss.read(testfile)
+
+    whole_ins = INS(ss)
+
+    all_bls = ss.get_antpairs()
+    first_50 = all_bls[:50]
+    remaining = all_bls[50:]
+
+    ss_first_50 = ss.select(bls=first_50, inplace=False)
+    ss_remaining = ss.select(bls=remaining, inplace=False)
+
+    ins_first_50 = INS(ss_first_50)
+    ins_remaining = INS(ss_remaining)
+
+    test_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+    # Metric arrays are off by 10^-14 (1 part in 10^16)
+    for attr in whole_ins._data_params:
+        assert np.all(np.isclose(getattr(whole_ins, attr), getattr(test_ins, attr))), f"{attr} is not equal between the two INS"
+
+    util.combine_ins(ins_first_50, ins_remaining, inplace=True)
+
+    # Check inplace
+    for attr in whole_ins._data_params:
+        assert np.all(np.isclose(getattr(whole_ins, attr), getattr(ins_first_50, attr))), f"{attr} is not equal between the two INS"
+
+
+def test_combine_ins_use_nsample():
+    obs = "1061313128_99bl_1pol_half_time"
+    testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
+
+    ss = SS()
+    ss.read(testfile, diff=True)
+
+    whole_ins = INS(ss, use_integration_weights=True)
+
+    all_bls = ss.get_antpairs()
+    first_50 = all_bls[:50]
+    remaining = all_bls[50:]
+
+    ss_first_50 = ss.select(bls=first_50, inplace=False)
+    ss_remaining = ss.select(bls=remaining, inplace=False)
+
+    ins_first_50 = INS(ss_first_50, use_integration_weights=True)
+    ins_remaining = INS(ss_remaining, use_integration_weights=True)
+
+    test_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+    # Metric arrays are off by 10^-14 (1 part in 10^16)
+    for attr in whole_ins._data_params:
+        assert np.all(np.isclose(getattr(whole_ins, attr), getattr(test_ins, attr))), f"{attr} is not equal between the two INS"
+
+
+def test_combine_ins_errors():
+    obs = "1061313128_99bl_1pol_half_time"
+    testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
+    autofile = os.path.join(DATA_PATH, "1061312640_autos.uvfits")
+    mixfile = os.path.join(DATA_PATH, "1061312640_mix.uvfits")
+
+    ss = SS()
+    ss.read(testfile, diff=True)
+
+    all_bls = ss.get_antpairs()
+    first_50 = all_bls[:50]
+    remaining = all_bls[50:]
+
+    ss_first_50 = ss.select(bls=first_50, inplace=False)
+    ss_remaining = ss.select(bls=remaining, inplace=False)
+
+    ins_first_50 = INS(ss_first_50, use_integration_weights=True)
+    ins_remaining = INS(ss_remaining, use_integration_weights=True)
+
+    ins_sig_arr = np.ma.copy(ins_first_50.sig_array)
+
+    ins_first_50.sig_array = ins_first_50.sig_array + 1
+    with pytest.warns(UserWarning, match="sig_array attribute"):
+        new_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+    ss_autos = SS()
+    ss_autos.read(autofile, diff=True)
+    ss_cross = SS()
+    ss_cross.read(mixfile, diff=True)
+
+    auto_ins = INS(ss_autos, spectrum_type="auto")
+    cross_ins = INS(ss_cross, spectrum_type="cross")
+
+    with pytest.raises(ValueError, match="ins1 is of type"):
+        new_ins = util.combine_ins(auto_ins, cross_ins)
+
+    ins_remaining.polarization_array = np.array([-6])
+    with pytest.raises(ValueError, match="The spectra do not have the same pols"):
+        new_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+    ins_remaining.freq_array = ins_remaining.freq_array + 1
+    with pytest.raises(ValueError, match="The spectra do not have the same frequencies"):
+        new_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+    ins_remaining.time_array = ins_remaining.time_array + 1
+    with pytest.raises(ValueError, match="The spectra do not have matching time"):
+        new_ins = util.combine_ins(ins_first_50, ins_remaining)
