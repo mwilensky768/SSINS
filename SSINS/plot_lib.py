@@ -9,7 +9,8 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xlabel='', ylabel='', midpoint=False, aspect='auto',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
-               cbar_ticks=None, font_size='medium', symlog=False, linthresh=1):
+               cbar_ticks=None, font_size='medium', symlog=False, linthresh=1,
+               extent=None):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -74,16 +75,19 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
-                        norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
+                        norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax),
+                        extent=extent)
     elif log:
         cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
-                        vmin=vmin, vmax=vmax, interpolation='none')
+                        vmin=vmin, vmax=vmax, interpolation='none',
+                        extent=extent)
     elif symlog:
         cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
-                        vmin=vmin, vmax=vmax, interpolation='none')
+                        vmin=vmin, vmax=vmax, interpolation='none',
+                        extent=extent)
     else:
         cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
-                        interpolation='none')
+                        interpolation='none', extent=extent)
 
     cmap.set_bad(color=mask_color)
     cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks)
@@ -92,15 +96,20 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     ax.set_title(title, fontsize=font_size)
     ax.set_xlabel(xlabel, fontsize=font_size)
     ax.set_ylabel(ylabel, fontsize=font_size)
-    #set ticks if they were passed in the arguments
-    if xticks is not None:
-        ax.set_xticks(xticks)
-    if yticks is not None:
-        ax.set_yticks(yticks)
-    if xticklabels is not None:
-        ax.set_xticklabels(xticklabels)
-    if yticklabels is not None:
-        ax.set_yticklabels(yticklabels)
+
+    if extent is None:
+        # set ticks if they were passed in the arguments
+        if xticks is not None:
+            ax.set_xticks(xticks)
+        if yticks is not None:
+            ax.set_yticks(yticks)
+        if xticklabels is not None:
+            ax.set_xticklabels(xticklabels)
+        if yticklabels is not None:
+            ax.set_yticklabels(yticklabels)
+    elif (xticks is not None) or (yticks is not None):
+        warnings.warn("Plotting keyword 'extent' has been set alongside xticks "
+                      "or yticks keyword. Using 'extent' settings.")
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
 
