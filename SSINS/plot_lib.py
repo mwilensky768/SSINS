@@ -40,6 +40,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         mask_color: The color for masked data values, if any
         cbar_ticks: The tickmarks for the colorbar
         font_size: Font size is set globally with this parameter.
+        extent: Passes to imshow to determine ticks. Time ticks will be reported in UTC.
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
