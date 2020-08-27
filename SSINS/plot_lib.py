@@ -3,13 +3,16 @@ A simple plotting library used by SSINS.Catalog_Plot. Direct interaction with
 these functions is unnecessary.
 """
 import numpy as np
+from astropy.time import Time
+import warnings
 
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xlabel='', ylabel='', midpoint=False, aspect='auto',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
-               cbar_ticks=None, font_size='medium', symlog=False, linthresh=1):
+               cbar_ticks=None, font_size='medium', symlog=False, linthresh=1,
+               extent=None):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -37,6 +40,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         mask_color: The color for masked data values, if any
         cbar_ticks: The tickmarks for the colorbar
         font_size: Font size is set globally with this parameter.
+        extent: Passes to imshow to determine ticks. Time ticks will be reported in UTC.
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
@@ -74,16 +78,19 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
-                        norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax))
+                        norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax),
+                        extent=extent)
     elif log:
         cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
-                        vmin=vmin, vmax=vmax, interpolation='none')
+                        vmin=vmin, vmax=vmax, interpolation='none',
+                        extent=extent)
     elif symlog:
         cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
-                        vmin=vmin, vmax=vmax, interpolation='none')
+                        vmin=vmin, vmax=vmax, interpolation='none',
+                        extent=extent)
     else:
         cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
-                        interpolation='none')
+                        interpolation='none', extent=extent)
 
     cmap.set_bad(color=mask_color)
     cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks)
@@ -92,7 +99,21 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     ax.set_title(title, fontsize=font_size)
     ax.set_xlabel(xlabel, fontsize=font_size)
     ax.set_ylabel(ylabel, fontsize=font_size)
-    #set ticks if they were passed in the arguments
+
+    if extent is None:
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
+    elif (xticks is not None) or (yticks is not None):
+        warnings.warn("Plotting keyword 'extent' has been set alongside xticks "
+                      "or yticks keyword. Using manual settings.")
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
+    else:
+        # This case is for when extent is set and manual settings have not been made
+        ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+    cbar.ax.tick_params(labelsize=font_size)
+    ax.tick_params(labelsize=font_size)
+
+
+def set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels):
     if xticks is not None:
         ax.set_xticks(xticks)
     if yticks is not None:
@@ -101,8 +122,6 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
         ax.set_yticklabels(yticklabels)
-    cbar.ax.tick_params(labelsize=font_size)
-    ax.tick_params(labelsize=font_size)
 
 
 def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
