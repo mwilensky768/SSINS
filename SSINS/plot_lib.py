@@ -3,6 +3,7 @@ A simple plotting library used by SSINS.Catalog_Plot. Direct interaction with
 these functions is unnecessary.
 """
 import numpy as np
+from astropy.time import Time
 
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
@@ -110,6 +111,9 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     elif (xticks is not None) or (yticks is not None):
         warnings.warn("Plotting keyword 'extent' has been set alongside xticks "
                       "or yticks keyword. Using 'extent' settings.")
+        ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+    else:
+        ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
 

@@ -6,7 +6,6 @@ import os
 import numpy as np
 from SSINS.plot_lib import image_plot, hist_plot
 import warnings
-from astropy.time import Time
 
 
 pol_dict_keys = np.arange(-8, 5)
@@ -52,6 +51,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     from matplotlib import cm, use
     use('Agg')
     import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
 
     outdir = prefix[:prefix.rfind('/')]
 
@@ -59,11 +59,9 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         os.makedirs(outdir)
 
     if use_extent:
-        final_time_UTC = [Time(ins.time_array[-1], format='jd').iso[:-4]]
-        initial_time_UTC = [Time(ins.time_array[0], format='jd').iso[:-4]]
         # Have to put times in reverse since vertical axis is inverted
         extent = [INS.freq_array[0] / 1e6, INS.freq_array[-1] / 1e6,
-                  final_time_UTC, initial_time_UTC]
+                  INS.time_array[-1], INS.time_array[0]]
         xlabel = "Frequency (MHz)"
         ylabel = "Time (UTC)"
     else:
