@@ -99,23 +99,27 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     ax.set_ylabel(ylabel, fontsize=font_size)
 
     if extent is None:
-        # set ticks if they were passed in the arguments
-        if xticks is not None:
-            ax.set_xticks(xticks)
-        if yticks is not None:
-            ax.set_yticks(yticks)
-        if xticklabels is not None:
-            ax.set_xticklabels(xticklabels)
-        if yticklabels is not None:
-            ax.set_yticklabels(yticklabels)
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
     elif (xticks is not None) or (yticks is not None):
         warnings.warn("Plotting keyword 'extent' has been set alongside xticks "
-                      "or yticks keyword. Using 'extent' settings.")
-        ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+                      "or yticks keyword. Using manual settings.")
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
     else:
+        # This case is for when extent is set and manual settings have not been made
         ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
+
+
+def set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels):
+    if xticks is not None:
+        ax.set_xticks(xticks)
+    if yticks is not None:
+        ax.set_yticks(yticks)
+    if xticklabels is not None:
+        ax.set_xticklabels(xticklabels)
+    if yticklabels is not None:
+        ax.set_yticklabels(yticklabels)
 
 
 def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
