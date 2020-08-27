@@ -4,6 +4,7 @@ these functions is unnecessary.
 """
 import numpy as np
 from astropy.time import Time
+import warnings
 
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
