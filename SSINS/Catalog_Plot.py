@@ -21,7 +21,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              xlabel='', ylabel='', log=False, sig_event_plot=True,
              sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
              sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
-             sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98):
+             sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98,
+             use_extent=True):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -42,22 +43,38 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         title (str): The title to use for the plot.
         title_x (float): x-coordinate of title center (in figure coordinates)
         title_y (float): y-coordinate of title center (in figure coordinates)
+        use_extent (bool): Whether to use the INS metadata to make ticks on plots.
+            Easier than manual adjustment and sufficient for most cases.
+            Will put time in UTC and frequency in MHz.
     """
 
     from matplotlib import cm, use
     use('Agg')
     import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
 
     outdir = prefix[:prefix.rfind('/')]
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
+    if use_extent:
+        # Have to put times in reverse since vertical axis is inverted
+        extent = [INS.freq_array[0] / 1e6, INS.freq_array[-1] / 1e6,
+                  INS.time_array[-1], INS.time_array[0]]
+        xlabel = "Frequency (MHz)"
+        ylabel = "Time (UTC)"
+    else:
+        extent = None
+
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
                  'xticklabels': xticklabels,
                  'yticklabels': yticklabels,
-                 'aspect': aspect}
+                 'extent': extent,
+                 'aspect': aspect,
+                 'xlabel': xlabel,
+                 'ylabel': ylabel}
 
     data_kwargs = [{'cbar_label': cbar_label,
                     'mask_color': 'white',
@@ -88,12 +105,12 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'midpoint': False,
                          'log': False,
                          'symlog': False},
-                         {'cbar_label': 'Significance ($\hat{\sigma}$)',
-                          'vmin': sample_sig_vmin,
-                          'vmax': sample_sig_vmax,
-                          'midpoint': True,
-                          'cmap': cm.coolwarm,
-                          'mask_color': 'black'}]
+                        {'cbar_label': 'Significance ($\hat{\sigma}$)',
+                         'vmin': sample_sig_vmin,
+                         'vmax': sample_sig_vmax,
+                         'midpoint': True,
+                         'cmap': cm.coolwarm,
+                         'mask_color': 'black'}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
                            ncols=2, squeeze=False, figsize=(16, 9))
@@ -106,7 +123,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
             image_plot(fig, ax[pol_ind, data_ind],
                        getattr(INS, 'metric_%s' % data)[:, :, pol_ind],
                        title=pol_dict[INS.polarization_array[pol_ind]],
-                       xlabel=xlabel, ylabel=ylabel, **im_kwargs)
+                       **im_kwargs)
     plt.tight_layout(h_pad=1, w_pad=1)
     fig.savefig('%s_SSINS.%s' % (prefix, file_ext))
     plt.close(fig)
@@ -131,7 +148,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                 for pol_ind in range(INS.metric_array.shape[2]):
                     image_plot(fig, ax[pol_ind, data_ind], data[:, :, pol_ind],
                                title=pol_dict[INS.polarization_array[pol_ind]],
-                               xlabel=xlabel, ylabel=ylabel, **im_kwargs)
+                               **im_kwargs)
             plt.tight_layout(h_pad=1, w_pad=1)
             fig.savefig('%s_SSINS_sig.%s' % (prefix, file_ext))
             plt.close(fig)
