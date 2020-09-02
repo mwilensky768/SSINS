@@ -22,7 +22,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
              sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
              sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98,
-             use_extent=True):
+             use_extent=True, backend=None):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -46,10 +46,12 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         use_extent (bool): Whether to use the INS metadata to make ticks on plots.
             Easier than manual adjustment and sufficient for most cases.
             Will put time in UTC and frequency in MHz.
+        backend (str): Which matplotlib backend to use.
     """
 
     from matplotlib import cm, use
-    use('Agg')
+    if backend is not None:
+        use(backend)
     import matplotlib.pyplot as plt
     import matplotlib.dates as mdates
 
@@ -159,7 +161,8 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
              post_flag=True, pre_model=True, post_model=True, error_sig=0,
              alpha=0.5, pre_label='', post_label='', pre_model_label='',
              post_model_label='', pre_color='orange', post_color='blue',
-             pre_model_color='purple', post_model_color='green', font_size='medium'):
+             pre_model_color='purple', post_model_color='green',
+             font_size='medium', backend=None):
 
     """Plots a histogram of the amplitudes of the visibility differences that
     result from sky subtraction.
@@ -190,9 +193,11 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         pre_model_color (str): The color of the pre-flag model
         post_model_color (str): The color of the post-flag model
         font_size (str): The font size for all labels
+        backend (str): Which matplotlib backend to use.
     """
     from matplotlib import use
-    use('Agg')
+    if backend is not None:
+        use(backend)
     import matplotlib.pyplot as plt
 
     outdir = prefix[:prefix.rfind('/')]
