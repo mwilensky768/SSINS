@@ -28,7 +28,7 @@ def test_INS_plot():
     yticks = np.arange(0, 50, 10)
     yticklabels = ['%i' % (2 * tick) for tick in yticks]
 
-    cp.INS_plot(ins, prefix)
+    cp.INS_plot(ins, prefix, backend='Agg')
     cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
                 xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
     cp.INS_plot(ins, symlog_prefix, symlog=True, xticks=xticks, yticks=yticks,
@@ -97,7 +97,7 @@ def test_VDH_plot():
     ss = SS()
     ss.read(testfile, flag_choice='original', diff=True)
 
-    cp.VDH_plot(ss, prefix)
+    cp.VDH_plot(ss, prefix, backend='Agg')
     # Test with density prefix and error bars
     cp.VDH_plot(ss, dens_prefix, density=True, error_sig=1, ylim=[1e-5, 1e5], pre_model_label='model label')
 
