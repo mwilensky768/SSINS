@@ -16,6 +16,8 @@ parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files
 parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
 parser.add_argument('-f', '--rfi_flag', action='store_true', help="Whether or not to do rfi flagging with SSINS")
 parser.add_argument('-c', '--correct', action='store_true', help="Whether to correct digital gains and bandpass shape")
+parser.add_argument('-t', '--time_avg', default=0, type=int, help="Number of times to average together after flagging.")
+parser.add_argument('-a', '--freq_avg', default=0, type=int, help="Number of frequency channels to average together after flagging.")
 args = parser.parse_args()
 
 if not os.path.exists(args.outdir):
@@ -89,7 +91,10 @@ if args.rfi_flag:
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
-    uvd.frequency_average(2)
+    if args.time_avg > 0:
+        uvd.downsample_in_time(n_times_to_avg=args.time_avg)
+    if args.freq_avg > 0:
+        uvd.frequency_average(args.freq_avg)
 
 if np.any(uvd.nsample_array == 0):
     uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
