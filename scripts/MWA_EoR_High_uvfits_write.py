@@ -13,7 +13,7 @@ parser.add_argument('-i', '--insfile', help='The path to the input file')
 parser.add_argument('-m', '--maskfile', help='The path to the masks')
 parser.add_argument('-d', '--outdir', help='The output directory')
 parser.add_argument('-u', '--uvd', nargs='*', help='The path to the uvdata files')
-parser.add_argument('-n', '--nsample_default', default=1, type=float, help='The default nsample to use.')
+parser.add_argument('-n', '--nsample_default', default=0, type=float, help='The default nsample to use when some nsample are 0.')
 parser.add_argument('-f', '--rfi_flag', action='store_true', help="Whether or not to do rfi flagging with SSINS")
 parser.add_argument('-c', '--correct', action='store_true', help="Whether to correct digital gains and bandpass shape")
 parser.add_argument('-t', '--time_avg', default=0, type=int, help="Number of times to average together after flagging.")
@@ -96,7 +96,7 @@ if args.rfi_flag:
     if args.freq_avg > 0:
         uvd.frequency_average(args.freq_avg)
 
-if np.any(uvd.nsample_array == 0):
+if np.any(uvd.nsample_array == 0) and (args.nsample_default > 0):
     uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
 
 uvd.write_uvfits(f'{args.outdir}/{args.obsid}.uvfits', spoof_nonessential=True)
