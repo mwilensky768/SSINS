@@ -2,7 +2,7 @@ sudo: required
 os:
   - osx
   - linux
-dist: trusty
+dist: focal
 env:
   global:
     - COVERALLS_PARALLEL=true
