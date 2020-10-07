@@ -46,18 +46,9 @@ if args.rfi_flag:
         prefix = f'{args.outdir}/{args.obsid}'
         ins.write(prefix)
 
-        freqs = np.arange(1.7e8, 2e8, 5e6)
-        xticks, xticklabels = util.make_ticks_labels(freqs, ins.freq_array,
-                                                     sig_fig=0)
-        yticks = [0, 20, 40]
-        yticklabels = []
-        for tick in yticks:
-            yticklabels.append(Time(ins.time_array[tick], format='jd').iso[:-4])
-        Catalog_Plot.INS_plot(ins, prefix, xticks=xticks, yticks=yticks,
-                              xticklabels=xticklabels, yticklabels=yticklabels,
-                              data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
-                              title=args.obsid, xlabel='Frequency (Mhz)',
-                              ylabel='Time (UTC)')
+        Catalog_Plot.INS_plot(ins, prefix, data_cmap=cm.plasma, ms_vmin=-5,
+                              ms_vmax=5, title=args.obsid,
+                              xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
         # Try to save memory - hope for garbage collector
         del ss
@@ -76,9 +67,7 @@ if args.rfi_flag:
                             freq_broadcast=True)
         ins.write(prefix, output_type='mask')
 
-        Catalog_Plot.INS_plot(ins, f'{prefix}_flagged', xticks=xticks,
-                              yticks=yticks, xticklabels=xticklabels,
-                              yticklabels=yticklabels, data_cmap=cm.plasma,
+        Catalog_Plot.INS_plot(ins, f'{prefix}_flagged', data_cmap=cm.plasma,
                               ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
