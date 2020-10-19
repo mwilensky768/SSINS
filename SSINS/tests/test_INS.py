@@ -14,7 +14,7 @@ def test_init():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read_data(testfile, flag_choice='original', diff=True)
     # Needs to be in time order for averaging comparison to work
     ss.reorder_blts(order='time')
 
@@ -41,7 +41,7 @@ def test_no_diff_start():
 
     # Don't diff - will fail to mask data array
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=False)
+    ss.read_data(testfile, flag_choice='original', diff=False)
 
     ins = INS(ss)
 
@@ -55,7 +55,7 @@ def test_mean_subtract():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     ins = INS(ss, order=0)
 
@@ -78,7 +78,7 @@ def test_polyfit():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     ins = INS(ss, order=1)
 
@@ -110,7 +110,7 @@ def test_mask_to_flags():
     flags_outfile = '%s_SSINS_flags.h5' % prefix
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     uvd = UVData()
     uvd.read(testfile)
@@ -187,7 +187,7 @@ def test_write():
     sep_data_outfile = '%s.SSINS.data.h5' % prefix
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read_data(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
     # Mock some events
@@ -329,7 +329,7 @@ def test_spectrum_type_bl_init():
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     ins = INS(ss)
     assert "Initialized spectrum_type:cross from visibility data." in ins.history
@@ -350,7 +350,7 @@ def test_no_cross_auto_spectrum():
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     with pytest.raises(ValueError, match="Requested spectrum type is 'cross', but no cross"):
         ins = INS(ss)
@@ -361,7 +361,7 @@ def test_mix_spectrum():
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     with pytest.warns(UserWarning, match="Requested spectrum type is 'cross'. Removing autos before averaging."):
         ins = INS(ss)
@@ -382,7 +382,7 @@ def test_use_integration_weights():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read_data(testfile, flag_choice='original', diff=True)
 
     ins = INS(ss, use_integration_weights=True)
 

@@ -17,11 +17,11 @@ def test_SS_read():
     ss = SS()
 
     # Test reading in only metadata skips if block
-    ss.read(testfile, read_data=False)
+    ss.read_data(testfile, read_data=False)
     assert ss.data_array is None, "Data array is not None"
 
     # Test select on read and diff
-    ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
+    ss.read_data(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
     assert ss.Ntimes == 8, "Number of times after diff disagrees!"
     assert ss.Nbls == 99, "Number of baselines is incorrect"
 
@@ -51,7 +51,7 @@ def test_diff():
     diff_uvw = 0.5 * (uv.uvw_array[::2] + uv.uvw_array[1::2])
 
     with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
-        ss.read(testfile, diff=True, times=times, bls=bls)
+        ss.read_data(testfile, diff=True, times=times, bls=bls)
     ss.reorder_blts(order='baseline')
 
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
@@ -72,7 +72,7 @@ def test_apply_flags():
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
     ss = SS()
 
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     # Make sure no flags are applied to start with
     assert not np.any(ss.data_array.mask), "There are some flags to start with."
@@ -124,7 +124,7 @@ def test_mixture_prob():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
     ss.apply_flags('original')
 
     # Generate the mixture probabilities
@@ -135,7 +135,7 @@ def test_mixture_prob():
 
     # Do a new read, but don't diff. Run and check mask.
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read_data(testfile, diff=False)
 
     mixture_prob = ss.mixture_prob(bins='auto')
 
@@ -149,7 +149,7 @@ def test_rev_ind():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     # Make a band that will pick out only the largest value in the data
     dat_sort = np.sort(np.abs(ss.data_array), axis=None)
@@ -173,7 +173,7 @@ def test_rev_ind():
 
     # Do a new read, but don't diff. Run and check mask.
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read_data(testfile, diff=False)
 
     rev_ind_hist = ss.rev_ind(band)
 
@@ -188,7 +188,7 @@ def test_write():
     outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     blt_inds = np.where(ss.time_array == np.unique(ss.time_array)[10])
     custom = np.zeros_like(ss.data_array.mask)
@@ -247,7 +247,7 @@ def test_read_multifiles():
     ss_multi = SS()
     # test warning raise
     with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
-                                          " check SS.read call and ensure the appropriate"
+                                          " check ss.read_data call and ensure the appropriate"
                                           " keyword arguments for your intended use case.")):
         ss_orig.read(testfile, diff=False)
         ss_orig.diff()
@@ -267,7 +267,7 @@ def test_newmask():
     file_type = 'uvfits'
 
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read_data(testfile, diff=False)
 
     assert not isinstance(ss.data_array, np.ma.MaskedArray)
 

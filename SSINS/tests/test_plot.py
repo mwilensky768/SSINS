@@ -95,7 +95,7 @@ def test_VDH_plot():
     dens_outfile = '%s_VDH.pdf' % dens_prefix
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read_data(testfile, flag_choice='original', diff=True)
 
     cp.VDH_plot(ss, prefix, backend='Agg')
     # Test with density prefix and error bars
@@ -120,7 +120,7 @@ def test_VDH_no_model():
     outfile = '%s_VDH.pdf' % prefix
 
     ss = SS()
-    ss.read(testfile, flag_choice=None, diff=True)
+    ss.read_data(testfile, flag_choice=None, diff=True)
 
     with pytest.warns(UserWarning, match="Asking to plot post-flagging data, but SS.flag_choice is None. This is identical to plotting pre-flagging data"):
         cp.VDH_plot(ss, prefix, pre_model=False, post_model=False)

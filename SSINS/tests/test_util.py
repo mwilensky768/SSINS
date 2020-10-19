@@ -115,7 +115,7 @@ def test_combine_ins():
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
 
     ss = SS()
-    ss.read(testfile)
+    ss.read_data(testfile)
 
     whole_ins = INS(ss)
 
@@ -147,7 +147,7 @@ def test_combine_ins_use_nsample():
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     whole_ins = INS(ss, use_integration_weights=True)
 
@@ -175,7 +175,7 @@ def test_combine_ins_errors():
     mixfile = os.path.join(DATA_PATH, "1061312640_mix.uvfits")
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read_data(testfile, diff=True)
 
     all_bls = ss.get_antpairs()
     first_50 = all_bls[:50]
