@@ -26,9 +26,8 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
+    def read_data(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
              **kwargs):
-
         """
         Reads in a file that is compatible with UVData object by first calling
         UVData.read(). See UVData documentation for list of kwargs that can be
@@ -42,21 +41,13 @@ class SS(UVData):
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
         """
-        warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
-                      " conflicts with UVData.read.", category=PendingDeprecationWarning)
-
-        super().read(filename, **kwargs)
+        self.read(filename, **kwargs)
 
         if (self.data_array is not None):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
             else:
-                # This warning will be issued when diff is False and there is some data read in
-                # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
-                warnings.warn("diff on read defaults to False now. Please double"
-                              " check SS.read call and ensure the appropriate"
-                              " keyword arguments for your intended use case.")
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
