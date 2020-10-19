@@ -26,7 +26,7 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read_data(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
+    def read_data(self, filename, diff=True, flag_choice=None, INS=None, custom=None,
              **kwargs):
         """
         Reads in a file that is compatible with UVData object by first calling
