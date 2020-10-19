@@ -249,9 +249,9 @@ def test_read_multifiles():
     with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
                                           " check ss.read_data call and ensure the appropriate"
                                           " keyword arguments for your intended use case.")):
-        ss_orig.read(testfile, diff=False)
+        ss_orig.read_data(testfile, diff=False)
         ss_orig.diff()
-        ss_multi.read(flist, diff=True)
+        ss_multi.read_data(flist, diff=True)
 
     assert np.all(np.isclose(ss_orig.data_array, ss_multi.data_array)), "Diffs were different!"
     assert ss_multi.Ntimes == (uvd_full.Ntimes - 1), "Too many diffs were done"

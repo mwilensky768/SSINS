@@ -194,9 +194,9 @@ def test_combine_ins_errors():
         new_ins = util.combine_ins(ins_first_50, ins_remaining)
 
     ss_autos = SS()
-    ss_autos.read(autofile, diff=True)
+    ss_autos.read_data(autofile, diff=True)
     ss_cross = SS()
-    ss_cross.read(mixfile, diff=True)
+    ss_cross.read_data(mixfile, diff=True)
 
     auto_ins = INS(ss_autos, spectrum_type="auto")
     cross_ins = INS(ss_cross, spectrum_type="cross")
