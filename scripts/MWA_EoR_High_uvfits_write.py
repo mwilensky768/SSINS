@@ -32,10 +32,10 @@ if args.rfi_flag:
     else:
         ss = SS()
         if args.correct:
-            ss.read(args.uvd, phase_to_pointing_center=True,
+            ss.read_data(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True)
         else:
-            ss.read(args.uvd, phase_to_pointing_center=True,
+            ss.read_data(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
                     remove_dig_gains=False, remove_coarse_band=False)
 
