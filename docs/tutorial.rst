@@ -28,7 +28,7 @@ Generating the sky-subtracted visibilities
   >>> # Read data by specifying a filepath as an argument to the read method
   >>> filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
   >>> # By default, the visibilities are NOT differenced in time on read (see paper). This is for compatibility with multi-file reading.
-  >>> ss.read(filepath, diff=True)
+  >>> ss.read_data(filepath, diff=True)
 
 (b) Passing keyword arguments to SS.read
 ****************************************
@@ -38,12 +38,12 @@ Generating the sky-subtracted visibilities
   >>> # SS.read is actually a small wrapper around UVData.read; they share keywords
   >>> # In particular, select on read and reading only metadata function as usual (see UVData.select documentation)
   >>> ss = SS()
-  >>> ss.read(filepath, read_data=False)
+  >>> ss.read_data(filepath, read_data=False)
 
   >>> # The following lines make use of the time_array attribute (metadata) to
   >>> # read in all but the first and last integrations
   >>> times = np.unique(ss.time_array)[1:-1]
-  >>> ss.read(filepath, read_data=True, times=times, diff=True)
+  >>> ss.read_data(filepath, read_data=True, times=times, diff=True)
 
 (c) Applying flags
 ******************
@@ -121,7 +121,7 @@ Making and writing an incoherent noise spectrum
 
     >>> # Read data by specifying a filepath as an argument to the read method
     >>> auto_filepath = 'SSINS/data/1061312640_autos.uvfits'
-    >>> auto_ss.read(auto_filepath, diff=True)
+    >>> auto_ss.read_data(auto_filepath, diff=True)
     >>> auto_ins = INS(auto_ss, spectrum_type="auto")
 
 (c) Plotting using Catalog_Plot
@@ -262,7 +262,7 @@ Flagging an INS using a match_filter (MF)
 
   >>> # We can write these out to an h5 file as well, but we need to make a UVFlag object from the original data
   >>> uvd = UVData()
-  >>> uvd.read(filepath, times=times)
+  >>> uvd.read_data(filepath, times=times)
   >>> uvf = UVFlag(uvd, waterfall=True, mode='flag')
   >>> ins.write(prefix, output_type='flags', clobber=True, uvf=uvf)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
@@ -406,5 +406,5 @@ Extra Flagging Bits
 ***************************************************************
 ::
   >>> ss = SS()
-  >>> ss.read(filepath, times=times, flag_choice='original', diff=True)
+  >>> ss.read_data(filepath, times=times, flag_choice='original', diff=True)
   >>> ss.write('SSINS/data/tutorial_test_writeout_2.uvfits', 'uvfits', UV=uvd)
