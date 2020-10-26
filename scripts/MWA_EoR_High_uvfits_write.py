@@ -35,20 +35,21 @@ if args.rfi_flag:
         ss = SS()
         if args.correct:
             ss.read(args.uvd, phase_to_pointing_center=True,
-                    correct_cable_len=True, flag_choice='original', diff=True)
+                    correct_cable_len=True, flag_choice='original', diff=True,
+                    start_flag=2.0, end_flag=0.0, flag_dc_offset=True, edge_width=80e3)
         else:
             ss.read(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
-                    remove_dig_gains=False, remove_coarse_band=False)
+                    remove_dig_gains=False, remove_coarse_band=False,
+                    start_flag=2.0, end_flag=0.0, flag_dc_offset=True, edge_width=80e3)
 
-        ins = INS(ss)
-
+        ins = INS(ss, order=1)
         prefix = f'{args.outdir}/{args.obsid}'
         ins.write(prefix)
 
-        Catalog_Plot.INS_plot(ins, prefix, data_cmap=cm.plasma, ms_vmin=-5,
-                              ms_vmax=5, title=args.obsid,
-                              xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
+        Catalog_Plot.INS_plot(ins, prefix, data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
+                              title=args.obsid, xlabel='Frequency (Mhz)',
+                              ylabel='Time (UTC)')
 
         # Try to save memory - hope for garbage collector
         del ss
@@ -73,10 +74,13 @@ if args.rfi_flag:
 
     uvd = UVData()
     if args.correct:
-        uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True)
+        uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
+                 remove_dig_gains=True, remove_coarse_band=True, start_flag=2.0, end_flag=0.0,
+                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=True, cheby_approx=True)
     else:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=False, remove_coarse_band=False)
+                 remove_dig_gains=False, remove_coarse_band=False, start_flag=2.0, end_flag=0.0,
+                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=True, cheby_approx=True)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
