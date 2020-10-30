@@ -2,13 +2,14 @@ sudo: required
 os:
   - osx
   - linux
-dist: trusty
+dist: focal
 env:
   global:
     - COVERALLS_PARALLEL=true
   matrix:
     - PYTHON_VERSION=3.6
     - PYTHON_VERSION=3.7
+    - PYTHON_VERSION=3.8
 
 install:
   # We do this conditionally because it saves us some downloading if the
