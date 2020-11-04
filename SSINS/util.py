@@ -200,10 +200,14 @@ def write_meta(prefix, ins, uvf=None, mf=None, sep="_", clobber=False,
         data_compression: The type of data compression to use for hdf5 outputs.
     """
 
-    ins.write(prefix, sep=sep)
-    ins.write(prefix, output_type="mask", sep=sep)
-    ins.write(prefix, output_type="match_events", sep=sep)
+    ins.write(prefix, sep=sep, clobber=clobber,
+              data_compression=data_compression)
+    ins.write(prefix, output_type="mask", sep=sep, clobber=clobber,
+              data_compression=data_compression)
+    ins.write(prefix, output_type="match_events", sep=sep, clobber=clobber,
+              data_compression=data_compression)
     if uvf is not None:
-        ins.write(prefix, output_type="flags", uvf=uvf, sep=sep)
-    if match_filter is not None:
-        mf.write(prefix, sep=sep)
+        ins.write(prefix, output_type="flags", uvf=uvf, sep=sep, clobber=clobber,
+                  data_compression=data_compression)
+    if mf is not None:
+        mf.write(prefix, sep=sep, clobber=clobber)
