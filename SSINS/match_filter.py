@@ -303,6 +303,21 @@ class MF():
 
         outpath = f"{prefix}{sep}matchfilter.yaml"
 
+        yaml_dict = self._make_yaml_dict()
+
+        file_exists = os.path.exists(outpath)
+
+        if file_exists and not clobber:
+            raise ValueError(f"matchfilter file with prefix {prefix} already exists and clobber is False.")
+        else:
+            with open(outpath, 'w') as outfile:
+                yaml.safe_dump(yaml_dict, outfile)
+
+    def _make_yaml_dict(self):
+        """
+        Helper function for MF.write that sets up the dictionary for the yaml output.
+        """
+
         broadcast_dict = deepcopy(self.broadcast_dict)
         # Include additional shape if in the slc_dict which may be missing from the broadcast_dict
         if "streak" in self.broadcast_slc_dict:
@@ -313,7 +328,7 @@ class MF():
             shape_dict.update({"streak": [self.freq_array[0], self.freq_array[-1]]})
         if "narrow" in self.slice_dict:
             # Placeholder values. "narrow" really refers to Nfreqs different shapes.
-            shape_dict.update({"narrow": [self.freq_array[0], self.freq_array[-1]]})
+            shape_dict.update({"narrow (vals are placeholders)": [self.freq_array[0], self.freq_array[-1]]})
 
         version_info_list = [f'%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
@@ -325,10 +340,4 @@ class MF():
                      "freq_broadcast": {shape: [float(broadcast_dict[shape][0]), float(broadcast_dict[shape][1])] for shape in broadcast_dict},
                      "version_info": version_hist_substr}
 
-        file_exists = os.path.exists(outpath)
-
-        if file_exists and not clobber:
-            raise(ValueError, f"matchfilter file with prefix {prefix} already exists and clobber is False.")
-        else:
-            with open(outpath, 'w') as outfile:
-                yaml.safe_dump(yaml_dict, outfile)
+        return(yaml_dict)
