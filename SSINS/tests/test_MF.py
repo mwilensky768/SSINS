@@ -348,3 +348,22 @@ def test_apply_samp_thresh_dep_error_match_test():
     mf = MF(ins.freq_array, 5, tb_aggro=0.2)
     with pytest.raises(ValueError, match="apply_samp_thresh has been deprecated"):
         mf.apply_match_test(ins, apply_samp_thresh=True)
+
+
+def test_MF_write():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    outfile = f"{prefix}_matchfilter.yaml"
+
+    ins = INS(insfile)
+    sig_thresh = 5
+    broadcast_dict = {"TV7": [174e6, 181e6]}
+
+    mf = MF(ins.freq_array, sig_thresh, broadcast_dict=broadcast_dict)
+
+    mf.write(prefix)
+
+    assert os.path.exists(outfile), "Outfile was not written or has the wrong name."
+
+    os.remove(outfile)

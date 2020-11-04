@@ -8,6 +8,7 @@ from collections import namedtuple
 import yaml
 from copy import deepcopy
 from SSINS import version
+from functools import reduce
 
 Event = namedtuple("Event", ["time_slice", "freq_slice", "shape", "sig"])
 
@@ -309,16 +310,18 @@ class MF():
         if "streak" in self.slice_dict:
             shape_dict.update({"streak": [self.freq_array[0], self.freq_array[-1]]})
         if "narrow" in self.slice_dict:
-            shape_dict.update({"narrow": [None, None]})
+            # Placeholder values. "narrow" really refers to Nfreqs different shapes.
+            shape_dict.update({"narrow": [self.freq_array[0], self.freq_array[-1]]})
 
-        version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
+        version_info_list = [f'%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
         version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 
-        yaml_dict = {"freqs": self.freq_array,
-                     "shape_dict": shape_dict,
+        yaml_dict = {"freqs": [float(freq) for freq in self.freq_array],
+                     "shape_dict": {shape: [float(shape_dict[shape][0]), float(shape_dict[shape][1])] for shape in shape_dict},
                      "sig_thresh": self.sig_thresh,
                      "tb_aggro": self.tb_aggro,
-                     "freq_broadcast": broadcast_dict,
+                     "freq_broadcast": {shape: [float(broadcast_dict[shape][0]), float(broadcast_dict[shape][1])] for shape in broadcast_dict},
                      "version_info": version_hist_substr}
 
-        yaml.safe_dump(yaml_dict, outfile)
+        with open(outpath, 'w') as outfile:
+            yaml.safe_dump(yaml_dict, outfile)
