@@ -301,7 +301,7 @@ class MF():
             clobber: Whether to overwrite an identically named file. True overwrites.
         """
 
-        outpath = f"{prefix}{sep}matchfilter.yaml"
+        outpath = f"{prefix}{sep}matchfilter.yml"
 
         yaml_dict = self._make_yaml_dict()
 
