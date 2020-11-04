@@ -355,7 +355,7 @@ def test_MF_write():
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
     prefix = os.path.join(DATA_PATH, f'{obs}')
-    outfile = f"{prefix}_test_matchfilter.yml"
+    outfile = f"{prefix}_test_SSINS_matchfilter.yml"
 
     ins = INS(insfile)
     sig_thresh = 5
@@ -369,7 +369,7 @@ def test_MF_write():
 
     assert os.path.exists(outfile), "Outfile was not written or has the wrong name."
 
-    with open(f"{prefix}_control_matchfilter.yml", 'r') as control_file:
+    with open(f"{prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
         control_dict = yaml.safe_load(control_file)
     control_dict.pop("version_info")
     test_dict = mf._make_yaml_dict()
