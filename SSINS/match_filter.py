@@ -9,6 +9,7 @@ import yaml
 from copy import deepcopy
 from SSINS import version
 from functools import reduce
+import os
 
 Event = namedtuple("Event", ["time_slice", "freq_slice", "shape", "sig"])
 
@@ -289,7 +290,7 @@ class MF():
 
         return(final_event)
 
-    def write(self, prefix, sep="_"):
+    def write(self, prefix, sep="_", clobber=False):
         """
         Writes out a yaml file with the important information about the filter.
 
@@ -297,6 +298,7 @@ class MF():
             prefix: The filepath prefix for the output file. Output file will be
                 named f'{prefix}{sep}matchfilter.yaml'
             sep: The separator character between the prefix and the rest of the output filepath.
+            clobber: Whether to overwrite an identically named file. True overwrites.
         """
 
         outpath = f"{prefix}{sep}matchfilter.yaml"
@@ -323,5 +325,10 @@ class MF():
                      "freq_broadcast": {shape: [float(broadcast_dict[shape][0]), float(broadcast_dict[shape][1])] for shape in broadcast_dict},
                      "version_info": version_hist_substr}
 
-        with open(outpath, 'w') as outfile:
-            yaml.safe_dump(yaml_dict, outfile)
+        file_exists = os.path.exists(outpath)
+
+        if file_exists and not clobber:
+            raise(ValueError, f"matchfilter file with prefix {prefix} already exists and clobber is False.")
+        else:
+            with open(outpath, 'w') as outfile:
+                yaml.safe_dump(yaml_dict, outfile)
