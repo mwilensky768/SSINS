@@ -5,6 +5,9 @@ Match Filter class
 import numpy as np
 import warnings
 from collections import namedtuple
+import yaml
+from copy import deepcopy
+from SSINS import version
 
 Event = namedtuple("Event", ["time_slice", "freq_slice", "shape", "sig"])
 
@@ -284,3 +287,38 @@ class MF():
             final_event = event
 
         return(final_event)
+
+    def write(self, prefix, sep="_"):
+        """
+        Writes out a yaml file with the important information about the filter.
+
+        Args:
+            prefix: The filepath prefix for the output file. Output file will be
+                named f'{prefix}{sep}matchfilter.yaml'
+            sep: The separator character between the prefix and the rest of the output filepath.
+        """
+
+        outpath = f"{prefix}{sep}matchfilter.yaml"
+
+        broadcast_dict = deepcopy(self.broadcast_dict)
+        # Include additional shape if in the slc_dict which may be missing from the broadcast_dict
+        if "streak" in self.broadcast_slc_dict:
+            broadcast_dict.update({"streak": [self.freq_array[0], self.freq_array[-1]]})
+
+        shape_dict = deepcopy(self.shape_dict)
+        if "streak" in self.slice_dict:
+            shape_dict.update({"streak": [self.freq_array[0], self.freq_array[-1]]})
+        if "narrow" in self.slice_dict:
+            shape_dict.update({"narrow": [None, None]})
+
+        version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
+        version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
+
+        yaml_dict = {"freqs": self.freq_array,
+                     "shape_dict": shape_dict,
+                     "sig_thresh": self.sig_thresh,
+                     "tb_aggro": self.tb_aggro,
+                     "freq_broadcast": broadcast_dict,
+                     "version_info": version_hist_substr}
+
+        yaml.safe_dump(yaml_dict, outfile)
