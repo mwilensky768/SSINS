@@ -182,3 +182,32 @@ def combine_ins(ins1, ins2, inplace=False):
     this.sig_array = np.ma.copy(this.metric_ms)
 
     return(this)
+
+
+def write_meta(prefix, ins, uvf=None, mf=None, sep="_", clobber=False,
+               data_compression="lzf"):
+    """
+    Wrapper around several calls to ins.write so that a standard set of
+    metadata can be written.
+
+    Args:
+        prefix: The filepath prefix to write outputs to.
+        ins: The INS for which to write metadata.
+        uvf: A UVFlag object for which to generate diff-propagated flags, if desired.
+        mf: The MF (match filter) that was run on the INS object, if any.
+        sep: The separator character between the prefix and rest of output filenames.
+        clobber: Whether to overwrite existing files.
+        data_compression: The type of data compression to use for hdf5 outputs.
+    """
+
+    ins.write(prefix, sep=sep, clobber=clobber,
+              data_compression=data_compression)
+    ins.write(prefix, output_type="mask", sep=sep, clobber=clobber,
+              data_compression=data_compression)
+    ins.write(prefix, output_type="match_events", sep=sep, clobber=clobber,
+              data_compression=data_compression)
+    if uvf is not None:
+        ins.write(prefix, output_type="flags", uvf=uvf, sep=sep, clobber=clobber,
+                  data_compression=data_compression)
+    if mf is not None:
+        mf.write(prefix, sep=sep, clobber=clobber)

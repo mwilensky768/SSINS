@@ -3,6 +3,7 @@ from SSINS.data import DATA_PATH
 import os
 import numpy as np
 import pytest
+import yaml
 
 
 def test_init():
@@ -348,3 +349,34 @@ def test_apply_samp_thresh_dep_error_match_test():
     mf = MF(ins.freq_array, 5, tb_aggro=0.2)
     with pytest.raises(ValueError, match="apply_samp_thresh has been deprecated"):
         mf.apply_match_test(ins, apply_samp_thresh=True)
+
+
+def test_MF_write():
+    obs = '1061313128_99bl_1pol_half_time'
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
+    prefix = os.path.join(DATA_PATH, f'{obs}')
+    outfile = f"{prefix}_test_SSINS_matchfilter.yml"
+
+    ins = INS(insfile)
+    sig_thresh = 5
+    broadcast_dict = {"TV7": [174e6, 181e6]}
+    shape_dict = {"TV7": [174e6, 181e6]}
+
+    mf = MF(ins.freq_array, sig_thresh, broadcast_dict=broadcast_dict,
+            broadcast_streak=True)
+
+    mf.write(f"{prefix}_test", clobber=True)
+
+    assert os.path.exists(outfile), "Outfile was not written or has the wrong name."
+
+    with open(f"{prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
+        control_dict = yaml.safe_load(control_file)
+    control_dict.pop("version_info")
+    test_dict = mf._make_yaml_dict()
+    test_dict.pop("version_info")
+    assert test_dict == control_dict
+
+    with pytest.raises(ValueError, match="matchfilter file with prefix"):
+        mf.write(f"{prefix}_test", clobber=False)
+
+    os.remove(outfile)
