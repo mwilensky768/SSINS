@@ -5,6 +5,7 @@ import os
 import numpy as np
 import yaml
 import pytest
+from pyuvdata import UVData, UVFlag
 
 
 def test_obslist():
@@ -215,3 +216,45 @@ def test_combine_ins_errors():
     ins_remaining.time_array = ins_remaining.time_array + 1
     with pytest.raises(ValueError, match="The spectra do not have matching time"):
         new_ins = util.combine_ins(ins_first_50, ins_remaining)
+
+
+def test_write_meta():
+    obs = "1061313128_99bl_1pol_half_time"
+    testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
+    prefix = os.path.join(DATA_PATH, f"{obs}_test")
+
+    uvd = UVData()
+    uvd.read(testfile, freq_chans=np.arange(32))
+    ss = SS()
+    ss.read(testfile, freq_chans=np.arange(32), diff=True)
+    uvf = UVFlag(uvd, mode="flag", waterfall=True)
+    ins = INS(ss)
+
+    ins.metric_array[:] = 1
+    ins.weights_array[:] = 10
+    ins.weights_square_array[:] = 10
+    # Make some outliers
+    # Narrowband in 1th, 26th, and 31th frequency
+    ins.metric_array[1, 1, :] = 100
+    ins.metric_array[1, 30, :] = 100
+    ins.metric_array[3:14, 26, :] = 100
+    # Arbitrary shape in 2, 3, 4
+    ins.metric_array[3:14, 2:25, :] = 100
+    ins.metric_array[[0, -1], :, :] = np.ma.masked
+    ins.metric_array[:, [0, -1], :] = np.ma.masked
+    ins.metric_ms = ins.mean_subtract()
+
+    ch_wid = ins.freq_array[1] - ins.freq_array[0]
+    shape_dict = {"shape": [ins.freq_array[2] + 0.1 * ch_wid, ins.freq_array[24] - 0.1 * ch_wid]}
+    mf = MF(ins.freq_array, 5, tb_aggro=0.5, shape_dict=shape_dict)
+    mf.apply_match_test(ins, time_broadcast=True)
+
+    util.write_meta(prefix, ins, uvf=uvf, mf=mf, clobber=True)
+    for data_type in ["data", "mask", "flags"]:
+        path = f"{prefix}_SSINS_{data_type}.h5"
+        assert os.path.exists(path)
+        os.remove(path)
+    for data_type in ["match_events", "matchfilter"]:
+        path = f"{prefix}_SSINS_{data_type}.yml"
+        assert os.path.exists(path)
+        os.remove(path)
