@@ -49,7 +49,7 @@ class SS(UVData):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
-                self.extra_keywords.update(diff_freq=True)
+                self.extra_keywords.update(dif_freq=True)
             else:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
