@@ -42,8 +42,6 @@ class SS(UVData):
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
         """
-        warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
-                      " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
         super().read(filename, **kwargs)
 
@@ -51,6 +49,7 @@ class SS(UVData):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+                self.extra_keywords.update(diff_freq=True)
             else:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
