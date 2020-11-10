@@ -80,7 +80,7 @@ def test_apply_flags():
     # Apply flags, test equality, test attribute change
     ss.apply_flags(flag_choice='original')
     assert np.all(ss.flag_array == ss.data_array.mask), "Flag arrays are not equal"
-    assert ss.flag_choice is 'original', "Flag choice attribute was not changed"
+    assert ss.flag_choice == 'original', "Flag choice attribute was not changed"
 
     # Revert flags back, test equality, test attribute change
     ss.apply_flags(flag_choice=None)
@@ -91,7 +91,7 @@ def test_apply_flags():
     custom = np.ones_like(ss.flag_array)
     ss.apply_flags(flag_choice='custom', custom=custom)
     assert np.all(ss.data_array.mask), "The custom flag array was not applied"
-    assert ss.flag_choice is 'custom', "The flag choice attribute was not changed"
+    assert ss.flag_choice == 'custom', "The flag choice attribute was not changed"
 
     # Read an INS in (no flags by default) and flag a channel for two times stuff, see if applied correctly
     ins = INS(insfile)
@@ -100,7 +100,7 @@ def test_apply_flags():
     assert np.all(ss.data_array.mask[2::ss.Ntimes, :, 1, :]), "The 2nd time was not flagged."
     assert np.all(ss.data_array.mask[4::ss.Ntimes, :, 1, :]), "The 4th time was not flagged."
     assert not np.any(ss.data_array.mask[:, :, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
-    assert ss.flag_choice is 'INS'
+    assert ss.flag_choice == 'INS'
 
     # Make a bad time array to test an error
     ins.time_array = ins.time_array + 1
