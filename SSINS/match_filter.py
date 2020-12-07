@@ -138,7 +138,7 @@ class MF():
         f_max = None
         shape_max = None
         for shape in self.slice_dict:
-            if shape is 'narrow':
+            if shape == 'narrow':
                 t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
                                            INS.metric_ms.shape)
                 sig = np.absolute(INS.metric_ms[t, f, p])

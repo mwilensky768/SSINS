@@ -225,7 +225,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
             model_func = SS.mixture_prob
         else:
             model_func = None
-        if SS.flag_choice is not 'original':
+        if SS.flag_choice != 'original':
             temp_flags = np.copy(SS.data_array.mask)
             temp_choice = '%s' % SS.flag_choice
         else:
@@ -236,7 +236,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
                   ylim=ylim, density=density, label=pre_label, alpha=alpha,
                   xlabel=xlabel, error_sig=error_sig, model_label=pre_model_label,
                   color=pre_color, model_color=pre_model_color, font_size=font_size)
-        if temp_choice is 'original':
+        if temp_choice == 'original':
             SS.apply_flags(flag_choice='original')
         else:
             SS.apply_flags(flag_choice='custom', custom=temp_flags)

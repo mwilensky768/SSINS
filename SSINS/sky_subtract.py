@@ -80,9 +80,9 @@ class SS(UVData):
             self.data_array = np.ma.masked_array(self.data_array)
         self.flag_choice = flag_choice
         self.MLE = None
-        if flag_choice is 'original':
+        if flag_choice == 'original':
             self.data_array.mask = np.copy(self.flag_array)
-        elif flag_choice is 'INS':
+        elif flag_choice == 'INS':
             if not np.all(INS.time_array == np.unique(self.time_array)):
                 raise ValueError("INS object and SS object have incompatible time arrays. Cannot apply flags.")
             self.data_array.mask[:] = False
@@ -92,7 +92,7 @@ class SS(UVData):
                 if len(freq_inds) > 0:
                     blt_inds = np.where(self.time_array == time)
                     self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
-        elif flag_choice is 'custom':
+        elif flag_choice == 'custom':
             self.data_array.mask[:] = False
             if custom is not None:
                 self.data_array[custom] = np.ma.masked
@@ -197,7 +197,7 @@ class SS(UVData):
             self.apply_flags()
         if self.MLE is None:
             self.MLE_calc()
-        if bins is 'auto':
+        if bins == 'auto':
             _, bins = np.histogram(np.abs(self.data_array[np.logical_not(self.data_array.mask)]))
 
         N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
@@ -287,7 +287,7 @@ class SS(UVData):
             UV.flag_array[:] = 0
 
         # Check nsample_array for issue
-        if np.any(UV.nsample_array == 0) and (file_type_out is 'uvfits'):
+        if np.any(UV.nsample_array == 0) and (file_type_out == 'uvfits'):
             warnings.warn("Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0.")
             UV.nsample_array[UV.nsample_array == 0] = nsample_default
 
