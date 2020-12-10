@@ -42,11 +42,11 @@ if args.rfi_flag:
                     correct_cable_len=True, flag_choice='original', diff=True,
                     remove_dig_gains=False, remove_coarse_band=False,
                     start_flag=2.0, end_flag=0.0, flag_dc_offset=True, edge_width=80e3)
-
-        ins = INS(ss, order=1)
+        
+        ins = INS(ss)
         prefix = f'{args.outdir}/{args.obsid}'
         ins.write(prefix)
-
+        print(f"generating first plot")
         Catalog_Plot.INS_plot(ins, prefix, data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
                               title=args.obsid, xlabel='Frequency (Mhz)',
                               ylabel='Time (UTC)')
@@ -67,20 +67,22 @@ if args.rfi_flag:
         mf.apply_match_test(ins, event_record=True, time_broadcast=True,
                             freq_broadcast=True)
         ins.write(prefix, output_type='mask')
-
+        print(f"generating second plot")
         Catalog_Plot.INS_plot(ins, f'{prefix}_flagged', data_cmap=cm.plasma,
                               ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
 
+    print(f"starting van vleck read")
     uvd = UVData()
     if args.correct:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
                  remove_dig_gains=True, remove_coarse_band=True, start_flag=2.0, end_flag=0.0,
-                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=True, cheby_approx=True)
+                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=False)
     else:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
                  remove_dig_gains=False, remove_coarse_band=False, start_flag=2.0, end_flag=0.0,
                  flag_dc_offset=True, edge_width=80e3, correct_van_vleck=True, cheby_approx=True)
+    print(f"finished van vleck read")
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
