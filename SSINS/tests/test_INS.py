@@ -35,6 +35,23 @@ def test_init():
     # Check that the weights summed correctly
     assert np.all(test_weights == ins.weights_array), "Weights did not sum properly"
 
+def test_extra_keywords():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=True)
+    ins = INS(ss)
+
+    assert ins.extra_keywords["dif_freq"] is True
+
+    ss.read(testfile, flag_choice='original', diff=False)
+    ins = INS(ss)
+
+    assert ins.extra_keywords["dif_freq"] is False
+
+
 
 def test_no_diff_start():
     obs = '1061313128_99bl_1pol_half_time'
