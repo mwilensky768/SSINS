@@ -23,7 +23,7 @@ def test_SS_read():
     assert ss.data_array is None, "Data array is not None"
 
     # See that it is not yet flagged as diffed
-    assert ss.extra_keywords["dif_freq"] != True
+    assert ss.extra_keywords["dif_freq"] is False
 
     # Test select on read and diff
     ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
@@ -68,7 +68,7 @@ def test_diff():
     assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
     assert ss.extra_keywords["dif_freq"] is not None
-    assert ss.extra_keywords["dif_freq"] == True
+    assert ss.extra_keywords["dif_freq"] is True
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
