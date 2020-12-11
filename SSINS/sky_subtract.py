@@ -56,9 +56,12 @@ class SS(UVData):
                 warnings.warn("diff on read defaults to False now. Please double"
                               " check SS.read call and ensure the appropriate"
                               " keyword arguments for your intended use case.")
+                self.extra_keywords.update(dif_freq=False)
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
+        else:
+            self.extra_keywords.update(dif_freq=False)
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
