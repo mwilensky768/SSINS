@@ -81,6 +81,12 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
             result, is_scalar = self.process_value(value)
             x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
             return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
+
+    # Make sure it does the yticks correctly
+    if extent is not None:
+        if (extent_time_format == 'lst') and (extent[-2] < extent[-1]):
+            extent[-1] = extent[-1] - 2 * np.pi
+
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
