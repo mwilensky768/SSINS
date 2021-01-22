@@ -4,6 +4,8 @@ these functions is unnecessary.
 """
 import numpy as np
 from astropy.time import Time
+from astropy import units
+from astropy.coordinates import Longitude
 import warnings
 
 
@@ -12,7 +14,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
                cbar_ticks=None, font_size='medium', symlog=False, linthresh=1,
-               extent=None):
+               extent=None, extent_time_format='jd', convert_times=True):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -40,7 +42,11 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         mask_color: The color for masked data values, if any
         cbar_ticks: The tickmarks for the colorbar
         font_size: Font size is set globally with this parameter.
-        extent: Passes to imshow to determine ticks. Time ticks will be reported in UTC.
+        extent: Passes to imshow to determine ticks.
+        extent_time_format: a string specifying the format of the times passed in
+            the extent keyword.
+        convert_times: Will convert a JD to UTC or LST in radians to an LST in
+            hourangle, both using astropy.
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
@@ -106,9 +112,14 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         warnings.warn("Plotting keyword 'extent' has been set alongside xticks "
                       "or yticks keyword. Using manual settings.")
         set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
-    else:
-        # This case is for when extent is set and manual settings have not been made
-        ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+    elif convert_times:
+        # This case is for when extent is set, manual settings have not been made, and conversion is desired.
+        # Otherwise just use what came from extent
+        if extent_time_format == 'jd':
+            ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+        elif extent_time_format == 'lst':
+            ax.set_yticklabels([Longtiude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
+
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
 
