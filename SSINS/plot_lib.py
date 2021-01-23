@@ -57,7 +57,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     from matplotlib import colors, cm
 
     if cmap is None:
-        cmap = cm.viridis
+        cmap = cm.plasma
 
     class MidpointNormalize(colors.Normalize):
 
