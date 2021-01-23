@@ -84,7 +84,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     # Make sure it does the yticks correctly
     if extent is not None:
-        if (extent_time_format == 'lst') and (extent[-2] < extent[-1]):
+        if (extent_time_format.lower() == 'lst') and (extent[-2] < extent[-1]):
             extent[-1] = extent[-1] - 2 * np.pi
 
     # colorization methods: linear, normalized log, symmetrical log
@@ -121,9 +121,9 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     elif convert_times:
         # This case is for when extent is set, manual settings have not been made, and conversion is desired.
         # Otherwise just use what came from extent
-        if extent_time_format == 'jd':
+        if extent_time_format.lower() == 'jd':
             ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
-        elif extent_time_format == 'lst':
+        elif extent_time_format.lower() == 'lst':
             ax.set_yticklabels([Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
 
     cbar.ax.tick_params(labelsize=font_size)
