@@ -68,9 +68,9 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     if use_extent:
         # Have to put times in reverse since vertical axis is inverted
         extent = [INS.freq_array[0] / 1e6, INS.freq_array[-1] / 1e6]
-        if extent_time_format == 'jd':
+        if extent_time_format.lower() == 'jd':
             extent.extend([INS.time_array[-1], INS.time_array[0]])
-        elif extent_time_format == 'lst':
+        elif extent_time_format.lower() == 'lst':
             extent.extend([INS.lst_array[-1], INS.lst_array[0]])
         xlabel = "Frequency (MHz)"
         ylabel = "Time (UTC)"
