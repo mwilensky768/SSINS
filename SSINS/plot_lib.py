@@ -124,7 +124,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         if extent_time_format == 'jd':
             ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
         elif extent_time_format == 'lst':
-            ax.set_yticklabels([Longtiude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
+            ax.set_yticklabels([Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
 
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
