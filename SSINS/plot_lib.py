@@ -14,7 +14,8 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                cbar_label=None, xticks=None, yticks=None, log=False,
                xticklabels=None, yticklabels=None, mask_color='white',
                cbar_ticks=None, font_size='medium', symlog=False, linthresh=1,
-               extent=None, extent_time_format='jd', convert_times=True):
+               extent=None, extent_time_format='jd', convert_times=True,
+               lst_prec=2):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -47,6 +48,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
             the extent keyword.
         convert_times: Will convert a JD to UTC or LST in radians to an LST in
             hourangle, both using astropy.
+        lst_prec: Number of sig figs to keep in LST hourangle ticklabel
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
@@ -124,7 +126,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         if extent_time_format.lower() == 'jd':
             ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
         elif extent_time_format.lower() == 'lst':
-            ax.set_yticklabels([Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
+            ax.set_yticklabels([f"%.f{lst_prec}" % (Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks())])
 
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
