@@ -468,17 +468,29 @@ class INS(UVFlag):
             SSINS_params = UVFlag_params + Extra_params
         return(SSINS_params)
 
-    def select(self, **kwargs):
+    def select(self, inplace=True, **kwargs):
         """Thin wrapper around UVFlag.select that also recalculates the ms array
         immediately afterwards.
-        """
 
-        mask_uvf = self._make_mask_copy()
-        super(INS, self).select(**kwargs)
-        super(INS, mask_uvf).select(**kwargs)
-        self.metric_array.mask = np.copy(mask_uvf.flag_array)
-        if hasattr(self, 'metric_ms'):
-            self.metric_ms = self.mean_subtract()
+        args:
+            inplace: Whether to do the operation inplace or return a copy.
+        """
+        if inplace:
+            this = self
+        else:
+            this = self.copy()
+
+        mask_uvf = this._make_mask_copy()
+        super(INS, this).select(inplace=True, **kwargs)
+        super(INS, mask_uvf).select(inplace=True, **kwargs)
+
+        this.metric_array.mask = np.copy(mask_uvf.flag_array)
+        # In case this is called in the middle of the constructor.
+        if hasattr(this, 'metric_ms'):
+            this.metric_ms = this.mean_subtract()
+
+        if not inplace:
+            return(this)
 
     def __add__(self, other, inplace=False, axis="time", run_check=True,
                 check_extra=True, run_check_acceptability=True):
