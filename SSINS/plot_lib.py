@@ -87,6 +87,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     # Make sure it does the yticks correctly
     if extent is not None:
         if (extent_time_format.lower() == 'lst') and (extent[-2] < extent[-1]):
+            warnings.warn("LSTs appear to cross 24 hrs. Unwrapping. If this is an error, check extent keyword in plot_lib call.")
             extent[-1] = extent[-1] - 2 * np.pi
 
     # colorization methods: linear, normalized log, symmetrical log
