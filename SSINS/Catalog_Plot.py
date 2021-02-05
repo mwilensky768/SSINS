@@ -22,7 +22,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              sig_event_vmax=None, sig_event_vmin=None, sig_log=True,
              sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
              sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98,
-             use_extent=True, backend=None):
+             use_extent=True, backend=None, extent_time_format='jd',
+             convert_times=True):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -47,6 +48,10 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
             Easier than manual adjustment and sufficient for most cases.
             Will put time in UTC and frequency in MHz.
         backend (str): Which matplotlib backend to use.
+        extent_time_format (str): If 'jd', will use the time_array of the object.
+            is 'lst', will use the lst_array of the object.
+        convert_times (bool): Whether to convert times in extent. Will convert jd into
+            UTC and lst into hourangles.
     """
 
     from matplotlib import cm, use
@@ -62,8 +67,11 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
 
     if use_extent:
         # Have to put times in reverse since vertical axis is inverted
-        extent = [INS.freq_array[0] / 1e6, INS.freq_array[-1] / 1e6,
-                  INS.time_array[-1], INS.time_array[0]]
+        extent = [INS.freq_array[0] / 1e6, INS.freq_array[-1] / 1e6]
+        if extent_time_format.lower() == 'jd':
+            extent.extend([INS.time_array[-1], INS.time_array[0]])
+        elif extent_time_format.lower() == 'lst':
+            extent.extend([INS.lst_array[-1], INS.lst_array[0]])
         xlabel = "Frequency (MHz)"
         ylabel = "Time (UTC)"
     else:
@@ -74,6 +82,8 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                  'xticklabels': xticklabels,
                  'yticklabels': yticklabels,
                  'extent': extent,
+                 'extent_time_format': extent_time_format,
+                 'convert_times': convert_times,
                  'aspect': aspect,
                  'xlabel': xlabel,
                  'ylabel': ylabel}
@@ -127,7 +137,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                        title=pol_dict[INS.polarization_array[pol_ind]],
                        **im_kwargs)
     plt.tight_layout(h_pad=1, w_pad=1)
-    fig.savefig('%s_SSINS.%s' % (prefix, file_ext))
+    fig.savefig(f'{prefix}_SSINS.{file_ext}')
     plt.close(fig)
 
     if sig_event_plot:
