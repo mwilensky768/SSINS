@@ -11,15 +11,15 @@ def test_INS_plot():
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
-    prefix = '%s/%s_raw' % (outdir, obs)
-    outfile = '%s_SSINS.pdf' % prefix
-    log_prefix = '%s/%s_log' % (outdir, obs)
-    log_outfile = '%s_SSINS.pdf' % log_prefix
-    symlog_prefix = '%s/%s_symlog' % (outdir, obs)
-    symlog_outfile = '%s_SSINS.pdf' % symlog_prefix
+    prefix = f'{outdir}/{obs}_raw'
+    outfile = f'{prefix}_SSINS.pdf'
+    log_prefix = f'{outdir}/{obs}_log'
+    log_outfile = f'{log_prefix}_SSINS.pdf'
+    symlog_prefix = f'{outdir}/{obs}_symlog'
+    symlog_outfile = f'{symlog_prefix}_SSINS.pdf'
 
     ins = INS(insfile)
 
@@ -50,7 +50,7 @@ def test_sig_plot():
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
     prefix = '%s/%s_flagged' % (outdir, obs)
@@ -88,11 +88,11 @@ def test_VDH_plot():
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
-    prefix = '%s/%s' % (outdir, obs)
-    outfile = '%s_VDH.pdf' % prefix
+    prefix = f'{outdir}/{obs}'
+    outfile = f'{prefix}_VDH.pdf'
 
-    dens_prefix = '%s/%s_dens' % (outdir, obs)
-    dens_outfile = '%s_VDH.pdf' % dens_prefix
+    dens_prefix = f'{outdir}/{obs}_dens'
+    dens_outfile = f'{dens_prefix}_VDH.pdf'
 
     ss = SS()
     ss.read(testfile, flag_choice='original', diff=True)
