@@ -6,6 +6,7 @@
 - Added match_filter writeout to yaml format.
 - Added extent options to plotting libraries so that default ticks on plots would
   be sensible and easy.
+- Added inplace keyword to select
 
 
 ## 1.4.4
