@@ -278,6 +278,9 @@ def test_select():
     ins = INS(testfile)
     ins.metric_array.mask[7, :12] = True
 
+    new_ins = ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24),
+                         inplace=False)
+
     Ntimes = len(ins.time_array)
     ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24))
 
@@ -288,6 +291,9 @@ def test_select():
     # Check that the mask is propagated
     assert np.all(ins.metric_array.mask[4, :12])
     assert np.count_nonzero(ins.metric_array.mask) == 12
+
+    # Check that new_ins is a copy of ins
+    assert new_ins == ins
 
 
 def test_data_params():
