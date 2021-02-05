@@ -28,7 +28,13 @@ def test_INS_plot():
     yticks = np.arange(0, 50, 10)
     yticklabels = ['%i' % (2 * tick) for tick in yticks]
 
-    cp.INS_plot(ins, prefix, backend='Agg')
+    # Make lst straddle the 2pi boundary to trigger the warning
+    mean_lst = np.mean(ins.lst_array)
+    ins.lst_array += (2 * np.pi) - mean_lst
+    ins.lst_array[ins.lst_array > (2 * np.pi)] -= 2 * np.pi
+    with pytest.warns(UserWarning, match="LSTs appear to cross"):
+        cp.INS_plot(ins, prefix, backend='Agg', use_extent=True,
+                    extent_time_format='lst')
     cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
                 xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
     cp.INS_plot(ins, symlog_prefix, symlog=True, xticks=xticks, yticks=yticks,
