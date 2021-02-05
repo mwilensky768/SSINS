@@ -473,24 +473,28 @@ class INS(UVFlag):
         immediately afterwards.
 
         args:
-            inplace: Whether to do the operation inplace or return a copy.
+            inplace: Whether to do the operation inplace or return a copy without
+                touching the original.
+
+        returns:
+            ins: INS object. Only returned if inplace is False.
         """
         if inplace:
-            this = self
+            ins = self
         else:
-            this = self.copy()
+            ins = self.copy()
 
-        mask_uvf = this._make_mask_copy()
-        super(INS, this).select(inplace=True, **kwargs)
+        mask_uvf = ins._make_mask_copy()
+        super(INS, ins).select(inplace=True, **kwargs)
         super(INS, mask_uvf).select(inplace=True, **kwargs)
 
         this.metric_array.mask = np.copy(mask_uvf.flag_array)
         # In case this is called in the middle of the constructor.
         if hasattr(this, 'metric_ms'):
-            this.metric_ms = this.mean_subtract()
+            ins.metric_ms = this.mean_subtract()
 
         if not inplace:
-            return(this)
+            return(ins)
 
     def __add__(self, other, inplace=False, axis="time", run_check=True,
                 check_extra=True, run_check_acceptability=True):
