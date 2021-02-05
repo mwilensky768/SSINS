@@ -85,7 +85,7 @@ def test_VDH_plot():
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     outdir = os.path.join(DATA_PATH, 'test_plots')
 
     prefix = f'{outdir}/{obs}'
@@ -114,10 +114,10 @@ def test_VDH_no_model():
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     outdir = os.path.join(DATA_PATH, 'test_plots')
-    prefix = '%s/%s' % (outdir, obs)
-    outfile = '%s_VDH.pdf' % prefix
+    prefix = f'{outdir}/{obs}'
+    outfile = f'{prefix}_VDH.pdf'
 
     ss = SS()
     ss.read(testfile, flag_choice=None, diff=True)
