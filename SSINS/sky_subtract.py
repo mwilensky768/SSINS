@@ -26,7 +26,7 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
+    def read(self, filename, diff=False, diff_freq=False, flag_choice=None, INS=None, custom=None,
              **kwargs):
 
         """
@@ -37,6 +37,7 @@ class SS(UVData):
         Args:
             filename (str or list of str): The filepath(s) to read in.
             diff (bool): If True, and data was read in, then difference the visibilities in time
+            diff_freq (bool): If True, and data was read in, then difference the visibilities in freq
             flag_choice: Sets flags for the data array on read using apply_flags method.
             INS: An INS object for apply_flags()
             custom: A custom flag array for apply_flags()
@@ -49,6 +50,9 @@ class SS(UVData):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+                self.extra_keywords.update(dif_time=True)
+            if diff_freq:
+                self.diff_freq()
                 self.extra_keywords.update(dif_freq=True)
             else:
                 # This warning will be issued when diff is False and there is some data read in
@@ -226,6 +230,33 @@ class SS(UVData):
 
         super().set_lsts_from_time_array()
         self.data_array = np.ma.masked_array(self.data_array)
+
+    def diff_freq(self):
+
+        """
+        Differences the visibilities in freq. Does so independently for each baseline,
+        so different integration times or sets of time centers are supported.
+        The flags are propagated by taking the boolean OR of the entries that correspond
+        to the visibilities that are differenced from one another. Other metadata
+        attributes are also adjusted so that the resulting SS object passes
+        UVData.check()
+        """
+
+        if self.blt_order != 'baseline':
+            warnings.warn("Reordering data array to baseline order to perform differencing.")
+            self.reorder_blts(order='baseline')
+
+        diff_dat = np.diff(self.data_array, axis=2) #axis 2: nfreqs (see uvdata object)
+        self.data_array = diff_dat
+
+        print(self.data_array.shape)
+        """The frequency-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
+
+        self.Nfreqs -= 1
+        self.data_array = np.ma.masked_array(self.data_array)
+        self.freq_array = self.freq_array[:,1:]
+        self.nsample_array = self.nsample_array[:,:,1:,:]
+        self.flag_array = self.flag_array[:,:,1:,:]
 
     def MLE_calc(self):
 
