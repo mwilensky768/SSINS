@@ -9,8 +9,11 @@ from pyuvdata import UVData
 Tests the various capabilities of the sky_subtract class
 """
 
+<<<<<<< HEAD
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
+=======
+>>>>>>> add diff_freq test
 def test_SS_read():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -67,9 +70,28 @@ def test_diff():
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
     assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
-    assert ss.extra_keywords["dif_freq"] is not None
-    assert ss.extra_keywords["dif_freq"] is True
 
+def test_diff_freq():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+
+    ss = SS()
+    uv = UVData()
+
+    # Read in two times and two baselines of data, so that the diff is obvious.
+    uv.read(testfile, read_data=False)
+    times = np.unique(uv.time_array)[:2]
+    bls = [(0, 1), (0, 2)]
+    uv.read(testfile, times=times, bls=bls)
+    uv.reorder_blts(order='baseline')
+
+    diff_dat = np.diff(uv.data_array, axis=2)
+
+    with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
+        ss.read(testfile, diff=False, diff_freq=True, times=times, bls=bls)
+    print(ss._data_array.form)
+    #ss.reorder_blts(order='baseline')
+    assert np.all(ss.data_array == diff_dat), "Data values are different!"
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_apply_flags():
