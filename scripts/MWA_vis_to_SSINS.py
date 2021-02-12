@@ -8,6 +8,22 @@ from astropy.time import Time
 import numpy as np
 
 
+def get_agreeable_times(boxfiles, metafits_file):
+    uvd = UVData()
+
+    time_set = set()
+    # Only grab times that everyone agrees exist
+    for boxfile in boxfiles:
+        uvd.read([boxfile, metafits_file], read_data=False)
+        # initialize if it is the first iteration
+        if len(time_set) == 0:
+            time_set = set(np.unique(uvd.time_array))
+        else:
+            time_set.intersection_update(np.unique(uvd.time_array))
+
+    return(time_set)
+
+
 def get_gpubox_map(gpu_files):
     chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
     gpubox_map = {}
