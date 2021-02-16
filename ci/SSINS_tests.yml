@@ -1,0 +1,21 @@
+name: SSINS_tests
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - astropy
+  - numpy
+  - scipy
+  - h5py
+  - coverage
+  - pytest>=6.2.0
+  - pytest-cov
+  - cython
+  - setuptools_scm
+  - pip
+  - pip:
+     - pytest-cases>=3
+     - pytest-xdist
+  - pyyaml>=5.3.1
+  - pyuvdata>=2.1.2
+  - matplotlib>=3.2.2
