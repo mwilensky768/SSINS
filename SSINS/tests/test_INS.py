@@ -44,12 +44,14 @@ def test_extra_keywords():
     ss.read(testfile, flag_choice='original', diff=True)
     ins = INS(ss)
 
-    assert ins.extra_keywords["dif_freq"] is True
+    assert ss.extra_keywords['dif_time'] is True
+    assert ins.extra_keywords['dif_time'] is True
 
     ss.read(testfile, flag_choice='original', diff=False)
     ins = INS(ss)
 
-    assert ins.extra_keywords["dif_freq"] is False
+    assert ss.extra_keywords['dif_time'] is False
+    assert ins.extra_keywords['dif_time'] is False
 
 
 

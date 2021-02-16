@@ -50,22 +50,22 @@ class SS(UVData):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
-                self.extra_keywords.update(dif_time=True)
+                self.extra_keywords['dif_time'] = True
             if diff_freq:
                 self.diff_freq()
-                self.extra_keywords.update(dif_freq=True)
-            else:
+                self.extra_keywords['dif_freq'] = True
+            if not diff_freq and not diff:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
                 warnings.warn("diff on read defaults to False now. Please double"
                               " check SS.read call and ensure the appropriate"
                               " keyword arguments for your intended use case.")
-                self.extra_keywords.update(dif_freq=False)
+                self.extra_keywords['dif_time'] = False
+                self.extra_keywords['dif_freq'] = False
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
-        else:
-            self.extra_keywords.update(dif_freq=False)
+
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
