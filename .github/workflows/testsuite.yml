@@ -49,4 +49,4 @@ jobs:
       - name: Upload Coverage
         if: matrix.os == success()
         run: |
-          bash <(curl -s https://codecov.io/bash) -t ${{ secrets.CODECOV_TOKEN }}
+          bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -t ${{ secrets.CODECOV_TOKEN }}
