@@ -47,6 +47,9 @@ jobs:
         run: |
           python -m pytest --cov=SSINS --cov-config=.coveragerc --cov-report xml:./coverage.xml --junitxml=test-reports/xunit.xml
       - name: Upload Coverage
-        if: matrix.os == success()
-        run: |
-          bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -t ${{ secrets.CODECOV_TOKEN }}
+      - uses: codecov/codecov-action@v1
+        #if: matrix.os == success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: ./coverage.xml
+          verbose: true
