@@ -46,6 +46,7 @@ class SS(UVData):
 
         super().read(filename, **kwargs)
 
+        # always set extra keywords, else key errors when trying to check
         if (self.data_array is not None):
             if diff:
                 self.diff()
@@ -65,7 +66,9 @@ class SS(UVData):
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
-
+        else:
+            self.extra_keywords['dif_time'] = False
+            self.extra_keywords['dif_freq'] = False
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """

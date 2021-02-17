@@ -26,7 +26,7 @@ def test_SS_read():
     assert ss.data_array is None, "Data array is not None"
 
     # See that it is not yet flagged as diffed
-    assert ss.extra_keywords["dif_freq"] is False
+    assert ss.extra_keywords['dif_freq'] is False
 
     # Test select on read and diff
     ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
