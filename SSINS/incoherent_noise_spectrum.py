@@ -488,7 +488,7 @@ class INS(UVFlag):
         super(INS, ins).select(inplace=True, **kwargs)
         super(INS, mask_uvf).select(inplace=True, **kwargs)
 
-        this.metric_array.mask = np.copy(mask_uvf.flag_array)
+        ins.metric_array.mask = np.copy(mask_uvf.flag_array)
         # In case this is called in the middle of the constructor.
         if hasattr(this, 'metric_ms'):
             ins.metric_ms = this.mean_subtract()
