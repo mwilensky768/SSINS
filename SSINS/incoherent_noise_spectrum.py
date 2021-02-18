@@ -491,7 +491,7 @@ class INS(UVFlag):
         ins.metric_array.mask = np.copy(mask_uvf.flag_array)
         # In case this is called in the middle of the constructor.
         if hasattr(ins, 'metric_ms'):
-            ins.metric_ms = this.mean_subtract()
+            ins.metric_ms = ins.mean_subtract()
 
         if not inplace:
             return(ins)
