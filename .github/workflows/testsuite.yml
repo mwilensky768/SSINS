@@ -46,6 +46,9 @@ jobs:
       - name: Run Tests
         run: |
           python -m pytest --cov=SSINS --cov-config=.coveragerc --cov-report xml:./coverage.xml --junitxml=test-reports/xunit.xml
+      - name: Doc Tests
+        run: |
+          python -m pytest docs/tutorial.rst
       - name: Upload Coverage
         uses: codecov/codecov-action@v1
         with:
