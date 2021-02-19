@@ -31,7 +31,7 @@ def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
     for chan in chan_list[:3]:
         init_files += [path for path in gpu_files if f"gpubox{chan}" in path]
 
-    times = get_agreeable_times(gpu_files, metafits_file)
+    times = get_agreeable_times(gpu_files, metafits_file[0])
 
     print(f"init box files are {init_files}")
     uvd_obj = uvd_type()
