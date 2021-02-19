@@ -7,14 +7,23 @@ from astropy.io import fits
 from astropy.time import Time
 import numpy as np
 
+# This variable is used in a couple places so we'll just make it global
+chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
 
-def get_agreeable_times(boxfiles, metafits_file):
+
+# Going to hide this list comp in a function for readability
+def get_chan_box(chan, gpu_files):
+    return([path for path in gpu_files if f"gpubox{chan}" in path])
+
+
+def get_agreeable_times(gpu_files, metafits_file):
     uvd = UVData()
 
     time_set = set()
     # Only grab times that everyone agrees exist
-    for boxfile in boxfiles:
-        uvd.read([boxfile, metafits_file], read_data=False)
+    for chan in chan_list:
+        working_gpu_files = get_chan_box(chan, gpu_files)
+        uvd.read(working_gpu_files + metafits_file, read_data=False)
         # initialize if it is the first iteration
         if len(time_set) == 0:
             time_set = set(np.unique(uvd.time_array))
@@ -26,12 +35,11 @@ def get_agreeable_times(boxfiles, metafits_file):
 
 def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
 
-    chan_list = [str(chan).zfill(2) for chan in range(1, 25)]
     init_files = []
     for chan in chan_list[:3]:
-        init_files += [path for path in gpu_files if f"gpubox{chan}" in path]
+        init_files.extend(get_chan_box(chan, gpu_files))
 
-    times = get_agreeable_times(gpu_files, metafits_file[0])
+    times = get_agreeable_times(gpu_files, metafits_file)
 
     print(f"init box files are {init_files}")
     uvd_obj = uvd_type()
@@ -41,7 +49,7 @@ def low_mem_setup(uvd_type, uvf_type, gpu_files, metafits_file, **kwargs):
     for chan_group in range(1, 8):
         box_files = []
         for chan in chan_list[3 * chan_group: 3 * (chan_group + 1)]:
-            box_files += [path for path in gpu_files if f"gpubox{chan}" in path]
+            box_files.extend(get_chan_box(chan, gpu_files))
 
         print(f"box files for this iteration are {box_files}")
         uvd_obj = uvd_type()
@@ -80,6 +88,8 @@ ins, times = low_mem_setup(SS, INS, gpu_files, metafits_file,
                            correct_cable_len=True, phase_to_pointing_center=True,
                            ant_str='cross', diff=True, flag_choice='original',
                            flag_init=True)
+Ntimes = len(ins.time_array)
+print(f"Number of times in INS object is {Ntimes}")
 prefix = f"{args.outdir}/{args.obsid}"
 ins.write(prefix, clobber=True)
 
