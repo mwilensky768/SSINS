@@ -36,13 +36,12 @@ if args.rfi_flag:
         if args.correct:
             ss.read(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
-                    start_flag=2.0, end_flag=0.0, flag_dc_offset=True, edge_width=80e3)
+                    remove_dig_gains=True, remove_coarse_band=True)
         else:
             ss.read(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
-                    remove_dig_gains=False, remove_coarse_band=False,
-                    start_flag=2.0, end_flag=0.0, flag_dc_offset=True, edge_width=80e3)
-        
+                    remove_dig_gains=False, remove_coarse_band=False)
+
         ins = INS(ss)
         prefix = f'{args.outdir}/{args.obsid}'
         ins.write(prefix)
@@ -73,12 +72,10 @@ if args.rfi_flag:
     uvd = UVData()
     if args.correct:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=True, remove_coarse_band=True, start_flag=2.0, end_flag=0.0,
-                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=False)
+                 remove_dig_gains=True, remove_coarse_band=True, correct_van_vleck=False)
     else:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=False, remove_coarse_band=False, start_flag=2.0, end_flag=0.0,
-                 flag_dc_offset=True, edge_width=80e3, correct_van_vleck=True, cheby_approx=True)
+                 remove_dig_gains=False, remove_coarse_band=False, correct_van_vleck=True)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
