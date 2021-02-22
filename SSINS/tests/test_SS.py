@@ -9,11 +9,8 @@ from pyuvdata import UVData
 Tests the various capabilities of the sky_subtract class
 """
 
-<<<<<<< HEAD
-
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-=======
->>>>>>> add diff_freq test
+
 def test_SS_read():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -71,6 +68,7 @@ def test_diff():
     assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
 
+#checks whether diff_freq reads in and out, and the diff values are sane
 def test_diff_freq():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
@@ -93,7 +91,26 @@ def test_diff_freq():
     #ss.reorder_blts(order='baseline')
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
 
+<<<<<<< HEAD
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
+=======
+#checks whether diff_freq masks properly
+def test_diff_freq_mask():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    ss = SS()
+
+    #read in test file
+    ss.read(testfile, read_data=False, diff=False, diff_freq=False)
+    ss.apply_flags(flag_choice='original')
+    assert ss.flag_array is not None
+    temp_array = np.logical_or(ss.flag_array, ss.flag_array)
+    nonzero_or = np.count_nonzero(temp_array)
+    nonzero_flags = np.count_nonzero(ss.flag_array[::2])
+    assert (nonzero_or > nonzero_flags)
+
+
+>>>>>>> add test_diff_freq_mask test to test_ss
 def test_apply_flags():
 
     obs = '1061313128_99bl_1pol_half_time'
