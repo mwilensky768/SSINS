@@ -237,8 +237,7 @@ class SS(UVData):
     def diff_freq(self):
 
         """
-        Differences the visibilities in freq. Does so independently for each baseline,
-        so different integration times or sets of time centers are supported.
+        Differences the visibilities in freq. Does so independently for each time.
         The flags are propagated by taking the boolean OR of the entries that correspond
         to the visibilities that are differenced from one another. Other metadata
         attributes are also adjusted so that the resulting SS object passes
@@ -257,9 +256,9 @@ class SS(UVData):
 
         self.Nfreqs -= 1
         self.data_array = np.ma.masked_array(self.data_array)
-        self.freq_array = self.freq_array[:,1:]
+        self.freq_array = (self.freq_array[:,1:] + self.freq_array[:,:-1]) / 2.0
         self.nsample_array = self.nsample_array[:,:,1:,:]
-        self.flag_array = self.flag_array[:,:,1:,:]
+        self.flag_array = np.logical_or(self.flag_array[:,:,1:,:], self.flag_array[:,:,:-1,:])
 
     def MLE_calc(self):
 
