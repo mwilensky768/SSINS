@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from setuptools import setup
 import os
+import sys
 import json
 
 sys.path.append('SSINS')
