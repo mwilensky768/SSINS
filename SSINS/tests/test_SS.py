@@ -91,9 +91,6 @@ def test_diff_freq():
     #ss.reorder_blts(order='baseline')
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
 
-<<<<<<< HEAD
-@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-=======
 #checks whether diff_freq masks properly
 def test_diff_freq_mask():
     obs = '1061313128_99bl_1pol_half_time'
@@ -109,10 +106,7 @@ def test_diff_freq_mask():
     nonzero_flags = np.count_nonzero(ss.flag_array[::2])
     assert (nonzero_or > nonzero_flags)
 
-
->>>>>>> add test_diff_freq_mask test to test_ss
 def test_apply_flags():
-
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
     file_type = 'uvfits'
