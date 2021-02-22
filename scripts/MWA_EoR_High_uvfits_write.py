@@ -72,10 +72,10 @@ if args.rfi_flag:
     uvd = UVData()
     if args.correct:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=True, remove_coarse_band=True, correct_van_vleck=False)
+                 remove_dig_gains=True, remove_coarse_band=True, correct_van_vleck=True)
     else:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=False, remove_coarse_band=False, correct_van_vleck=True)
+                 remove_dig_gains=False, remove_coarse_band=False, correct_van_vleck=False)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
