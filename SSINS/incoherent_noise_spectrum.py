@@ -74,10 +74,18 @@ class INS(UVFlag):
             self.weights_array = np.logical_not(input.data_array.mask).astype(float)
             """The number of baselines that contributed to each element of the metric_array"""
             if use_integration_weights:
+                self.use_integration_weights = True
+                # Have to do this part outside of pyuvdata, rather than averaging everything twice within pyuvdata. Slow, but avoids massive memory clog.
+                self.N_count_array = np.zeros(self.Ntimes, self.Nfreqs, self.Npols)
+                for time_ind, time in np.unique(self.time_array):
+                    # At this point the weights array just reflects the flag array, which will tell us the number of baselines that contribute if we sum.
+                    self.N_count_array[time_ind] = np.sum(self.weights_array[self.time_array == time, 0, :, :], axis=0)
                 # Set nsample default if some are zero
                 input.nsample_array[input.nsample_array == 0] = nsample_default
                 # broadcast problems with single pol
                 self.weights_array *= np.sqrt(input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
+            else:
+                self.use_integration_weights = False
 
             cross_bool = self.ant_1_array != self.ant_2_array
             auto_bool = self.ant_1_array == self.ant_2_array
@@ -107,6 +115,8 @@ class INS(UVFlag):
                     self.select(ant_str="auto")
 
             super().to_waterfall(method='mean', return_weights_square=True)
+            if not hasattr(self.N_count_array):
+                self.N_count_array = np.copy(self.weights_array)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
         elif spec_type_str not in self.history:
@@ -175,9 +185,14 @@ class INS(UVFlag):
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
         if not self.order:
-            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
-            weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
-            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
+            if self.use_integration_weights:
+                zero_mean = self.metric_array * self.weights_array / self.N_count_array - np.sqrt(np.pi / 2)
+                factor = np.sqrt(self.N_count_array / (2 - np.pi / 2))
+                MS = (zero_mean * factor)[:, freq_slice]
+            else:
+                coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
+                weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
+                MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
             MS = np.zeros_like(self.metric_array[:, freq_slice])
             coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
