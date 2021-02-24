@@ -190,7 +190,7 @@ class INS(UVFlag):
                 C_sig = (2 - np.pi / 2)
                 met_wt_adj = self.metric_array * self.weights_array / (self.N_count_array * C_mu)
                 met_wt_adj_mean = np.ma.mean(met_wt_adj, axis=0)
-                var_fac = np.sqrt(C_sig / (self.N_count_array * C_mean**2))
+                var_fac = np.sqrt(C_sig / (self.N_count_array * C_mu**2))
                 MS = (met_wt_adj - met_wt_adj_mean) / (var_fac * met_wt_adj_mean)
                 MS = MS[:, freq_slice]
             else:
