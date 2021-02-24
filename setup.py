@@ -2,9 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 from setuptools import setup
 import os
+import sys
 import json
 
-from SSINS import version
+sys.path.append('SSINS')
+import version  # noqa
 
 # Make a GIT_INFO file on install
 data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
