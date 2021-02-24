@@ -77,7 +77,7 @@ class INS(UVFlag):
                 # Set nsample default if some are zero
                 input.nsample_array[input.nsample_array == 0] = nsample_default
                 # broadcast problems with single pol
-                self.weights_array *= (input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
+                self.weights_array *= np.sqrt(input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
 
             cross_bool = self.ant_1_array != self.ant_2_array
             auto_bool = self.ant_1_array == self.ant_2_array
