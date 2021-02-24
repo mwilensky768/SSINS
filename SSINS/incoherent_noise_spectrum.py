@@ -77,7 +77,7 @@ class INS(UVFlag):
                 self.use_integration_weights = True
                 # Have to do this part outside of pyuvdata, rather than averaging everything twice within pyuvdata. Slow, but avoids massive memory clog.
                 self.N_count_array = np.zeros([self.Ntimes, self.Nfreqs, self.Npols])
-                for time_ind, time in np.unique(self.time_array):
+                for time_ind, time in enumerate(np.unique(self.time_array)):
                     # At this point the weights array just reflects the flag array, which will tell us the number of baselines that contribute if we sum.
                     self.N_count_array[time_ind] = np.sum(self.weights_array[self.time_array == time, 0, :, :], axis=0)
                 # Set nsample default if some are zero
