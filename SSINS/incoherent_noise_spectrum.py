@@ -115,7 +115,7 @@ class INS(UVFlag):
                     self.select(ant_str="auto")
 
             super().to_waterfall(method='mean', return_weights_square=True)
-            if not hasattr(self.N_count_array):
+            if not hasattr(self, "N_count_array"):
                 self.N_count_array = np.copy(self.weights_array)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
