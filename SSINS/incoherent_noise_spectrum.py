@@ -186,9 +186,13 @@ class INS(UVFlag):
 
         if not self.order:
             if self.use_integration_weights:
-                zero_mean = self.metric_array * self.weights_array / self.N_count_array - np.sqrt(np.pi / 2)
-                factor = np.sqrt(self.N_count_array / (2 - np.pi / 2))
-                MS = (zero_mean * factor)[:, freq_slice]
+                C_mu = np.sqrt(np.pi / 2)
+                C_sig = (2 - np.pi / 2)
+                met_wt_adj = self.metric_array * self.weights_array / (self.N_count_array * C_mu)
+                met_wt_adj_mean = np.ma.mean(met_wt_adj, axis=0)
+                var_fac = np.sqrt(C_sig / (self.N_count_array * C_mean**2))
+                MS = (met_wt_adj - met_wt_adj_mean) / (var_fac * met_wt_adj_mean)
+                MS = MS[:, freq_slice]
             else:
                 coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
                 weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
