@@ -141,19 +141,26 @@ class SS(UVData):
 
             self.time_array[blt_slice] = diff_times
             """The center time of the differenced visibilities. Length Nblts."""
-            self.nsample_array[blt_slice, :, :, :] = diff_nsamples
-            """See pyuvdata documentation. Here we average the nsample_array of the visibilities that are differenced"""
 
             where_bl = np.where(self.baseline_array == bl)
 
             diff_ints = self.integration_time[where_bl]
-            diff_ints = diff_ints[:-1] + diff_ints[1:]
+            ints_1 = diff_ints[:-1]
+            ints_2 = diff_ints[1:]
+            diff_ints = ints_1 + ints_2
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
+	    diff_nsamples = self.get_nsamples(bl, squeeze='none')
+            nsample_1 = diff_nsamples[:-1] 
+            nsample_2 = diff_nsamples[1:]
+            diff_nsamples = 1 / (diff_ints * (1/(ints_1 * nsample_1) + 1/(ints_2 * nsample_2)))
             self.integration_time[blt_slice] = diff_ints
             """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
-            self.uvw_array[blt_slice] = diff_uvw
+            self.nsample_array[blt_slice, :, :, :] = diff_nsamples
+            """See pyuvdata documentation. Adjusted so that variance is trackable when using integration weights in INS object."""
+
+	    self.uvw_array[blt_slice] = diff_uvw
 
             self.baseline_array[blt_slice] = bl
             self.ant_1_array[blt_slice], self.ant_2_array[blt_slice] = self.baseline_to_antnums(bl)
