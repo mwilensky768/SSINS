@@ -6,6 +6,7 @@ import os
 import pytest
 
 
+@pytest.mark.filterwarnings("ignore:default base")
 def test_INS_plot():
 
     matplotlib = pytest.importorskip("matplotlib")
@@ -35,8 +36,10 @@ def test_INS_plot():
     with pytest.warns(UserWarning, match="LSTs appear to cross"):
         cp.INS_plot(ins, prefix, backend='Agg', use_extent=True,
                     extent_time_format='lst')
-    cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
-                xticklabels=xticklabels, yticklabels=yticklabels, title='Title')
+    with pytest.warns(UserWarning, match="Plotting keyword"):
+        cp.INS_plot(ins, log_prefix, log=True, xticks=xticks, yticks=yticks,
+                    xticklabels=xticklabels, yticklabels=yticklabels,
+                    title='Title')
     cp.INS_plot(ins, symlog_prefix, symlog=True, xticks=xticks, yticks=yticks,
                 xticklabels=xticklabels, yticklabels=yticklabels,
                 use_extent=False)
@@ -86,6 +89,7 @@ def test_sig_plot():
     os.rmdir(outdir)
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_VDH_plot():
 
     matplotlib = pytest.importorskip("matplotlib")
@@ -115,6 +119,7 @@ def test_VDH_plot():
     os.rmdir(outdir)
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_VDH_no_model():
 
     matplotlib = pytest.importorskip("matplotlib")
