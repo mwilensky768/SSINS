@@ -27,7 +27,7 @@ class SS(UVData):
         each frequency, calculated using the MLE_calc method"""
 
     def read(self, filename, diff=False, diff_freq=False, flag_choice=None, INS=None, custom=None,
-             **kwargs):
+             override_keyword=None, **kwargs):
 
         """
         Reads in a file that is compatible with UVData object by first calling
@@ -42,6 +42,7 @@ class SS(UVData):
             INS: An INS object for apply_flags()
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
+            override_keyword (str): sets a keyword to override to True regardless of internal diffs.
         """
 
         super().read(filename, **kwargs)
@@ -69,6 +70,16 @@ class SS(UVData):
         else:
             self.extra_keywords['dif_time'] = False
             self.extra_keywords['dif_freq'] = False
+        # hardcoded cases for override_keyword to set dif_freq/dif_time (or both)
+        # useful if data is pre-differenced rather than internally diff-ed by read() itself
+        if (override_keyword is not None):
+            if override_keyword == 'dif_time':
+                self.extra_keywords['dif_time'] = True
+            elif override_keyword == 'dif_freq':
+                self.extra_keywords['dif_freq'] = True
+            elif override_keyword == 'both':
+                self.extra_keywords['dif_freq'] = True
+                self.extra_keywords['dif_time'] = True
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """

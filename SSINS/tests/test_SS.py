@@ -68,6 +68,32 @@ def test_diff():
     assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
 
+
+def test_keyword_override_time():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    ss = SS()
+    ss.read(testfile, read_data=False, diff=False, diff_freq=False, override_keyword='dif_time')
+    assert ss.extra_keywords['dif_time'] is True
+
+
+def test_keyword_override_freq():
+    obs = '1061313128_99bl_1pol_half_time'
+    ss = SS()
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    ss.read(testfile, read_data=False, diff=False, diff_freq=False, override_keyword='dif_time')
+    assert ss.extra_keywords['dif_time'] is True
+
+
+def test_keyword_override_both():
+    obs = '1061313128_99bl_1pol_half_time'
+    ss = SS()
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    ss.read(testfile, read_data=False, diff=False, diff_freq=False, override_keyword='both')
+    assert ss.extra_keywords['dif_time'] is True
+    assert ss.extra_keywords['dif_freq'] is True
+
+
 #checks whether diff_freq reads in and out, and the diff values are sane
 def test_diff_freq():
     obs = '1061313128_99bl_1pol_half_time'
