@@ -7,6 +7,7 @@
 - Added extent options to plotting libraries so that default ticks on plots would
   be sensible and easy.
 - Added inplace keyword to select
+- Added extend keyword for image_plot colorbars
 
 
 ## 1.4.4
