@@ -17,9 +17,7 @@ def test_SS_read():
 
     ss = SS()
 
-    # Test reading in only metadata skips if block and warning
-    with pytest.warns(PendingDeprecationWarning, match="SS.read will be renamed"):
-        ss.read(testfile, read_data=False)
+    ss.read(testfile, read_data=False)
     assert ss.data_array is None, "Data array is not None"
 
     # See that it is not yet flagged as diffed
@@ -132,6 +130,7 @@ def test_diff_freq_mask():
     nonzero_flags = np.count_nonzero(ss.flag_array[::2])
     assert (nonzero_or > nonzero_flags)
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_apply_flags():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
