@@ -111,12 +111,13 @@ def test_make_ticks():
     assert np.all(labels == test_labels), "The labels are not equal"
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_combine_ins():
     obs = "1061313128_99bl_1pol_half_time"
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
 
     ss = SS()
-    ss.read(testfile)
+    ss.read(testfile, diff=True)
 
     whole_ins = INS(ss)
 
@@ -143,6 +144,7 @@ def test_combine_ins():
         assert np.all(np.isclose(getattr(whole_ins, attr), getattr(ins_first_50, attr))), f"{attr} is not equal between the two INS"
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_combine_ins_use_nsample():
     obs = "1061313128_99bl_1pol_half_time"
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
@@ -169,6 +171,7 @@ def test_combine_ins_use_nsample():
         assert np.all(np.isclose(getattr(whole_ins, attr), getattr(test_ins, attr))), f"{attr} is not equal between the two INS"
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering", "ignore:Requested")
 def test_combine_ins_errors():
     obs = "1061313128_99bl_1pol_half_time"
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
@@ -218,6 +221,7 @@ def test_combine_ins_errors():
         new_ins = util.combine_ins(ins_first_50, ins_remaining)
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_write_meta():
     obs = "1061313128_99bl_1pol_half_time"
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
