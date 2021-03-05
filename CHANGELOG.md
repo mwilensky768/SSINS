@@ -1,6 +1,8 @@
 # SSINS Change Log
 
 ## Unreleased
+
+## 1.4.5
 - Replaced is with == when comparing to string literals
 - Added write_meta util function for easy metadata writing.
 - Added match_filter writeout to yaml format.
