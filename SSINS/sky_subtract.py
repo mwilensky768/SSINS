@@ -197,7 +197,7 @@ class SS(UVData):
             self.apply_flags()
         if self.MLE is None:
             self.MLE_calc()
-        if bins == 'auto':
+        if type(bins) == str:
             _, bins = np.histogram(np.abs(self.data_array[np.logical_not(self.data_array.mask)]))
 
         N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
