@@ -79,8 +79,8 @@ def test_keyword_override_freq():
     obs = '1061313128_99bl_1pol_half_time'
     ss = SS()
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    ss.read(testfile, read_data=False, diff=False, diff_freq=False, override_keyword='dif_time')
-    assert ss.extra_keywords['dif_time'] is True
+    ss.read(testfile, read_data=False, diff=False, diff_freq=False, override_keyword='dif_freq')
+    assert ss.extra_keywords['dif_freq'] is True
 
 
 def test_keyword_override_both():
