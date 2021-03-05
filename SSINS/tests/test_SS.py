@@ -10,14 +10,16 @@ Tests the various capabilities of the sky_subtract class
 """
 
 
+@pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
 def test_SS_read():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
 
     ss = SS()
 
-    # Test reading in only metadata skips if block
-    ss.read(testfile, read_data=False)
+    # Test reading in only metadata skips if block and warning
+    with pytest.warns(PendingDeprecationWarning, match="SS.read will be renamed"):
+        ss.read(testfile, read_data=False)
     assert ss.data_array is None, "Data array is not None"
 
     # Test select on read and diff
@@ -64,6 +66,7 @@ def test_diff():
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_apply_flags():
 
     obs = '1061313128_99bl_1pol_half_time'
@@ -117,6 +120,8 @@ def test_apply_flags():
         ss.apply_flags(flag_choice='bad_choice')
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
+                            "ignore:diff on read")
 def test_mixture_prob():
 
     obs = '1061313128_99bl_1pol_half_time'
@@ -142,6 +147,8 @@ def test_mixture_prob():
     assert ss.flag_choice is None
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
+                            "ignore:diff on read")
 def test_rev_ind():
 
     obs = '1061313128_99bl_1pol_half_time'
@@ -180,6 +187,8 @@ def test_rev_ind():
     assert ss.flag_choice is None
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
+                            "ignore:some nsamples", "ignore:elementwise")
 def test_write():
 
     obs = '1061313128_99bl_1pol_half_time'
@@ -260,6 +269,7 @@ def test_read_multifiles():
         os.remove(path)
 
 
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:diff on read")
 def test_newmask():
 
     obs = '1061313128_99bl_1pol_half_time'
