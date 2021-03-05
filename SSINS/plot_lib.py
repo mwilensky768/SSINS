@@ -15,7 +15,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
                xticklabels=None, yticklabels=None, mask_color='white',
                cbar_ticks=None, font_size='medium', symlog=False, linthresh=1,
                extent=None, extent_time_format='jd', convert_times=True,
-               lst_prec=2):
+               lst_prec=2, extend='neither', alpha=None):
 
     """
     Plots 2-d images. Can do a midpoint normalize and log normalize.
@@ -49,6 +49,8 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         convert_times: Will convert a JD to UTC or LST in radians to an LST in
             hourangle, both using astropy.
         lst_prec: Number of sig figs to keep in LST hourangle ticklabel
+        extend: Whether to extend the colorbar.
+        alpha: Set a transparency factor
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
@@ -94,21 +96,21 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     if midpoint:
         cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
                         norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax),
-                        extent=extent)
+                        extent=extent, alpha=alpha)
     elif log:
         cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
-                        extent=extent)
+                        extent=extent, alpha=alpha)
     elif symlog:
         cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
-                        extent=extent)
+                        extent=extent, alpha=alpha)
     else:
         cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
-                        interpolation='none', extent=extent)
+                        interpolation='none', extent=extent, alpha=alpha)
 
     cmap.set_bad(color=mask_color)
-    cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks)
+    cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks, extend=extend)
     cbar.set_label(cbar_label, fontsize=font_size)
 
     ax.set_title(title, fontsize=font_size)

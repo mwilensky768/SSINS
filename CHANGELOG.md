@@ -7,6 +7,7 @@
 - Added extent options to plotting libraries so that default ticks on plots would
   be sensible and easy.
 - Added inplace keyword to select
+- Added extend and alpha keyword for image_plot colorbars
 - Add warning filters to unit tests.
 
 ## 1.4.4
