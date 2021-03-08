@@ -268,7 +268,7 @@ class SS(UVData):
         self.Nfreqs -= 1
         self.data_array = np.ma.masked_array(self.data_array)
         self.freq_array = (self.freq_array[:,1:] + self.freq_array[:,:-1]) / 2.0
-        self.nsample_array = self.nsample_array[:,:,1:,:]
+        self.nsample_array = (self.nsample_array[:,:,1:,:] + self.nsample_array[:,:,:-1,:]) / 2.0
         self.flag_array = np.logical_or(self.flag_array[:,:,1:,:], self.flag_array[:,:,:-1,:])
 
     def MLE_calc(self):
