@@ -42,6 +42,8 @@ setup_args = {
                 'scripts/MWA_vis_to_SSINS.py', 'scripts/occ_csv.py'],
     'version': version.version,
     'package_data': {'SSINS': data_files},
+    'setup_requires': ['setuptools_scm'],
+    'use_scm_version': True,
     'install_requires': ['pyuvdata', 'h5py', 'pyyaml'],
     'zip_safe': False,
 }
