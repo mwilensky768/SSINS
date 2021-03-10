@@ -7,7 +7,6 @@ import warnings
 from collections import namedtuple
 import yaml
 from copy import deepcopy
-from SSINS import __version__
 from functools import reduce
 import os
 
@@ -317,6 +316,7 @@ class MF():
         """
         Helper function for MF.write that sets up the dictionary for the yaml output.
         """
+        from . import __version__
 
         broadcast_dict = deepcopy(self.broadcast_dict)
         # Include additional shape if in the slc_dict which may be missing from the broadcast_dict
