@@ -6,7 +6,6 @@ import numpy as np
 import os
 from pyuvdata import UVFlag
 import yaml
-from SSINS import __version__
 from functools import reduce
 import warnings
 from itertools import combinations
@@ -307,6 +306,7 @@ class INS(UVFlag):
                 Required only if writing mwaf files.
             sep (str): Determines the separator in the filename of the output file.
         """
+        from . import __version__
 
         if output_type == 'match_events':
             filename = '%s%sSSINS%s%s.yml' % (prefix, sep, sep, output_type)
