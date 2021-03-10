@@ -105,12 +105,10 @@ def test_diff_freq():
     times = np.unique(uv.time_array)[:2]
     bls = [(0, 1), (0, 2)]
     uv.read(testfile, times=times, bls=bls)
-    uv.reorder_blts(order='baseline')
 
     diff_dat = np.diff(uv.data_array, axis=2)
 
-    with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
-        ss.read(testfile, diff=False, diff_freq=True, times=times, bls=bls)
+    ss.read(testfile, diff=False, diff_freq=True, times=times, bls=bls)
     print(ss._data_array.form)
     #ss.reorder_blts(order='baseline')
     assert np.all(ss.data_array == diff_dat), "Data values are different!"

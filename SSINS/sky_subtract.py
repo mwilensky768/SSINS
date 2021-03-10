@@ -255,10 +255,6 @@ class SS(UVData):
         UVData.check()
         """
 
-        if self.blt_order != 'baseline':
-            warnings.warn("Reordering data array to baseline order to perform differencing.")
-            self.reorder_blts(order='baseline')
-
         diff_dat = np.diff(self.data_array, axis=2) #axis 2: nfreqs (see uvdata object)
         self.data_array = diff_dat
 
