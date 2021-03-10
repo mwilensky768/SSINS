@@ -371,9 +371,9 @@ def test_MF_write():
 
     with open(f"{prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
         control_dict = yaml.safe_load(control_file)
-    control_dict.pop("version_info")
+    control_dict.pop("version")
     test_dict = mf._make_yaml_dict()
-    test_dict.pop("version_info")
+    test_dict.pop("version")
     assert test_dict == control_dict
 
     with pytest.raises(ValueError, match="matchfilter file with prefix"):
