@@ -7,7 +7,7 @@ import warnings
 from collections import namedtuple
 import yaml
 from copy import deepcopy
-from SSINS import version
+from SSINS import __version__
 from functools import reduce
 import os
 
@@ -330,14 +330,11 @@ class MF():
             # Placeholder values. "narrow" really refers to Nfreqs different shapes.
             shape_dict.update({"narrow (vals are placeholders)": [self.freq_array[0], self.freq_array[-1]]})
 
-        version_info_list = [f'%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
-        version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
-
         yaml_dict = {"freqs": [float(freq) for freq in self.freq_array],
                      "shape_dict": {shape: [float(shape_dict[shape][0]), float(shape_dict[shape][1])] for shape in shape_dict},
                      "sig_thresh": self.sig_thresh,
                      "tb_aggro": self.tb_aggro,
                      "freq_broadcast": {shape: [float(broadcast_dict[shape][0]), float(broadcast_dict[shape][1])] for shape in broadcast_dict},
-                     "version_info": version_hist_substr}
+                     "version": __version__}
 
         return(yaml_dict)

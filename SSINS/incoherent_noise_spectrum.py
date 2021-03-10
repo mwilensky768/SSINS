@@ -6,7 +6,7 @@ import numpy as np
 import os
 from pyuvdata import UVFlag
 import yaml
-from SSINS import version
+from SSINS import __version__
 from functools import reduce
 import warnings
 from itertools import combinations
@@ -308,15 +308,13 @@ class INS(UVFlag):
             sep (str): Determines the separator in the filename of the output file.
         """
 
-        version_info_list = ['%s: %s, ' % (key, version.version_info[key]) for key in version.version_info]
-        version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
         if output_type == 'match_events':
             filename = '%s%sSSINS%s%s.yml' % (prefix, sep, sep, output_type)
         else:
             filename = '%s%sSSINS%s%s.h5' % (prefix, sep, sep, output_type)
 
         if output_type != 'mwaf':
-            self.history += 'Wrote %s to %s using SSINS %s. ' % (output_type, filename, version_hist_substr)
+            self.history += 'Wrote %s to %s using SSINS %s. ' % (output_type, filename, __version__)
 
         if output_type == 'data':
             self.metric_array = self.metric_array.data
@@ -419,12 +417,12 @@ class INS(UVFlag):
                     else:
                         raise ValueError("mwaf_method is %s. Options are 'add' or 'replace'." % mwaf_method)
 
-                    mwaf_hdu[0].header['SSINSVER'] = version_hist_substr
+                    mwaf_hdu[0].header['SSINSVER'] = __version__
 
                     filename = '%s_%s.mwaf' % (prefix, boxstr)
 
                     mwaf_hdu.writeto(filename, overwrite=clobber)
-                    self.history += 'Wrote flags to %s using SSINS %s' % (filename, version_hist_substr)
+                    self.history += 'Wrote flags to %s using SSINS %s' % (filename, __version__)
         else:
             raise ValueError("output_type %s is invalid. See documentation for options." % output_type)
 
