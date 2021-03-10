@@ -13,5 +13,6 @@ from .incoherent_noise_spectrum import *
 from .plot_lib import *
 from .match_filter import *
 from .sky_subtract import *
+from setuptools_scm import get_version
 
-__version__ = version.version
+__version__ = get_version()
