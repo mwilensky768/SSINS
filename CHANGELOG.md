@@ -1,6 +1,7 @@
 # SSINS Change Log
 
 ## Unreleased
+- Change version handling to use setuptools_scm.
 
 ## 1.4.5
 - Replaced is with == when comparing to string literals
