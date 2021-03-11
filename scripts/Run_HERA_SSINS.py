@@ -8,6 +8,7 @@ import argparse
 from pyuvdata import UVData, UVFlag
 import yaml
 import hera_qm
+from hera_qm import metrics_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--filename", nargs='*',
@@ -24,15 +25,23 @@ parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
 parser.add_argument("-x", "--no_diff", action='store_false',
                     help="Flag to turn off differencing. Use if files are already time-differenced.")
-parser.add_argument("-a", "--auto_metrics_file",
-                    help="Auto metrics file to get xants from")
-parser.add_argument("-m", "--ant_metrics_files",
-                    help="List of ant_metrics files to get xants from")
+parser.add_argument("-m", "--metrics_files", type=str, nargs='*', default=[],
+                    help="path to file containing ant_metrics or auto_metrics readable by "
+                    "hera_qm.metrics_io.load_metric_file. ex_ants here are combined "
+                    "with antennas excluded via ex_ants. Flags of visibilities formed "
+                    "with these antennas will be set to True.")
+parser.add_argument("-y", "--a_priori_flag_yaml", default=None,
+                    help="yaml file with apriori flags")
 parser.add_argument("-N", "--num_baselines", type=int, default=0,
                     help="The number of baselines to read in at a time")
+parser.add_argument('--ex_ants', default=None, type=str,
+                    help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                    'formed with these antennas will be set to True.')
 args = parser.parse_args()
 
-xants = hera_qm.process_ex_ants(ex_ants=ex_ants,metrics_files=metrics_files)                           
+xants = metrics_io.process_ex_ants(ex_ants=args.ex_ants,metrics_files=args.metrics_files)
+if args.a_priori_flag_yaml is not None:
+    xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(args.a_priori_flag_yaml, ant_indices_only=True)))
 
 version_info_list = [f'{key}: {version.version_info[key]}, ' for key in version.version_info]
 version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
