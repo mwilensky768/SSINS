@@ -18,7 +18,7 @@ See https://github.com/RadioAstronomySoftwareGroup/pyuvdata.
 
 ## Installation
 
-Once pyuvdata and all dependencies of that are installed, simply clone this repo and either add it to your python path, or run `python setup.py install`.
+Once pyuvdata and all dependencies of that are installed, simply clone this repo and run `pip install .` from the top level `SSINS` directory.
 
 ## Documentation
 
