@@ -34,7 +34,7 @@ parser.add_argument("-y", "--a_priori_flag_yaml", default=None,
                     help="yaml file with apriori flags")
 parser.add_argument("-N", "--num_baselines", type=int, default=0,
                     help="The number of baselines to read in at a time")
-parser.add_argument('--ex_ants', default=None, type=str,
+parser.add_argument('--ex_ants', default='', type=str,
                     help='Comma-separated list of antennas to exclude. Flags of visibilities '
                     'formed with these antennas will be set to True.')
 args = parser.parse_args()
@@ -49,7 +49,10 @@ version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 # Make the uvflag object for storing flags later, and grab bls for partial I/O
 uvd = UVData()
 uvd.read(args.filename, read_data=False)
-use_ants = [ant for ant in uvd.antenna_numbers if ant not in xants]
+if xants==None or xants==[]:
+    use_ants = uvd.get_ants()
+else:
+    use_ants = [ant for ant in uvd.get_ants() if ant not in xants]
 uvd.select(antenna_nums=use_ants)
 bls = uvd.get_antpairs()
 uvf = UVFlag(uvd, waterfall=True, mode='flag')
