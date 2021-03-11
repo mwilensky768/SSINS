@@ -401,6 +401,4 @@ sig_thresh:
   narrow: 5
   streak: 5
 tb_aggro: 0
-version_info: 'version: 1.4.4u, git_origin: https://github.com/mwilensky768/SSINS.git,
-  git_hash: ef931a96de7cf8cb387fb149794dfbc821d6e07c, git_description: 1.4.4-9-gef931a9-dirty,
-  git_branch: match_filter_writeout, '
+version: '1.4.6.dev10+gfe57c3c.d20210310'

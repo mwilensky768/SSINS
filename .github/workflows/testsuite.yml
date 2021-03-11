@@ -42,7 +42,7 @@ jobs:
           fi
       - name: Install
         run: |
-          python setup.py install
+          pip install .
       - name: Run Tests
         run: |
           python -m pytest --cov=SSINS --cov-config=.coveragerc --cov-report xml:./coverage.xml --junitxml=test-reports/xunit.xml
