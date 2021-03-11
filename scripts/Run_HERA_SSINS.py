@@ -39,9 +39,12 @@ parser.add_argument('--ex_ants', default='', type=str,
                     'formed with these antennas will be set to True.')
 args = parser.parse_args()
 
-xants = metrics_io.process_ex_ants(ex_ants=args.ex_ants,metrics_files=args.metrics_files)
-if args.a_priori_flag_yaml is not None:
-    xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(args.a_priori_flag_yaml, ant_indices_only=True)))
+if args.metrics_files != []:
+    xants = metrics_io.process_ex_ants(ex_ants=args.ex_ants,metrics_files=args.metrics_files)
+    if args.a_priori_flag_yaml is not None:
+        xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(args.a_priori_flag_yaml, ant_indices_only=True)))
+else:
+    xants=[]
 
 version_info_list = [f'{key}: {version.version_info[key]}, ' for key in version.version_info]
 version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
