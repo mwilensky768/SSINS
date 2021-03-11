@@ -7,6 +7,7 @@ import numpy as np
 import argparse
 from pyuvdata import UVData, UVFlag
 import yaml
+import hera_qm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--filename", nargs='*',
@@ -23,9 +24,15 @@ parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
 parser.add_argument("-x", "--no_diff", action='store_false',
                     help="Flag to turn off differencing. Use if files are already time-differenced.")
+parser.add_argument("-a", "--auto_metrics_file",
+                    help="Auto metrics file to get xants from")
+parser.add_argument("-m", "--ant_metrics_files",
+                    help="List of ant_metrics files to get xants from")
 parser.add_argument("-N", "--num_baselines", type=int, default=0,
                     help="The number of baselines to read in at a time")
 args = parser.parse_args()
+
+xants = hera_qm.process_ex_ants(ex_ants=ex_ants,metrics_files=metrics_files)                           
 
 version_info_list = [f'{key}: {version.version_info[key]}, ' for key in version.version_info]
 version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
@@ -33,6 +40,8 @@ version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
 # Make the uvflag object for storing flags later, and grab bls for partial I/O
 uvd = UVData()
 uvd.read(args.filename, read_data=False)
+use_ants = [ant for ant in uvd.antenna_numbers if ant not in xants]
+uvd.select(antenna_nums=use_ants)
 bls = uvd.get_antpairs()
 uvf = UVFlag(uvd, waterfall=True, mode='flag')
 del uvd
@@ -51,7 +60,8 @@ if args.num_baselines > 0:
         new_ins = INS(ss)
         ins = util.combine_ins(ins, new_ins)
 else:
-    ss.read(args.filename, ant_str='cross', diff=args.no_diff)
+    ss.read(args.filename, antenna_nums=use_ants, diff=args.no_diff)
+    ss.select(ant_str='cross')
     ins = INS(ss)
 
 # Clear some memory??
