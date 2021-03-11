@@ -36,11 +36,13 @@ if args.rfi_flag:
         if args.correct:
             ss.read(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
-                    remove_dig_gains=True, remove_coarse_band=True)
+                    remove_dig_gains=True, remove_coarse_band=True,
+                    data_array_dtype=np.complex64)
         else:
             ss.read(args.uvd, phase_to_pointing_center=True,
                     correct_cable_len=True, flag_choice='original', diff=True,
-                    remove_dig_gains=False, remove_coarse_band=False)
+                    remove_dig_gains=False, remove_coarse_band=False,
+                    data_array_dtype=np.complex64)
 
         ins = INS(ss)
         prefix = f'{args.outdir}/{args.obsid}'
