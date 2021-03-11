@@ -6,12 +6,6 @@ import sys
 import json
 
 sys.path.append('SSINS')
-import version  # noqa
-
-# Make a GIT_INFO file on install
-data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
-with open(os.path.join('SSINS', 'GIT_INFO'), 'w') as outfile:
-    json.dump(data, outfile)
 
 
 def package_files(package_dir, subdirectory):
@@ -40,8 +34,9 @@ setup_args = {
     'scripts': ['scripts/MWA_EoR_High_uvfits_write.py', 'scripts/Run_HERA_SSINS.py',
                 'scripts/MWA_EoR_High_Flag.py', 'scripts/MWA_gpubox_to_SSINS_on_Pawsey.sh',
                 'scripts/MWA_vis_to_SSINS.py', 'scripts/occ_csv.py'],
-    'version': version.version,
     'package_data': {'SSINS': data_files},
+    'setup_requires': ['setuptools_scm'],
+    'use_scm_version': True,
     'install_requires': ['pyuvdata', 'h5py', 'pyyaml'],
     'zip_safe': False,
 }

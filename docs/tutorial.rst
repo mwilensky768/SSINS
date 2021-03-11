@@ -302,6 +302,20 @@ Flagging an INS using a match_filter (MF)
   >>> # Be sure to set clobber=False (default) if using the same prefix
   >>> # as the original file and you don't want to overwrite
 
+
+--------------------
+Getting Version Info
+--------------------
+
+SSINS uses setuptools_scm to get the version from git tags.
+
+(a) Printing the version.
+*************************
+::
+  >>> from SSINS import __version__ as SSINS_version
+  >>> # This string will be recorded in the history string of written outputs
+  >>> print(SSINS_version) # doctest: +SKIP
+
 -------------------
 Advanced Techniques
 -------------------

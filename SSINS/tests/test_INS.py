@@ -1,4 +1,4 @@
-from SSINS import INS, SS, version
+from SSINS import INS, SS
 from SSINS.data import DATA_PATH
 import numpy as np
 import os
