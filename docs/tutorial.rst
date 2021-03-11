@@ -313,7 +313,7 @@ SSINS uses setuptools_scm to get the version from git tags.
 *************************
 ::
   >>> from SSINS import __version__ as SSINS_version
-  # This string will be recorded in the history string of written outputs
+  >>> # This string will be recorded in the history string of written outputs
   >>> print(SSINS_version) # doctest: +SKIP
 
 -------------------
