@@ -42,7 +42,8 @@ class SS(UVData):
             INS: An INS object for apply_flags()
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
-            override_keyword (str): sets a keyword to override to True regardless of internal diffs.
+            override_keyword (str): sets a keyword to override to True regardless of internal diffs,
+                can be set to `dif_freq`, `dif_time`, or `both`.
         """
 
         super().read(filename, **kwargs)
