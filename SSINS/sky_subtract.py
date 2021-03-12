@@ -261,9 +261,6 @@ class SS(UVData):
         diff_dat = np.diff(self.data_array, axis=2) #axis 2: nfreqs (see uvdata object)
         self.data_array = diff_dat
 
-        print(self.data_array.shape)
-        """The frequency-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
-
         self.Nfreqs -= 1
         self.data_array = np.ma.masked_array(self.data_array)
         self.freq_array = (self.freq_array[:,1:] + self.freq_array[:,:-1]) / 2.0
