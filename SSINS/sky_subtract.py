@@ -70,6 +70,9 @@ class SS(UVData):
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
+            if diff_freq and diff:
+                self.extra_keywords['dif_time'] = True
+                self.extra_keywords['dif_freq'] = True
         else:
             self.extra_keywords['dif_time'] = False
             self.extra_keywords['dif_freq'] = False
