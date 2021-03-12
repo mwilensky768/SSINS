@@ -65,6 +65,8 @@ def test_diff():
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
     assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
+    assert ss.extra_keywords['dif_freq'] is False
+    assert ss.extra_keywords['dif_time'] is True
 
 
 def test_keyword_override_time():
@@ -91,7 +93,6 @@ def test_keyword_override_both():
     assert ss.extra_keywords['dif_time'] is True
     assert ss.extra_keywords['dif_freq'] is True
 
-
 #checks whether diff_freq reads in and out, and the diff values are sane
 def test_diff_freq():
     obs = '1061313128_99bl_1pol_half_time'
@@ -112,6 +113,8 @@ def test_diff_freq():
     print(ss._data_array.form)
     #ss.reorder_blts(order='baseline')
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
+    assert ss.extra_keywords['dif_freq'] is True
+    assert ss.extra_keywords['dif_time'] is False
 
 #checks whether diff_freq masks properly
 def test_diff_freq_mask():
