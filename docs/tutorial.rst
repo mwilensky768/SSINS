@@ -43,7 +43,7 @@ Generating the sky-subtracted visibilities
   >>> # The following lines make use of the time_array attribute (metadata) to
   >>> # read in all but the first and last integrations
   >>> times = np.unique(ss.time_array)[1:-1]
-  >>> # This read() call uses the `diff` keyword to difference the data automatically along the time axiss
+  >>> # This read() call uses the `diff` keyword to difference the data automatically along the time axis
   >>> ss.read(filepath, read_data=True, times=times, diff=True)
 
 (c) Differencing along the frequency axis
