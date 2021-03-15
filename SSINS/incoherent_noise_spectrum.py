@@ -266,7 +266,7 @@ class INS(UVFlag):
                 freq_compat = np.all(self.freq_array == test_freqs)
                 assert freq_compat
             except Exception:
-                raise ValueError("UVFlag object's times do not match those of INS object.")
+                raise ValueError("UVFlag object's frequencies do not match those of INS object.")
         new_flags = self.mask_to_flags()
 
         if inplace:
