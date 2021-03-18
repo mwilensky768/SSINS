@@ -1,8 +1,8 @@
 SS Class
 ========
 
-This is the sky_subtract class. This takes a UVData object (or a UVData-readable
-filepath) in order to make other useful data products for RFI analysis.
+This is the sky_subtract class. It is a subclass of UVData with only a few extra
+methods. This is mostly a precursor to the INS class.
 
 .. autoclass:: SSINS.SS
   :members:
