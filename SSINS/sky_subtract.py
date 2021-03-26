@@ -57,6 +57,7 @@ class SS(UVData):
                 self.extra_keywords['dif_freq'] = False
             if diff_freq:
                 self.diff_freq()
+                self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
                 self.extra_keywords['dif_freq'] = True
                 self.extra_keywords['dif_time'] = False
             if not diff_freq and not diff:
