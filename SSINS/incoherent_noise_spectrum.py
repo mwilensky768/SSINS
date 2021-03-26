@@ -230,9 +230,9 @@ class INS(UVFlag):
             p_flags[:-1] = self.metric_array.mask
             p_flags[1:] = np.logical_or(p_flags[1:], p_flags[:-1])
         if self.extra_keywords['dif_freq'] is True:
-            p_flags = np.zeros(shape[0] + [shape[1:] + 1], dtype=bool)
-            p_flags[:-1] = self.metric_array.mask
-            p_flags[1:] = np.logical_or(p_flags[1:], p_flags[:-1])
+            p_flags = np.zeros([shape[0], shape[1] + 1, shape[2]], dtype=bool)
+            p_flags[:,:-1] = self.metric_array.mask
+            p_flags[:,1:] = np.logical_or(p_flags[:,1:], p_flags[:,:-1])
         return(p_flags)
 
     def flag_uvf(self, uvf, inplace=False):
