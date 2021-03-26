@@ -255,6 +255,10 @@ def test_write_mwaf():
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     prefix = os.path.join(DATA_PATH, '%s_test' % obs)
     ins = INS(testfile)
+    #to override the fact that the data files don't have dif_ keywords set
+    ins.extra_keywords['dif_time'] = True
+    ins.extra_keywords['dif_freq'] = False
+
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
     metafits_file = os.path.join(DATA_PATH, '1061313128.metafits')

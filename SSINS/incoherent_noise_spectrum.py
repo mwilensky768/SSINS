@@ -215,21 +215,25 @@ class INS(UVFlag):
     def mask_to_flags(self):
         """
         Propagates the mask to construct flags for the original
-        (non time-differenced) data. If a time is flagged in the INS, then both
+        (non differenced) data. If a time is flagged in the INS, then both
         times that could have contributed to that time in the sky-subtraction
         step are flagged in the new array.
 
         Returns:
-            tp_flags (array): The time-propagated flags
+            p_flags (array): The (time or frequency)-propagated flags
         """
 
         # Propagate the flags
         shape = list(self.metric_array.shape)
-        tp_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
-        tp_flags[:-1] = self.metric_array.mask
-        tp_flags[1:] = np.logical_or(tp_flags[1:], tp_flags[:-1])
-
-        return(tp_flags)
+        if self.extra_keywords['dif_time'] is True:
+            p_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+            p_flags[:-1] = self.metric_array.mask
+            p_flags[1:] = np.logical_or(p_flags[1:], p_flags[:-1])
+        if self.extra_keywords['dif_freq'] is True:
+            p_flags = np.zeros(shape[0] + [shape[1:] + 1], dtype=bool)
+            p_flags[:-1] = self.metric_array.mask
+            p_flags[1:] = np.logical_or(p_flags[1:], p_flags[:-1])
+        return(p_flags)
 
     def flag_uvf(self, uvf, inplace=False):
         """
