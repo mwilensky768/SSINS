@@ -128,6 +128,36 @@ def test_polyfit():
     ins.metric_ms = ins.mean_subtract()
     assert np.all(ins.metric_ms.mask), "The metric_ms array was not all masked"
 
+def test_flag_uvf_freq():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    flags_outfile = '%s_SSINS_flags.h5' % prefix
+
+    ss = SS()
+    ss.read(testfile, diff_freq=True)
+
+    uvd = UVData()
+    uvd.read(testfile)
+
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
+    # start with some flags so that we can test the intended OR operation
+    uvf.flag_array[6, :] = True
+    ins = INS(ss)
+
+    # Check error handling
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
+        # Pretend the data is off by 1 freq
+        bad_uvf.freq_array += 1
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
 def test_mask_to_flags():
@@ -456,6 +486,7 @@ def test_add():
     assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
 
 def test_mask_to_flags():
+    #verify array sizes
     ss = SS()
     filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
     ss.read(filepath, diff=True)
