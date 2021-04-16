@@ -225,6 +225,7 @@ class INS(UVFlag):
 
         # Propagate the flags
         shape = list(self.metric_array.shape)
+        # no else here between dif/time, it is possible to have a doubly differenced set
         if self.extra_keywords['dif_time'] is True:
             p_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
             p_flags[:-1] = self.metric_array.mask
