@@ -47,6 +47,17 @@ class SS(UVData):
         """
 
         super().read(filename, **kwargs)
+        # detect if there is contridicting override_keyword and diff/diff_freq terms
+        if diff or diff_freq is True and override_keyword is not None:
+            warnings.warn("diff or diff_freq set to true and override keyword has"
+                          " been set. Please ensure that this does not cause unwanted"
+                          " behavior, since the override_keyword will override diff"
+                          " setting internal attributes"
+
+        if override_keyword != "dif_freq" or override_keyword != "dif_time" or override_keyword != "both":
+            warnings.warn("override_keyword passed but is not 'dif_time',"
+                          " 'dif_freq', or 'both': override_keyword will have no"
+                          " effect")
 
         # always set extra keywords, else key errors when trying to check
         if (self.data_array is not None):
@@ -79,6 +90,7 @@ class SS(UVData):
             self.extra_keywords['dif_freq'] = False
         # hardcoded cases for override_keyword to set dif_freq/dif_time (or both)
         # useful if data is pre-differenced rather than internally diff-ed by read() itself
+        # applied after the internal flags, and thus overwrites them
         if (override_keyword is not None):
             if override_keyword == 'dif_time':
                 self.extra_keywords['dif_time'] = True
