@@ -46,7 +46,6 @@ if args.rfi_flag:
 
         ins = INS(ss)
         prefix = f'{args.outdir}/{args.obsid}'
-        ins.write(prefix)
         Catalog_Plot.INS_plot(ins, prefix, data_cmap=cm.plasma, ms_vmin=-5, ms_vmax=5,
                               title=args.obsid, xlabel='Frequency (Mhz)',
                               ylabel='Time (UTC)')
@@ -66,7 +65,6 @@ if args.rfi_flag:
         # Do the flagging
         mf.apply_match_test(ins, event_record=True, time_broadcast=True,
                             freq_broadcast=True)
-        ins.write(prefix, output_type='mask')
         Catalog_Plot.INS_plot(ins, f'{prefix}_flagged', data_cmap=cm.plasma,
                               ms_vmin=-5, ms_vmax=5, title=args.obsid,
                               xlabel='Frequency (Mhz)', ylabel='Time (UTC)')
@@ -74,10 +72,12 @@ if args.rfi_flag:
     uvd = UVData()
     if args.correct:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=True, remove_coarse_band=True, correct_van_vleck=True)
+                 remove_dig_gains=True, remove_coarse_band=True, correct_van_vleck=True,
+                 data_array_dtype=np.complex64)
     else:
         uvd.read(args.uvd, phase_to_pointing_center=True, correct_cable_len=True,
-                 remove_dig_gains=False, remove_coarse_band=False, correct_van_vleck=False)
+                 remove_dig_gains=False, remove_coarse_band=False, correct_van_vleck=False,
+                 data_array_dtype=np.complex64)
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     uvf.flag_array = ins.mask_to_flags()
     utils.apply_uvflag(uvd, uvf, inplace=True)
@@ -85,7 +85,7 @@ if args.rfi_flag:
         uvd.downsample_in_time(n_times_to_avg=args.time_avg)
     if args.freq_avg > 0:
         uvd.frequency_average(args.freq_avg)
-
+    util.write_meta(prefix, ins, uvf=uvf, mf=mf)
 if np.any(uvd.nsample_array == 0) and (args.nsample_default > 0):
     uvd.nsample_array[uvd.nsample_array == 0] = args.nsample_default
 
