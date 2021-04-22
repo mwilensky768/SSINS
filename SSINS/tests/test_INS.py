@@ -93,17 +93,24 @@ def test_polyfit():
     # Mock some data for which the polyfit is exact
     x = np.arange(1, ins.Ntimes + 1)
     for ind in range(ins.Nfreqs):
-        ins.metric_array[:, ind, 0] = 3 * x + 5
+        # Need to make these unique to ensure the right channels get pulled
+        ins.metric_array[:, ind, 0] = ind * x + 5
     ins.metric_array.mask = np.zeros(ins.metric_array.shape, dtype=bool)
     ins.weights_array = np.ones(ins.metric_array.shape)
     ins.weights_square_array = np.copy(ins.weights_array)
+
+    # Test when slice is slice(None)
     ins.metric_ms, coeffs = ins.mean_subtract(return_coeffs=True)
     test_coeffs = np.zeros((ins.order + 1, ) + ins.metric_ms.shape[1:])
-    test_coeffs[0, :] = 3
+    test_coeffs[0, :, 0] = np.arange(ins.Nfreqs)
     test_coeffs[1, :] = 5
 
     assert np.all(np.allclose(ins.metric_ms, np.zeros(ins.metric_ms.shape))), "The polyfit was not exact"
     assert np.all(np.allclose(coeffs, test_coeffs)), "The polyfit got the wrong coefficients"
+
+    test_freq_slice = slice(3, 14)
+    ins.metric_ms[:, test_freq_slice], coeffs = ins.mean_subtract(return_coeffs=True, freq_slice=test_freq_slice)
+    assert np.all(np.allclose(coeffs, test_coeffs[:, test_freq_slice])), "The polyfit got the wrong coefficients"
 
     ins.metric_array[:] = np.ma.masked
     ins.metric_ms = ins.mean_subtract()
