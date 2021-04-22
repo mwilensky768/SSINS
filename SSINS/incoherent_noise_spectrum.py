@@ -191,9 +191,12 @@ class INS(UVFlag):
             good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
             # Only do this if there are unmasked channels
             if len(good_chans) > 0:
-                # Go back into indexing the metric array
-                if freq_slice.start is not None:
-                    good_chans += freq_slice.start
+                # Go back into indexing the metric array for cleaner code below
+                if freq_slice.start is None:
+                    chan_adj = 0
+                else:
+                    chan_adj = freq_slice.start
+                    good_chans += chan_adj
                 # np.ma.polyfit does not take 2-d weights (!!!) so we just do the slow implementation and go chan by chan, pol-by-pol
                 for chan in good_chans:
                     for pol_ind in range(self.Npols):
@@ -202,16 +205,15 @@ class INS(UVFlag):
                         w_sq = self.weights_square_array[:, chan, pol_ind]
                         # Make the fit
                         coeff = np.ma.polyfit(x, y, self.order, w=w)
-                        coeffs[:, chan, pol_ind] = coeff
+                        # This one is pre-sliced, so need to index into the slice
+                        coeffs[:, chan - chan_adj, pol_ind] = coeff
                         # Do the magic
                         mu = np.sum([coeff[poly_ind] * x**(self.order - poly_ind)
                                      for poly_ind in range(self.order + 1)],
                                     axis=0)
                         weights_factor = w / np.sqrt(C * w_sq)
                         y_op = dat_arr_op[:, chan, pol_ind]
-                        MS[:, chan, pol_ind] = (y_op / mu - 1) * weights_factor
-            else:
-                MS[:] = np.ma.masked
+                        MS[:, chan - chan_adj, pol_ind] = (y_op / mu - 1) * weights_factor
 
         # Remask the values
         MS.mask = self.metric_array[:, freq_slice].mask
