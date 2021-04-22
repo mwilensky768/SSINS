@@ -173,10 +173,12 @@ class INS(UVFlag):
 
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
+        # Still want z-scores for masked valid data
+        dat_arr_op = np.ma.masked_invalid(self.metric_array.data)
         if not self.order:
             coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
             weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
-            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
+            MS = (dat_arr_op[:, freq_slice] / coeffs - 1) * weights_factor
         else:
             MS = np.zeros_like(self.metric_array[:, freq_slice])
             coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
@@ -189,6 +191,9 @@ class INS(UVFlag):
             good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
             # Only do this if there are unmasked channels
             if len(good_chans) > 0:
+                # Go back into indexing the metric array
+                if freq_slice.start is not None:
+                    good_chans += freq_slice.start
                 # np.ma.polyfit does not take 2-d weights (!!!) so we just do the slow implementation and go chan by chan, pol-by-pol
                 for chan in good_chans:
                     for pol_ind in range(self.Npols):
@@ -203,10 +208,13 @@ class INS(UVFlag):
                                      for poly_ind in range(self.order + 1)],
                                     axis=0)
                         weights_factor = w / np.sqrt(C * w_sq)
-                        MS[:, chan, pol_ind] = (y / mu - 1) * weights_factor
+                        y_op = dat_arr_op[:, chan, pol_ind]
+                        MS[:, chan, pol_ind] = (y_op / mu - 1) * weights_factor
             else:
                 MS[:] = np.ma.masked
 
+        # Remask the values
+        MS.mask = self.metric_array[:, freq_slice].mask
         if return_coeffs:
             return(MS, coeffs)
         else:
