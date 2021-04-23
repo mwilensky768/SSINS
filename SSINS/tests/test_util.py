@@ -23,20 +23,31 @@ def test_obslist():
     os.remove(outfile)
 
 
-def test_event_count():
+def test_tf_set():
 
-    time_range = np.arange(10)
-    freq_range = np.arange(10)
+    obs = "1061313128_99bl_1pol_half_time_SSINS"
+    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+
+    ins = INS(testfile)
+
+    # Mock some flaggable data
+    ins.select(freq_chans=np.arange(32), times=ins.time_array[:22])
+
     event_list = [Event(slice(0, 1), slice(2, 3), "narrow_170.000MHz", 10),
                   Event(slice(2, 3), slice(2, 3), "narrow_170.000MHz", 10)]
 
-    assert util.event_count(event_list, time_range) == 2
+    tf_set = util.get_unique_event_tf(ins, event_list)
 
+    assert len(tf_set) == 2
+
+    # Test that it can sort out the redundancy
     event_list.append(Event(slice(0, 11), slice(2, 3), "narrow_170.000MHz", None))
+    tf_set = util.get_unique_event_tf(ins, event_list)
 
-    assert util.event_count(event_list, time_range) == 10
+    assert len(tf_set) == 11
 
 
+@pytest.mark.filterwarnings("ignore:Total z-score")
 def test_calc_occ():
 
     obs = "1061313128_99bl_1pol_half_time_SSINS"
@@ -51,7 +62,7 @@ def test_calc_occ():
     ins.weights_array[:] = 10
     ins.weights_square_array[:] = 10
     # Make some outliers
-    # Narrowband in 1th, 26th, and 31th frequency
+    # Narrowband in 1th, 26th, and 30th frequency
     ins.metric_array[1, 1, :] = 100
     ins.metric_array[1, 30, :] = 100
     ins.metric_array[3:14, 26, :] = 100
@@ -79,8 +90,9 @@ def test_calc_occ():
     assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6))] == 0.05
     assert occ_dict["shape"] == 1
 
-    occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
-                             lump_narrowband=True)
+    with pytest.warns(UserWarning, match="Total z-score summed over events was 0."):
+        occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
+                                 lump_narrowband=True)
 
     # total narrow over total valid
     assert occ_dict["narrow"] == 24 / 600
