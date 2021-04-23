@@ -68,14 +68,15 @@ def test_mean_subtract():
 
     old_dat = np.copy(ins.metric_ms)
 
-    # Mask the first five frequencies and last two at the first and second times
+    # Mask the first five frequencies at the first time
     ins.metric_array[0, :5] = np.ma.masked
 
     # Calculate the new mean-subtracted spectrum only over the first few masked frequencies
     ins.metric_ms[:, :5] = ins.mean_subtract(freq_slice=slice(0, 5))
 
     # See if a new mean was calculated over the first five frequencies
-    assert not np.all(old_dat[1:, :5] == ins.metric_ms[1:, :5]), "All elements of the ms array are still equal"
+    # This also tests that the masked element was not used in the mean AND that the masked element changed its score
+    assert not np.any(old_dat[:, :5] == ins.metric_ms[:, :5].data), "Some elements of the ms array are still equal"
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
