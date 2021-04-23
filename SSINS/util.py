@@ -45,8 +45,6 @@ def get_unique_event_tf(ins, event_list):
                         if hasattr(combo[1], "__iter__"):
                             if all(combo[1] == item[1]):
                                 bool_check[1] = True
-                        elif combo[1] == item[1]:
-                            bool_check[1] = True
                     if all(bool_check):
                         count += 1
             if count:
