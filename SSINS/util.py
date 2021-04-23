@@ -97,7 +97,7 @@ def get_sum_z_score(ins, tf_set):
         # Just do the z-score calculation here.
         sliced_z_arr = z_arr[time_slice, freq_slice]
         N_unmasked = np.count_nonzero(np.logical_not(sliced_z_arr.mask), axis=1)
-        if N_unmasked > 0:
+        if np.any(N_unmasked) > 0:
             z_subband = np.ma.sum(sliced_z_arr, axis=1) / np.sqrt(N_unmasked)
             z_subband_total = np.ma.sum(z_subband)
             total_z += np.abs(z_subband_total)
