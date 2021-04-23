@@ -16,19 +16,45 @@ def get_unique_event_tf(ins, event_list):
     Args:
         ins: An incoherent noise spectrum to which the events belong.
         event_list: List of events from the match filter.
+
+    Returns:
+        tf_list: List of time/frequency combos
     """
 
     time_range = np.arange(ins.Ntimes)
     freq_range = np.arange(ins.Nfreqs)
 
-    tf_set = set()
+    tf_list = []
     for event in event_list:
         ntimes_event = event.time_slice.stop - event.time_slice.start
-        tf_subset = set(zip(time_range[event.time_slice],
-                            np.repeat(freq_range[event.freq_slice], ntimes_event)))
-        tf_set = tf_set.union(tf_subset)
+        tr_slc = time_range[event.time_slice]
+        fr_slc_rpt = np.repeat(freq_range[event.freq_slice][np.newaxis, :], ntimes_event, axis=0)
 
-    return(tf_set)
+        for k in range(ntimes_event):
+            item1 = tr_slc[k]
+            item2 = fr_slc_rpt[k]
+            combo = (item1, item2)
+
+            # Normal asking if element is in list isn't working.
+            count = 0
+            if len(tf_list) > 0:
+                for item in tf_list:
+                    bool_check = [False, False]
+                    if combo[0] == item[0]:
+                        bool_check[0] = True
+                        if hasattr(combo[1], "__iter__"):
+                            if all(combo[1] == item[1]):
+                                bool_check[1] = True
+                        elif combo[1] == item[1]:
+                            bool_check[1] = True
+                    if all(bool_check):
+                        count += 1
+            if count:
+                continue
+            else:
+                tf_list.append(combo)
+
+    return(tf_list)
 
 
 def get_slice(obj):
@@ -42,7 +68,10 @@ def get_slice(obj):
         slc: The slice object.
     """
     if hasattr(obj, "__iter__"):
-        slc = slice(min(obj), max(obj))
+        if len(obj) > 1:
+            slc = slice(min(obj), max(obj))
+        else:
+            slc = slice(obj[0], obj[0] + 1)
     else:
         slc = slice(obj, obj + 1)
 
@@ -69,10 +98,11 @@ def get_sum_z_score(ins, tf_set):
 
         # Just do the z-score calculation here.
         sliced_z_arr = z_arr[time_slice, freq_slice]
-        N_unmasked = np.count_nonzero(sliced_z_arr.mask, axis=1)
+        N_unmasked = np.count_nonzero(np.logical_not(sliced_z_arr.mask), axis=1)
         if N_unmasked > 0:
             z_subband = np.ma.sum(sliced_z_arr, axis=1) / np.sqrt(N_unmasked)
-            total_z += z_subband
+            z_subband_total = np.ma.sum(z_subband)
+            total_z += np.abs(z_subband_total)
 
     if total_z == 0:
         warnings.warn("Total z-score summed over events was 0. Probably a fully flagged channel or channel range.")
@@ -135,7 +165,7 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
                     subshape_relevant_events = [event for event in relevant_events if subshape in event.shape]
                     tf_set = get_unique_event_tf(ins, subshape_relevant_events)
                     occ_dict[subshape_key] = len(tf_set) / (ins.Ntimes - num_int_flag)
-                    z_dict[shape] = get_sum_z_score(ins, tf_set)
+                    z_dict[subshape_key] = get_sum_z_score(ins, tf_set)
                     # Sometimes broadcast events can make this bigger than 1.
                     # Does not apply to lump case.
                     if occ_dict[subshape_key] > 1:
@@ -150,6 +180,7 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
 
     if not lump_narrowband:
         occ_dict.pop("narrow")
+        z_dict.pop("narrow")
 
     occ_dict['total'] = total_occ
     for item in occ_dict:
