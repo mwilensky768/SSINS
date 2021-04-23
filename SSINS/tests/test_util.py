@@ -82,8 +82,9 @@ def test_calc_occ():
     mf = MF(ins.freq_array, 5, tb_aggro=0.5, shape_dict=shape_dict)
     mf.apply_match_test(ins, time_broadcast=True)
 
-    occ_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
-                             lump_narrowband=False)
+    occ_dict, z_dict = util.calc_occ(ins, mf, num_init_flag, num_int_flag=2,
+                                     lump_narrowband=False, return_z_dict=True)
+
     assert occ_dict["streak"] == 0
     assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6))] == 0.05
     assert occ_dict["narrow_%.3fMHz" % (ins.freq_array[26] * 10**(-6))] == 1
