@@ -9,21 +9,56 @@ import copy
 import warnings
 
 
-def event_count(event_list, time_range, freq_range=None):
-    shape_set = set()
+def get_unique_event_tf(ins, event_list):
+    """
+    Get unique time/frequency combinations from an event list for a given ins.
+
+    Args:
+        ins: An incoherent noise spectrum to which the events belong.
+        event_list: List of events from the match filter.
+    """
+
+    time_range = np.arange(ins.Ntimes)
+    freq_range = np.arange(ins.Nfreqs)
+
+    tf_set = set()
     for event in event_list:
-        if freq_range is None:
-            shape_set = shape_set.union(time_range[event.time_slice])
-        else:
-            ntimes_event = event.time_slice.stop - event.time_slice.start
-            event_set = set(zip(time_range[event.time_slice],
-                                np.repeat(freq_range[event.freq_slice], ntimes_event)))
-            shape_set = shape_set.union(event_set)
+        ntimes_event = event.time_slice.stop - event.time_slice.start
+        tf_subset = set(zip(time_range[event.time_slice],
+                            np.repeat(freq_range[event.freq_slice], ntimes_event)))
+        tf_set = tf_set.union(tf_subset)
 
-    return(len(shape_set))
+    return(tf_set)
 
 
-def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
+def get_sum_z_score(ins, tf_set):
+    """
+    Get the sum of the z-scores for a set of time-frequency combinations as
+    returned by get_unique_event_tf. Used as a brightness metric.
+
+    Args:
+        ins: INS that has been flagged and has events contained in tf_set.
+        tf_set: Time-frequency combinations as reported by get_unique_event_tf
+    """
+
+    total_z = 0
+    # Just do a for loop since the array is small.
+    for time_ind, freq_range in tf_set:
+        # Careful with infs/nans
+        z_arr = np.ma.masked_invalid(ins.metric_ms.data)
+
+        # Just do the z-score calculation here.
+        sliced_z_arr = z_arr[time_ind, freq_range]
+        N_unmasked = np.count_nonzero(sliced_z_arr.mask, axis=1)
+        z_subband = np.ma.sum(sliced_z_arr, axis=1) / np.sqrt(N_unmasked)
+
+        total_z += z_subband
+
+    return(total_z)
+
+
+def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
+             return_z_scores=False):
     """
     Calculates the fraction of times an event was caught by the flagger for
     each type of event. Does not take care of frequency broadcasted events.
@@ -35,11 +70,16 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
         num_int_flag: The number of fully flagged integrations in the starting flags
         lump_narrowband: Whether to combine narrowband occupancies into a single number.
             Will slightly overestimate if n_int_flag > 0.
+        return_brightness: Whether to return a flux density dictionary as well.
 
     Returns:
         occ_dict: A dictionary with shapes for keys and occupancy fractions for values
+        z_dict: A dictionary with sum of z-scores for different shapes.
+            z-scores are calculated from clean data only.
     """
+
     occ_dict = {shape: 0. for shape in mf.slice_dict}
+    z_dict = {shape: 0 for shape in mf.bright_dict}
 
     # Figure out the total occupancy sans initial flags
     total_data = np.prod(ins.metric_array.shape)
@@ -52,13 +92,13 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
 
     for shape in init_shapes:
         relevant_events = [event for event in ins.match_events if shape in event.shape]
-        time_range = np.arange(ins.Ntimes)
 
         if shape == "narrow":
             if lump_narrowband:
-                freq_range = np.arange(ins.Nfreqs)
                 # The length of the shape_set tells you how many points were flagged, without overcounting
-                occ_dict[shape] = event_count(relevant_events, time_range, freq_range) / total_valid
+                occ_dict[shape] = len(tf_set) / total_valid
+                tf_set = get_unique_event_tf(ins, relevant_events)
+                z_dict[shape] = get_sum_z_score(ins, tf_set)
             else:
                 # Need to pull out the unique frequencies that were identified
                 new_event_shapes = []
@@ -70,13 +110,18 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
                 for subshape in new_event_shapes:
                     subshape_key = f"narrow_{subshape}"
                     subshape_relevant_events = [event for event in relevant_events if subshape in event.shape]
-                    occ_dict[subshape_key] = event_count(subshape_relevant_events,
-                                                         time_range) / (ins.Ntimes - num_int_flag)
-
+                    tf_set = get_unique_event_tf(ins, subshape_relevant_events)
+                    occ_dict[subshape_key] = len(tf_set) / (ins.Ntimes - num_int_flag)
+                    z_dict[shape] = get_sum_z_score(ins, tf_set)
+                    # Sometimes broadcast events can make this bigger than 1.
+                    # Does not apply to lump case.
                     if occ_dict[subshape_key] > 1:
                         occ_dict[subshape_key] = 1
         else:
-            occ_dict[shape] = event_count(relevant_events, time_range) / (ins.Ntimes - num_int_flag)
+            tf_set = get_unique_event_tf(ins, relevant_events)
+            occ_dict[shape] = len(tf_set) / (ins.Ntimes - num_int_flag)
+            z_dict[shape] = get_sum_z_score(ins, tf_set)
+            # Sometimes broadcast events can make this bigger than 1.
             if occ_dict[shape] > 1:
                 occ_dict[shape] = 1
 
@@ -87,7 +132,10 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False):
     for item in occ_dict:
         occ_dict[item] = float(occ_dict[item])
 
-    return(occ_dict)
+    if not return_z_dict:
+        return(occ_dict)
+    else:
+        return(occ_dict, z_dict)
 
 
 def make_obslist(obsfile):
