@@ -1,6 +1,6 @@
 # SSINS Change Log
 
-## Unrelease
+## 1.4.6
 - Get proper z-scores for masked, valid data points
 - Fix polyfit bug where wrong channels were being fit
 - Updated MWA_EoR_High_uvfits_write and then moved it to the EoRImaging/pipeline_scripts repo
