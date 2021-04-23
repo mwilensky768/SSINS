@@ -31,6 +31,24 @@ def get_unique_event_tf(ins, event_list):
     return(tf_set)
 
 
+def get_slice(obj):
+    """
+    Get a slice from an object. If iterable, gets the min and max. If not iterable,
+    assumes it is an index and returns slice(obj, obj + 1)
+
+    Args:
+        obj: Integer or array of ints from which to derive the slice.
+    Returns:
+        slc: The slice object.
+    """
+    if hasattr(obj, "__iter__"):
+        slc = slice(min(obj), max(obj))
+    else:
+        slc = slice(obj, obj + 1)
+
+    return(slc)
+
+
 def get_sum_z_score(ins, tf_set):
     """
     Get the sum of the z-scores for a set of time-frequency combinations as
@@ -43,22 +61,27 @@ def get_sum_z_score(ins, tf_set):
 
     total_z = 0
     # Just do a for loop since the array is small.
-    for time_ind, freq_range in tf_set:
+    for time_range, freq_range in tf_set:
+        time_slice = get_slice(time_range)
+        freq_slice = get_slice(freq_range)
         # Careful with infs/nans
         z_arr = np.ma.masked_invalid(ins.metric_ms.data)
 
         # Just do the z-score calculation here.
-        sliced_z_arr = z_arr[time_ind, freq_range]
+        sliced_z_arr = z_arr[time_slice, freq_slice]
         N_unmasked = np.count_nonzero(sliced_z_arr.mask, axis=1)
-        z_subband = np.ma.sum(sliced_z_arr, axis=1) / np.sqrt(N_unmasked)
+        if N_unmasked > 0:
+            z_subband = np.ma.sum(sliced_z_arr, axis=1) / np.sqrt(N_unmasked)
+            total_z += z_subband
 
-        total_z += z_subband
+    if total_z == 0:
+        warnings.warn("Total z-score summed over events was 0. Probably a fully flagged channel or channel range.")
 
     return(total_z)
 
 
 def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
-             return_z_scores=False):
+             return_z_dict=False):
     """
     Calculates the fraction of times an event was caught by the flagger for
     each type of event. Does not take care of frequency broadcasted events.
@@ -79,7 +102,7 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
     """
 
     occ_dict = {shape: 0. for shape in mf.slice_dict}
-    z_dict = {shape: 0 for shape in mf.bright_dict}
+    z_dict = {shape: 0 for shape in mf.slice_dict}
 
     # Figure out the total occupancy sans initial flags
     total_data = np.prod(ins.metric_array.shape)
@@ -96,8 +119,8 @@ def calc_occ(ins, mf, num_init_flag, num_int_flag=0, lump_narrowband=False,
         if shape == "narrow":
             if lump_narrowband:
                 # The length of the shape_set tells you how many points were flagged, without overcounting
-                occ_dict[shape] = len(tf_set) / total_valid
                 tf_set = get_unique_event_tf(ins, relevant_events)
+                occ_dict[shape] = len(tf_set) / total_valid
                 z_dict[shape] = get_sum_z_score(ins, tf_set)
             else:
                 # Need to pull out the unique frequencies that were identified
