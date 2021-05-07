@@ -52,7 +52,7 @@ class SS(UVData):
             warnings.warn("diff or diff_freq set to true and override keyword has"
                           " been set. Please ensure that this does not cause unwanted"
                           " behavior, since the override_keyword will override diff"
-                          " setting internal attributes"
+                          " setting internal attributes")
 
         if override_keyword != "dif_freq" or override_keyword != "dif_time" or override_keyword != "both":
             warnings.warn("override_keyword passed but is not 'dif_time',"
