@@ -106,3 +106,4 @@ venv.bak/
 
 # install files
 SSINS/GIT_INFO
+SSINS/version.py
