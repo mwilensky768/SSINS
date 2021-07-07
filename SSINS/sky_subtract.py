@@ -114,28 +114,62 @@ class SS(UVData):
         attributes are also adjusted so that the resulting SS object passes
         UVData.check()
         """
-
+        # want to reorder to baseline order
         if self.blt_order != 'baseline':
             warnings.warn("Reordering data array to baseline order to perform differencing.")
             self.reorder_blts(order='baseline')
 
-        # index accumulator
-        ind_acc = 0
+        # basline index: indicates which bl (in bl order) is being processed
+        bl_num = 0
+
         # Just treat every baseline independently - make no assumptions other than what is guaranteed by baseline ordered objects
+
+        # the baseline array is the baseline for each member of the baseline-time array, so given it is in baseline form it will look like
+        # [ bl1, bl1, bl1, bl1 ... bl1, bl2, bl2, bl2, bl2 ... bl2, bl3 ... bl(n) ]
+        # so differencing it will give zero for most entries and some value where there is a boundary (which we set to 1)
+        testarray = (self.baseline_array[1:] - self.baseline_array[:-1])
+
+        bltaxisboundaries = np.nonzero(testarray)
+        bltaxisboundaries = np.append(bltaxisboundaries, np.size(testarray, 0)) # add last value to end of array (diff won't be able to catch this)
+        bltaxisboundaries = bltaxisboundaries + 1
+        bltaxisboundaries = np.insert(bltaxisboundaries, 0, 0)                  # add 0 to beginning of array (diff won't be able to catch this)
+
+        #need a second array representing what the output's shape will look like -- it's smaller by Nblts because of diffing
+        diffed_baseline_array = self.baseline_array
         for bl in np.unique(self.baseline_array):
-            diff_dat = np.diff(self.get_data(bl, squeeze='none'), axis=0)
-            diff_flags = np.logical_or(self.get_flags(bl, squeeze='none')[:-1],
-                                       self.get_flags(bl, squeeze='none')[1:])
-            diff_times = self.get_times(bl)
-            diff_times = 0.5 * (diff_times[:-1] + diff_times[1:])
-            diff_nsamples = self.get_nsamples(bl, squeeze='none')
-            diff_nsamples = 0.5 * (diff_nsamples[:-1] + diff_nsamples[1:])
+            index = (np.argwhere(diffed_baseline_array == bl)[0:1])
+            diffed_baseline_array = np.delete(diffed_baseline_array, index, 0)
 
+        testarray = (diffed_baseline_array[1:] - diffed_baseline_array[:-1])
+        bltaxisboundaries2 = np.nonzero(testarray)
+        bltaxisboundaries2 = np.append(bltaxisboundaries2, np.size(testarray, 0)) # add last value to end of array (diff won't be able to catch this)
+        bltaxisboundaries2 = bltaxisboundaries2 + 1                               # offset entries to correct distance between 0th index and 1st
+        bltaxisboundaries2 = np.insert(bltaxisboundaries2, 0, 0)                  # add 0 to beginning of array (diff won't be able to catch this)
+
+        # loop through each baseline in the baseline_array, noting that the baseline_array will have each bl repeated for ntimes
+        # (so we need unique)
+        for bl in np.unique(self.baseline_array):
+
+            # blstart to blend delineates a series of baseline-time axis entries with the same baseline
+            blstart = bltaxisboundaries[bl_num]                                 # index in baseline-time axis to start
+            blend = bltaxisboundaries[bl_num+1]                                 # index in baseline-time axis to end
+            diff_dat = np.diff(self.data_array[blstart:blend], axis = 0)
+
+            # OR the flags being condensed into the diffed data set (if either parent data entry)
+            diff_flags = np.logical_or((self.flag_array[blstart:blend])[:-1],
+                                       (self.flag_array[blstart:blend])[1:])
+            diff_times = self.time_array[blstart:blend]                         # select the times corresponding to bl range selected
+            diff_times = 0.5 * (diff_times[:-1] + diff_times[1:])               # average together adjacent times
+            diff_nsamples = self.nsample_array[blstart:blend]                   # select the nsamples corresponding to the bl range selected
+            diff_nsamples = 0.5 * (diff_nsamples[:-1] + diff_nsamples[1:])      # average together adjacent nsamples
             len_diff = diff_dat.shape[0]
-            blt_slice = slice(ind_acc, ind_acc + len_diff)
 
+            blstart = bltaxisboundaries2[bl_num]                                 # index in baseline-time axis to start
+            blend = bltaxisboundaries2[bl_num+1]                                 # index in baseline-time axis to end
+
+            blt_slice = slice(blstart, blstart+len_diff)
             self.data_array[blt_slice, :, :, :] = diff_dat
-            """The time-differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
+            """The differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols). Can be differenced in both time and frequency."""
             self.flag_array[blt_slice, :, :, :] = diff_flags
             """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
 
@@ -146,7 +180,7 @@ class SS(UVData):
 
             where_bl = np.where(self.baseline_array == bl)
 
-            diff_ints = self.integration_time[where_bl]
+            diff_ints = self.integration_time[where_bl]                         # difference integrations
             diff_ints = diff_ints[:-1] + diff_ints[1:]
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
@@ -157,12 +191,12 @@ class SS(UVData):
 
             self.baseline_array[blt_slice] = bl
             self.ant_1_array[blt_slice], self.ant_2_array[blt_slice] = self.baseline_to_antnums(bl)
-            ind_acc += len_diff
+            bl_num += 1                                                         #increment the baseline counter, now that we're done
 
         # Adjust the UVData attributes.
-        self.Nblts -= self.Nbls
+        self.Nblts -= self.Nbls                                                 # size of baseline-time axis is Nblts shorter (one time from each bl)
         """Number of baseline-times. Not necessarily equal to Nbls * Ntimes"""
-        self.Ntimes -= 1
+        self.Ntimes -= 1                                                        # diffing adjacent times reduces size of time array by one
         """Total number of integration times in the data. Equal to the original Ntimes-1."""
 
         for blts_attr in ['data_array', 'flag_array', 'time_array',
