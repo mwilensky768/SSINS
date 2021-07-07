@@ -187,6 +187,13 @@ class SS(UVData):
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
+            diff_pcad = self.phase_center_app_dec[where_bl]
+            diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
+            diff_pcar = self.phase_center_app_ra[where_bl]
+            diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
+            diff_pcfp = self.phase_center_frame_pa[where_bl]
+            diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
+
             self.integration_time[blt_slice] = diff_ints
             """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
             self.uvw_array[blt_slice] = diff_uvw
@@ -203,7 +210,9 @@ class SS(UVData):
 
         for blts_attr in ['data_array', 'flag_array', 'time_array',
                           'nsample_array', 'integration_time', 'baseline_array',
-                          'ant_1_array', 'ant_2_array', 'uvw_array']:
+                          'ant_1_array', 'ant_2_array', 'uvw_array',
+                          'phase_center_app_dec', 'phase_center_app_ra',
+                          'phase_center_frame_pa']:
             setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
 
         super().set_lsts_from_time_array()
