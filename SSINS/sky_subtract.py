@@ -115,6 +115,8 @@ class SS(UVData):
         UVData.check()
         """
         # want to reorder to baseline order
+        # baseline order guarantees that the baseline time axis is oriented so that we can safely assume where indices for diffing are
+        # by looking at the blt axis array
         if self.blt_order != 'baseline':
             warnings.warn("Reordering data array to baseline order to perform differencing.")
             self.reorder_blts(order='baseline')
@@ -131,7 +133,7 @@ class SS(UVData):
 
         bltaxisboundaries = np.nonzero(testarray)
         bltaxisboundaries = np.append(bltaxisboundaries, np.size(testarray, 0)) # add last value to end of array (diff won't be able to catch this)
-        bltaxisboundaries = bltaxisboundaries + 1
+        bltaxisboundaries = bltaxisboundaries + 1                               # offset entries to correct distance between 0th index and 1st
         bltaxisboundaries = np.insert(bltaxisboundaries, 0, 0)                  # add 0 to beginning of array (diff won't be able to catch this)
 
         #need a second array representing what the output's shape will look like -- it's smaller by Nblts because of diffing
@@ -164,8 +166,8 @@ class SS(UVData):
             diff_nsamples = 0.5 * (diff_nsamples[:-1] + diff_nsamples[1:])      # average together adjacent nsamples
             len_diff = diff_dat.shape[0]
 
-            blstart = bltaxisboundaries2[bl_num]                                 # index in baseline-time axis to start
-            blend = bltaxisboundaries2[bl_num+1]                                 # index in baseline-time axis to end
+            blstart = bltaxisboundaries2[bl_num]                                # index in baseline-time axis to start
+            blend = bltaxisboundaries2[bl_num+1]                                # index in baseline-time axis to end
 
             blt_slice = slice(blstart, blstart+len_diff)
             self.data_array[blt_slice, :, :, :] = diff_dat
