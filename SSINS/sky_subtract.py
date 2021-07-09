@@ -187,12 +187,16 @@ class SS(UVData):
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
-            diff_pcad = self.phase_center_app_dec[where_bl]
-            diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
-            diff_pcar = self.phase_center_app_ra[where_bl]
-            diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
-            diff_pcfp = self.phase_center_frame_pa[where_bl]
-            diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
+            #pyuvdata 2.2 optional parameters
+            if(hasattr(self, 'phase_center_app_dec')):
+                diff_pcad = self.phase_center_app_dec[where_bl]
+                diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
+            if(hasattr(self, 'phase_center_app_ra')):
+                diff_pcar = self.phase_center_app_ra[where_bl]
+                diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
+            if(hasattr(self, 'phase_center_frame_pa')):
+                diff_pcfp = self.phase_center_frame_pa[where_bl]
+                diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
 
             self.integration_time[blt_slice] = diff_ints
             """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
@@ -208,11 +212,17 @@ class SS(UVData):
         self.Ntimes -= 1                                                        # diffing adjacent times reduces size of time array by one
         """Total number of integration times in the data. Equal to the original Ntimes-1."""
 
-        for blts_attr in ['data_array', 'flag_array', 'time_array',
+        blt_attr_names =  ['data_array', 'flag_array', 'time_array',
                           'nsample_array', 'integration_time', 'baseline_array',
-                          'ant_1_array', 'ant_2_array', 'uvw_array',
-                          'phase_center_app_dec', 'phase_center_app_ra',
-                          'phase_center_frame_pa']:
+                          'ant_1_array', 'ant_2_array', 'uvw_array' ]
+        if(hasattr(self, 'phase_center_app_dec')):
+            print('yes')
+            blt_attr_names.append('phase_center_app_dec')
+        if(hasattr(self, 'phase_center_app_ra')):
+            blt_attr_names.append('phase_center_app_ra')
+        if(hasattr(self, 'phase_center_frame_pa')):
+            blt_attr_names.append('phase_center_frame_pa')
+        for blts_attr in blt_attr_names:
             setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
 
         super().set_lsts_from_time_array()
