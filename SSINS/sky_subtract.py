@@ -216,7 +216,6 @@ class SS(UVData):
                           'nsample_array', 'integration_time', 'baseline_array',
                           'ant_1_array', 'ant_2_array', 'uvw_array' ]
         if(hasattr(self, 'phase_center_app_dec')):
-            print('yes')
             blt_attr_names.append('phase_center_app_dec')
         if(hasattr(self, 'phase_center_app_ra')):
             blt_attr_names.append('phase_center_app_ra')
