@@ -136,7 +136,7 @@ class SS(UVData):
         bltaxisboundaries = bltaxisboundaries + 1                               # offset entries to correct distance between 0th index and 1st
         bltaxisboundaries = np.insert(bltaxisboundaries, 0, 0)                  # add 0 to beginning of array (diff won't be able to catch this)
 
-        #need a second array representing what the output's shape will look like -- it's smaller by Nblts because of diffing
+        #need a second array representing what the output's shape will look like -- it's smaller by Nbls because of diffing
         diffed_baseline_array = self.baseline_array
         for bl in np.unique(self.baseline_array):
             index = (np.argwhere(diffed_baseline_array == bl)[0:1])
