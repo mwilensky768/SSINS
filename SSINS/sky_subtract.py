@@ -150,8 +150,7 @@ class SS(UVData):
 
         # loop through each baseline in the baseline_array, noting that the baseline_array will have each bl repeated for ntimes
         # (so we need unique)
-        for bl in np.unique(self.baseline_array):
-
+        for bl_num, bl in enumerate(np.unique(self.baseline_array)):
             # blstart to blend delineates a series of baseline-time axis entries with the same baseline
             blstart = bltaxisboundaries[bl_num]                                 # index in baseline-time axis to start
             blend = bltaxisboundaries[bl_num+1]                                 # index in baseline-time axis to end
@@ -204,7 +203,6 @@ class SS(UVData):
 
             self.baseline_array[blt_slice] = bl
             self.ant_1_array[blt_slice], self.ant_2_array[blt_slice] = self.baseline_to_antnums(bl)
-            bl_num += 1                                                         #increment the baseline counter, now that we're done
 
         # Adjust the UVData attributes.
         self.Nblts -= self.Nbls                                                 # size of baseline-time axis is Nblts shorter (one time from each bl)
