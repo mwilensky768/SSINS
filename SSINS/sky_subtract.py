@@ -112,7 +112,7 @@ class SS(UVData):
         The flags are propagated by taking the boolean OR of the entries that correspond
         to the visibilities that are differenced from one another. Other metadata
         attributes are also adjusted so that the resulting SS object passes
-        UVData.check()
+        UVData.check().
         """
         # want to reorder to baseline order
         # baseline order guarantees that the baseline time axis is oriented so that we can safely assume where indices for diffing are
@@ -121,7 +121,7 @@ class SS(UVData):
             warnings.warn("Reordering data array to baseline order to perform differencing.")
             self.reorder_blts(order='baseline')
 
-        # basline index: indicates which bl (in bl order) is being processed
+        # baseline index: indicates which bl (in bl order) is being processed
         bl_num = 0
 
         # Just treat every baseline independently - make no assumptions other than what is guaranteed by baseline ordered objects
@@ -136,7 +136,7 @@ class SS(UVData):
         bltaxisboundaries = bltaxisboundaries + 1                               # offset entries to correct distance between 0th index and 1st
         bltaxisboundaries = np.insert(bltaxisboundaries, 0, 0)                  # add 0 to beginning of array (diff won't be able to catch this)
 
-        #need a second array representing what the output's shape will look like -- it's smaller by Nbls because of diffing
+        # need a second array representing what the output's shape will look like -- it's smaller by Nbls because of diffing
         diffed_baseline_array = self.baseline_array
         for bl in np.unique(self.baseline_array):
             index = (np.argwhere(diffed_baseline_array == bl)[0:1])
