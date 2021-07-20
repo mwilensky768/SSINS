@@ -61,7 +61,13 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     from matplotlib import colors, cm
 
     if cmap is None:
-        cmap = cm.plasma
+        # matplotlib <3.3 and >3.6 have mutually incompatible protocols for modifying colormaps
+        try:
+            #matplotlib >= 3.3
+            cmap = cm.get_cmap("coolwarm").copy()
+        except:
+            #matplotlib < 3.3
+            cmap = cm.coolwarm
 
     class MidpointNormalize(colors.Normalize):
 

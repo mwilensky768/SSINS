@@ -77,6 +77,16 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
     else:
         extent = None
 
+    # matplotlib <3.3 and >3.6 have mutually incompatible protocols for modifying colormaps
+    try:
+        #matplotlib >= 3.3
+        cw_cmap = cm.get_cmap("coolwarm").copy()
+        vir_cmap = cm.get_cmap("viridis_r").copy()
+    except:
+        #matplotlib < 3.3
+        cw_cmap = cm.coolwarm
+        vir_cmap = cm.viridis_r
+
     im_kwargs = {'xticks': xticks,
                  'yticks': yticks,
                  'xticklabels': xticklabels,
@@ -99,7 +109,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'linthresh': linthresh},
                    {'cbar_label': 'Deviation ($\hat{\sigma})$',
                     'mask_color': 'black',
-                    'cmap': cm.coolwarm,
+                    'cmap': cw_cmap,
                     'vmin': ms_vmin,
                     'vmax': ms_vmax,
                     'cbar_ticks': ms_cbar_ticks,
@@ -112,7 +122,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'cmap': sig_cmap,
                          'midpoint': False},
                         {'cbar_label': 'Event Index',
-                         'cmap': cm.viridis_r,
+                         'cmap': vir_cmap,
                          'mask_color': 'white',
                          'midpoint': False,
                          'log': False,
@@ -121,7 +131,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'vmin': sample_sig_vmin,
                          'vmax': sample_sig_vmax,
                          'midpoint': True,
-                         'cmap': cm.coolwarm,
+                         'cmap': cw_cmap,
                          'mask_color': 'black'}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],
