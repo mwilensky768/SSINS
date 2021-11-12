@@ -123,7 +123,7 @@ def test_diff_freq_mask():
     ss = SS()
 
     #read in test file
-    ss.read(testfile, read_data=False, diff=False, diff_freq=False)
+    ss.read(testfile, read_data=True, diff=False, diff_freq=False)
     ss.apply_flags(flag_choice='original')
     assert ss.flag_array is not None
     temp_array = np.logical_or(ss.flag_array, ss.flag_array)
