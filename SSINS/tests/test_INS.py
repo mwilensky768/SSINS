@@ -231,6 +231,78 @@ def test_mask_to_flags():
 
     os.remove(flags_outfile)
 
+@pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
+def test_mask_to_flags_freq():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    flags_outfile = '%s_SSINS_flags.h5' % prefix
+
+    ss = SS()
+    ss.read(testfile, diff_freq=True)
+
+    uvd = UVData()
+    uvd.read(testfile)
+
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
+    # start with some flags so that we can test the intended OR operation
+    uvf.flag_array[6, :] = True
+    ins = INS(ss)
+
+    # Check error handling
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
+        # Pretend the data is off by 1 day
+        bad_uvf.freq_array += 1
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+
+    # Pretend we flagged the INS object
+    freq_inds_1 = np.arange(0, len(ins.freq_array), 2)
+    freq_inds_2 = np.arange(1, len(ins.freq_array), 2)
+    ins.metric_array[1, freq_inds_1] = np.ma.masked
+    ins.metric_array[3, freq_inds_1] = np.ma.masked
+    ins.metric_array[7, freq_inds_2] = np.ma.masked
+    ins.metric_array[-2, freq_inds_2] = np.ma.masked
+
+    # Make a NEW uvflag object
+    new_uvf = ins.flag_uvf(uvf=uvf, inplace=False)
+
+    # Construct the expected flags by hand
+    test_flags = np.zeros_like(new_uvf.flag_array)
+    test_flags[1:5, freq_inds_1] = True
+    test_flags[6, :] = True
+    test_flags[7, freq_inds_2] = True
+    test_flags[8, freq_inds_2] = True
+    test_flags[-3:-1, freq_inds_2] = True
+
+    # Check that new flags are correct
+    assert np.all(new_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."
+    # Check that the input uvf was not edited in place
+    assert new_uvf != uvf, "The UVflag object was edited inplace and should not have been."
+
+    # Edit the uvf inplace
+    inplace_uvf = ins.flag_uvf(uvf=uvf, inplace=True)
+
+    # Check that new flags are correct
+    assert np.all(inplace_uvf.flag_array == test_flags), "Test flags were not equal to calculated flags."
+    # Check that the input uvf was not edited in place
+    assert inplace_uvf == uvf, "The UVflag object was not edited inplace and should have been."
+
+    # Test write/read
+    ins.write(prefix, output_type='flags', uvf=uvf)
+    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
+    # Check equality
+    assert read_uvf == uvf, "UVFlag objsect differs after read"
+
+    os.remove(flags_outfile)
+
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read", "ignore:invalid value")
 def test_write():
