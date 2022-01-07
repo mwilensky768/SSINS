@@ -485,7 +485,7 @@ def test_add():
     assert np.all(combo_ins.metric_array.data == truth_ins.metric_array.data)
     assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
 
-def test_mask_to_flags():
+def test_mask_to_flags_2():
     #verify array sizes
     ss = SS()
     filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
