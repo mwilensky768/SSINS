@@ -495,3 +495,6 @@ def test_mask_to_flags_2():
     ss.read(filepath, diff=False, diff_freq=True)
     ins = INS(ss)
     flags = ins.mask_to_flags()
+    ss.read(filepath, diff=True, diff_freq=True)
+    ins = INS(ss)
+    flags = ins.mask_to_flags()
