@@ -5,7 +5,20 @@ import os
 import sys
 import json
 
-sys.path.append('SSINS')
+
+def branch_scheme(version):
+    """
+    Local version scheme that adds the branch name for absolute reproducibility.
+
+    If and when this is added to setuptools_scm this function and file can be removed.
+    """
+    if version.exact or version.node is None:
+        return version.format_choice("", "+d{time:{time_format}}", time_format="%Y%m%d")
+    else:
+        if version.branch in ["main", "master"]:
+            return version.format_choice("+{node}", "+{node}.dirty")
+        else:
+            return version.format_choice("+{node}.{branch}", "+{node}.{branch}.dirty")
 
 
 def package_files(package_dir, subdirectory):
@@ -36,7 +49,10 @@ setup_args = {
                 'scripts/occ_csv.py'],
     'package_data': {'SSINS': data_files},
     'setup_requires': ['setuptools_scm'],
-    'use_scm_version': True,
+    'use_scm_version': {
+        "write_to": "SSINS/version.py",
+        "local_scheme": branch_scheme,
+    },
     'install_requires': ['pyuvdata', 'h5py', 'pyyaml'],
     'zip_safe': False,
 }
