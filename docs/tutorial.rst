@@ -272,7 +272,8 @@ Flagging an INS using a match_filter (MF)
 *********************************************************************************
 ::
   >>> from pyuvdata import utils as uvutils
-  >>> uvutils.apply_uvflag(uvd, uvf)
+  >>> uvf = ins.flag_uvf(uvf)
+  >>> uvutils.apply_uvflag(uvd, uvf) # This is a pyuvdata utility function that safely applies flags to UVData from UVFlag
   >>> uvd.write_uvfits('SSINS/data/tutorial_test_writeout.uvfits')
 
 (h) Writing flags to an mwaf file
