@@ -197,13 +197,13 @@ class SS(UVData):
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
             # pyuvdata 2.2 optional parameters
-            if(hasattr(self, 'phase_center_app_dec')):
+            if(hasattr(self, 'phase_center_app_dec') and (self.phase_center_app_dec is not None)):
                 diff_pcad = self.phase_center_app_dec[where_bl]
                 diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
-            if(hasattr(self, 'phase_center_app_ra')):
+            if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
                 diff_pcar = self.phase_center_app_ra[where_bl]
                 diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
-            if(hasattr(self, 'phase_center_frame_pa')):
+            if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_app_pa is not None)):
                 diff_pcfp = self.phase_center_frame_pa[where_bl]
                 diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
 
@@ -220,14 +220,14 @@ class SS(UVData):
         self.Ntimes -= 1                                                        # diffing adjacent times reduces size of time array by one
         """Total number of integration times in the data. Equal to the original Ntimes-1."""
 
-        blt_attr_names =  ['data_array', 'flag_array', 'time_array',
+        blt_attr_names = ['data_array', 'flag_array', 'time_array',
                           'nsample_array', 'integration_time', 'baseline_array',
-                          'ant_1_array', 'ant_2_array', 'uvw_array' ]
-        if(hasattr(self, 'phase_center_app_dec')):
+                          'ant_1_array', 'ant_2_array', 'uvw_array']
+        if(hasattr(self, 'phase_center_app_dec') and (self.phase_center_app_dec is not None)):
             blt_attr_names.append('phase_center_app_dec')
-        if(hasattr(self, 'phase_center_app_ra')):
+        if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
             blt_attr_names.append('phase_center_app_ra')
-        if(hasattr(self, 'phase_center_frame_pa')):
+        if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_app_pa is not None)):
             blt_attr_names.append('phase_center_frame_pa')
         for blts_attr in blt_attr_names:
             setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
