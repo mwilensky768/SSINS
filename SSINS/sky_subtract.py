@@ -203,7 +203,7 @@ class SS(UVData):
             if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
                 diff_pcar = self.phase_center_app_ra[where_bl]
                 diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
-            if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_app_pa is not None)):
+            if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_frame_pa is not None)):
                 diff_pcfp = self.phase_center_frame_pa[where_bl]
                 diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
 
@@ -227,7 +227,7 @@ class SS(UVData):
             blt_attr_names.append('phase_center_app_dec')
         if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
             blt_attr_names.append('phase_center_app_ra')
-        if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_app_pa is not None)):
+        if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_frame_pa is not None)):
             blt_attr_names.append('phase_center_frame_pa')
         for blts_attr in blt_attr_names:
             setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
