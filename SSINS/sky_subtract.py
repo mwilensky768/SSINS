@@ -163,8 +163,8 @@ class SS(UVData):
         for bl_num, bl in enumerate(np.unique(self.baseline_array)):
             # blstart to blend delineates a series of baseline-time axis entries with the same baseline
             blstart = bltaxisboundaries[bl_num]                                 # index in baseline-time axis to start
-            blend = bltaxisboundaries[bl_num+1]                                 # index in baseline-time axis to end
-            diff_dat = np.diff(self.data_array[blstart:blend], axis = 0)
+            blend = bltaxisboundaries[bl_num + 1]                                 # index in baseline-time axis to end
+            diff_dat = np.diff(self.data_array[blstart:blend], axis=0)
 
             # OR the flags being condensed into the diffed data set (if either parent data entry)
             diff_flags = np.logical_or((self.flag_array[blstart:blend])[:-1],
@@ -176,9 +176,9 @@ class SS(UVData):
             len_diff = diff_dat.shape[0]
 
             blstart = bltaxisboundaries2[bl_num]                                # index in baseline-time axis to start
-            blend = bltaxisboundaries2[bl_num+1]                                # index in baseline-time axis to end
+            blend = bltaxisboundaries2[bl_num + 1]                                # index in baseline-time axis to end
 
-            blt_slice = slice(blstart, blstart+len_diff)
+            blt_slice = slice(blstart, blstart + len_diff)
             self.data_array[blt_slice, :, :, :] = diff_dat
             """The differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols). Can be differenced in both time and frequency."""
             self.flag_array[blt_slice, :, :, :] = diff_flags
@@ -196,7 +196,7 @@ class SS(UVData):
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
-            #pyuvdata 2.2 optional parameters
+            # pyuvdata 2.2 optional parameters
             if(hasattr(self, 'phase_center_app_dec')):
                 diff_pcad = self.phase_center_app_dec[where_bl]
                 diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
