@@ -215,21 +215,26 @@ class INS(UVFlag):
     def mask_to_flags(self):
         """
         Propagates the mask to construct flags for the original
-        (non time-differenced) data. If a time is flagged in the INS, then both
+        (non differenced) data. If a time is flagged in the INS, then both
         times that could have contributed to that time in the sky-subtraction
         step are flagged in the new array.
 
         Returns:
-            tp_flags (array): The time-propagated flags
+            p_flags (array): The (time or frequency)-propagated flags
         """
 
         # Propagate the flags
         shape = list(self.metric_array.shape)
-        tp_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
-        tp_flags[:-1] = self.metric_array.mask
-        tp_flags[1:] = np.logical_or(tp_flags[1:], tp_flags[:-1])
-
-        return(tp_flags)
+        # no else here between dif/time, it is possible to have a doubly differenced set
+        if self.extra_keywords['dif_time'] is True:
+            p_flags = np.zeros([shape[0] + 1] + shape[1:], dtype=bool)
+            p_flags[:-1] = self.metric_array.mask
+            p_flags[1:] = np.logical_or(p_flags[1:], p_flags[:-1])
+        if self.extra_keywords['dif_freq'] is True:
+            p_flags = np.zeros([shape[0], shape[1] + 1, shape[2]], dtype=bool)
+            p_flags[:,:-1] = self.metric_array.mask
+            p_flags[:,1:] = np.logical_or(p_flags[:,1:], p_flags[:,:-1])
+        return(p_flags)
 
     def flag_uvf(self, uvf, inplace=False):
         """
@@ -253,13 +258,20 @@ class INS(UVFlag):
             raise ValueError("UVFlag object must be in flag mode to write flags from INS object.")
         if uvf.type != 'waterfall':
             raise ValueError("UVFlag object must be in waterfall mode to write flags from INS object.")
-        try:
-            test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
-            time_compat = np.all(self.time_array == test_times)
-            assert time_compat
-        except Exception:
-            raise ValueError("UVFlag object's times do not match those of INS object.")
-
+        if self.extra_keywords['dif_time'] is True:
+            try:
+                test_times = 0.5 * (uvf.time_array[:-1] + uvf.time_array[1:])
+                time_compat = np.all(self.time_array == test_times)
+                assert time_compat
+            except Exception:
+                raise ValueError("UVFlag object's times do not match those of INS object.")
+        if self.extra_keywords['dif_freq'] is True:
+            try:
+                test_freqs = 0.5 * (uvf.freq_array[:-1] + uvf.freq_array[1:])
+                freq_compat = np.all(self.freq_array == test_freqs)
+                assert freq_compat
+            except Exception:
+                raise ValueError("UVFlag object's frequencies do not match those of INS object.")
         new_flags = self.mask_to_flags()
 
         if inplace:

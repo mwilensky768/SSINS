@@ -43,9 +43,20 @@ Generating the sky-subtracted visibilities
   >>> # The following lines make use of the time_array attribute (metadata) to
   >>> # read in all but the first and last integrations
   >>> times = np.unique(ss.time_array)[1:-1]
+  >>> # This read() call uses the `diff` keyword to difference the data automatically along the time axis
   >>> ss.read(filepath, read_data=True, times=times, diff=True)
 
-(c) Applying flags
+(c) Differencing along the frequency axis
+*****************************************
+::
+  >>> # We can opt to difference visibilities along the frequency axis instead of the default time axis
+  >>> # To do this, use the separate keyword `diff_freq` and set it to true when you call the read() function
+  >>> # The two modes work otherwise the same except for the axis the visibilities are differenced upon.
+
+  >>> # Note that this will override the time-differenced data if you ran ss.read() from section (b)
+  >>> ss.read(filepath, read_data=True, times=times, diff_freq=True)
+
+(d) Applying flags
 ******************
 ::
   >>> # SS.data_array is a numpy masked array. To "apply flags" is to change the mask of the data_array.
@@ -72,7 +83,7 @@ Generating the sky-subtracted visibilities
   >>> print(np.any(ss.data_array.mask))
   False
 
-(d) Plotting using Catalog_Plot
+(e) Plotting using Catalog_Plot
 *******************************
 ::
   >>> from SSINS import Catalog_Plot as cp

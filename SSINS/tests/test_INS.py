@@ -35,6 +35,25 @@ def test_init():
     # Check that the weights summed correctly
     assert np.all(test_weights == ins.weights_array), "Weights did not sum properly"
 
+def test_extra_keywords():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+
+    ss = SS()
+    ss.read(testfile, flag_choice='original', diff=True)
+    ins = INS(ss)
+
+    assert ss.extra_keywords['dif_time'] is True
+    assert ins.extra_keywords['dif_time'] is True
+
+    ss.read(testfile, flag_choice='original', diff=False)
+    ins = INS(ss)
+
+    assert ss.extra_keywords['dif_time'] is False
+    assert ins.extra_keywords['dif_time'] is False
+
+
 
 def test_no_diff_start():
     obs = '1061313128_99bl_1pol_half_time'
@@ -109,6 +128,36 @@ def test_polyfit():
     ins.metric_ms = ins.mean_subtract()
     assert np.all(ins.metric_ms.mask), "The metric_ms array was not all masked"
 
+def test_flag_uvf_freq():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    flags_outfile = '%s_SSINS_flags.h5' % prefix
+
+    ss = SS()
+    ss.read(testfile, diff_freq=True)
+
+    uvd = UVData()
+    uvd.read(testfile)
+
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
+    # start with some flags so that we can test the intended OR operation
+    uvf.flag_array[6, :] = True
+    ins = INS(ss)
+
+    # Check error handling
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
+    with pytest.raises(ValueError):
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
+        # Pretend the data is off by 1 freq
+        bad_uvf.freq_array += 1
+        err_uvf = ins.flag_uvf(uvf=bad_uvf)
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
 def test_mask_to_flags():
@@ -236,6 +285,10 @@ def test_write_mwaf():
     testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
     prefix = os.path.join(DATA_PATH, '%s_test' % obs)
     ins = INS(testfile)
+    #to override the fact that the data files don't have dif_ keywords set
+    ins.extra_keywords['dif_time'] = True
+    ins.extra_keywords['dif_freq'] = False
+
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
     metafits_file = os.path.join(DATA_PATH, '1061313128.metafits')
@@ -431,3 +484,17 @@ def test_add():
     assert np.all(combo_ins.metric_array.mask == first_ins.metric_array.mask)
     assert np.all(combo_ins.metric_array.data == truth_ins.metric_array.data)
     assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
+
+def test_mask_to_flags_2():
+    #verify array sizes
+    ss = SS()
+    filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
+    ss.read(filepath, diff=True)
+    ins = INS(ss)
+    flags = ins.mask_to_flags()
+    ss.read(filepath, diff=False, diff_freq=True)
+    ins = INS(ss)
+    flags = ins.mask_to_flags()
+    ss.read(filepath, diff=True, diff_freq=True)
+    ins = INS(ss)
+    flags = ins.mask_to_flags()

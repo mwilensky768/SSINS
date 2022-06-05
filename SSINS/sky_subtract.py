@@ -26,8 +26,8 @@ class SS(UVData):
         """Array of length Nfreqs that stores maximum likelihood estimators for
         each frequency, calculated using the MLE_calc method"""
 
-    def read(self, filename, diff=False, flag_choice=None, INS=None, custom=None,
-             **kwargs):
+    def read(self, filename, diff=False, diff_freq=False, flag_choice=None, INS=None, custom=None,
+             override_keyword=None, **kwargs):
 
         """
         Reads in a file that is compatible with UVData object by first calling
@@ -37,29 +37,68 @@ class SS(UVData):
         Args:
             filename (str or list of str): The filepath(s) to read in.
             diff (bool): If True, and data was read in, then difference the visibilities in time
+            diff_freq (bool): If True, and data was read in, then difference the visibilities in freq
             flag_choice: Sets flags for the data array on read using apply_flags method.
             INS: An INS object for apply_flags()
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
+            override_keyword (str): sets a keyword to override to True regardless of internal diffs,
+                can be set to `dif_freq`, `dif_time`, or `both`.
         """
-        warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
-                      " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
         super().read(filename, **kwargs)
+        # detect if there is contridicting override_keyword and diff/diff_freq terms
+        if diff or diff_freq is True and override_keyword is not None:
+            warnings.warn("diff or diff_freq set to true and override keyword has"
+                          " been set. Please ensure that this does not cause unwanted"
+                          " behavior, since the override_keyword will override diff"
+                          " setting internal attributes")
 
+        if override_keyword != "dif_freq" or override_keyword != "dif_time" or override_keyword != "both":
+            warnings.warn("override_keyword passed but is not 'dif_time',"
+                          " 'dif_freq', or 'both': override_keyword will have no"
+                          " effect")
+
+        # always set extra keywords, else key errors when trying to check
         if (self.data_array is not None):
             if diff:
                 self.diff()
                 self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
-            else:
+                self.extra_keywords['dif_time'] = True
+                self.extra_keywords['dif_freq'] = False
+            if diff_freq:
+                self.diff_freq()
+                self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+                self.extra_keywords['dif_freq'] = True
+                self.extra_keywords['dif_time'] = False
+            if not diff_freq and not diff:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
                 warnings.warn("diff on read defaults to False now. Please double"
                               " check SS.read call and ensure the appropriate"
                               " keyword arguments for your intended use case.")
+                self.extra_keywords['dif_time'] = False
+                self.extra_keywords['dif_freq'] = False
                 if flag_choice is not None:
                     warnings.warn("flag_choice will be ignored on read since"
                                   " diff is being skipped.")
+            if diff_freq and diff:
+                self.extra_keywords['dif_time'] = True
+                self.extra_keywords['dif_freq'] = True
+        else:
+            self.extra_keywords['dif_time'] = False
+            self.extra_keywords['dif_freq'] = False
+        # hardcoded cases for override_keyword to set dif_freq/dif_time (or both)
+        # useful if data is pre-differenced rather than internally diff-ed by read() itself
+        # applied after the internal flags, and thus overwrites them
+        if (override_keyword is not None):
+            if override_keyword == 'dif_time':
+                self.extra_keywords['dif_time'] = True
+            elif override_keyword == 'dif_freq':
+                self.extra_keywords['dif_freq'] = True
+            elif override_keyword == 'both':
+                self.extra_keywords['dif_freq'] = True
+                self.extra_keywords['dif_time'] = True
 
     def apply_flags(self, flag_choice=None, INS=None, custom=None):
         """
@@ -224,6 +263,25 @@ class SS(UVData):
 
         super().set_lsts_from_time_array()
         self.data_array = np.ma.masked_array(self.data_array)
+
+    def diff_freq(self):
+
+        """
+        Differences the visibilities in freq. Does so independently for each time.
+        The flags are propagated by taking the boolean OR of the entries that correspond
+        to the visibilities that are differenced from one another. Other metadata
+        attributes are also adjusted so that the resulting SS object passes
+        UVData.check()
+        """
+
+        diff_dat = np.diff(self.data_array, axis=2) #axis 2: nfreqs (see uvdata object)
+        self.data_array = diff_dat
+
+        self.Nfreqs -= 1
+        self.data_array = np.ma.masked_array(self.data_array)
+        self.freq_array = (self.freq_array[:,1:] + self.freq_array[:,:-1]) / 2.0
+        self.nsample_array = (self.nsample_array[:,:,1:,:] + self.nsample_array[:,:,:-1,:]) / 2.0
+        self.flag_array = np.logical_or(self.flag_array[:,:,1:,:], self.flag_array[:,:,:-1,:])
 
     def MLE_calc(self):
 
