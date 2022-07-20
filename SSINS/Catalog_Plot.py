@@ -225,7 +225,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
         else:
             model_func = None
         hist_plot(fig, ax, np.abs(SS.data_array[np.logical_not(SS.data_array.mask)]),
-                  bins=bins, legend=legend, model_func=model_func,
+                  bins=bins, legend=legend, model_func=model_func, xscale=xscale,
                   yscale=yscale, ylim=ylim, density=density, label=post_label,
                   xlabel=xlabel, error_sig=error_sig, alpha=alpha,
                   model_label=post_model_label, color=post_color,
@@ -242,7 +242,7 @@ def VDH_plot(SS, prefix, file_ext='pdf', xlabel='', xscale='linear', yscale='log
             temp_choice = 'original'
         SS.apply_flags(flag_choice=None)
         hist_plot(fig, ax, np.abs(SS.data_array).flatten(), bins=bins,
-                  legend=legend, model_func=model_func, yscale=yscale,
+                  legend=legend, model_func=model_func, xscale=xscale, yscale=yscale,
                   ylim=ylim, density=density, label=pre_label, alpha=alpha,
                   xlabel=xlabel, error_sig=error_sig, model_label=pre_model_label,
                   color=pre_color, model_color=pre_model_color, font_size=font_size)
