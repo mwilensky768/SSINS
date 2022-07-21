@@ -1,6 +1,7 @@
 # SSINS Change Log
 
 ## Unreleased
+- Fixed xscale kwarg passing bug in plotting code
 - Updated MWA_EoR_High_uvfits_write and then moved it to the EoRImaging/pipeline_scripts repo
 - Change version handling to use setuptools_scm.
 - Update Run_HERA_SSINS.py to take auto_metrics and ant_metrics files to calculate
