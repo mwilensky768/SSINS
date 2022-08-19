@@ -1,6 +1,8 @@
 # SSINS Change Log
 
 ## Unreleased
+- Call SS.apply_flags at end of SS.diff so that object is always ready to pass
+to INS after diff
 - Fixed xscale kwarg passing bug in plotting code
 - Updated MWA_EoR_High_uvfits_write and then moved it to the EoRImaging/pipeline_scripts repo
 - Change version handling to use setuptools_scm.
