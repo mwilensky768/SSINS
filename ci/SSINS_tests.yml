@@ -17,5 +17,5 @@ dependencies:
      - pytest-cases>=3
      - pytest-xdist
   - pyyaml>=5.3.1
-  - pyuvdata>=2.1.2
+  - pyuvdata>=2.2.9
   - matplotlib>=3.2.2
