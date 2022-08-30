@@ -41,7 +41,8 @@ def test_diff():
     # Read in two times and two baselines of data, so that the diff is obvious.
     uv.read(testfile, read_data=False)
     times = np.unique(uv.time_array)[:2]
-    bls = [(0, 1), (0, 2)]
+    bls = [(uv.antenna_numbers[0], uv.antenna_numbers[1]),
+           (uv.antenna_numbers[0], uv.antenna_numbers[2])]
     uv.read(testfile, times=times, bls=bls)
     uv.reorder_blts(order='baseline')
 
@@ -62,8 +63,8 @@ def test_diff():
     assert np.all(ss.nsample_array == diff_nsamples), "nsample_array is different!"
     assert np.all(ss.integration_time == diff_ints), "Integration times are different"
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
-    assert np.all(ss.ant_1_array == np.array([0, 0])), "ant_1_array disagrees!"
-    assert np.all(ss.ant_2_array == np.array([1, 2])), "ant_2_array disagrees!"
+    assert np.all(ss.ant_1_array == np.array([uv.antenna_numbers[0], uv.antenna_numbers[0]])), f"ant_1_array disagrees!"
+    assert np.all(ss.ant_2_array == np.array([uv.antenna_numbers[1], uv.antenna_numbers[2]])), "ant_2_array disagrees!"
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")

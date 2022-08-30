@@ -1,6 +1,7 @@
 # SSINS Change Log
 
 ## Unreleased
+- Update diff unit test to be more flexible with pyuvdata antenna_number conventions
 - Call SS.apply_flags at end of SS.diff so that object is always ready to pass
 to INS after diff
 - Fixed xscale kwarg passing bug in plotting code
