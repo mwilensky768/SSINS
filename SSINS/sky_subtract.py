@@ -234,7 +234,7 @@ class SS(UVData):
 
         super().set_lsts_from_time_array()
         self.data_array = np.ma.masked_array(self.data_array)
-        self.apply_flags(flag_choice=None, INS=None, custom=None)
+        self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
 
     def MLE_calc(self):
 
