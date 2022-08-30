@@ -49,8 +49,7 @@ class SS(UVData):
 
         if (self.data_array is not None):
             if diff:
-                self.diff()
-                self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
+                self.diff(flag_choice=flag_choice, INS=INS, custom=custom)
             else:
                 # This warning will be issued when diff is False and there is some data read in
                 # If filename is a list of files, then this warning will get issued in the recursive call in UVData.read
@@ -104,7 +103,7 @@ class SS(UVData):
         else:
             raise ValueError('flag_choice of %s is unacceptable, aborting.' % flag_choice)
 
-    def diff(self):
+    def diff(self, flag_choice=None, INS=None, custom=None):
 
         """
         Differences the visibilities in time. Does so independently for each baseline,
@@ -112,7 +111,18 @@ class SS(UVData):
         The flags are propagated by taking the boolean OR of the entries that correspond
         to the visibilities that are differenced from one another. Other metadata
         attributes are also adjusted so that the resulting SS object passes
-        UVData.check().
+        UVData.check(). Will then call self.apply_flags using the keyword
+        arguments.
+
+        Args:
+            flag_choice (None, 'original', 'INS', 'custom'):
+                Applies flags according to the choice. None unflags the data.
+                'original' applies flags based on the flag_array attribute.
+                'INS' applies flags from an INS object specified by the INS keyword.
+                'custom' applies a custom flag array specified by the custom keyword
+                - it must be the same shape as the data.
+            INS: An INS from which to apply flags - only used if flag_choice='INS'
+            custom: A custom flag array from which to apply flags - only used if flag_choice='custom'
         """
         # want to reorder to baseline order
         # baseline order guarantees that the baseline time axis is oriented so that we can safely assume where indices for diffing are
@@ -224,6 +234,7 @@ class SS(UVData):
 
         super().set_lsts_from_time_array()
         self.data_array = np.ma.masked_array(self.data_array)
+        self.apply_flags(flag_choice=flag_choice, INS=INS, custom=custom)
 
     def MLE_calc(self):
 
