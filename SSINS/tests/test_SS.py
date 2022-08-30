@@ -120,6 +120,19 @@ def test_apply_flags():
         ss.apply_flags(flag_choice='bad_choice')
 
 
+def test_apply_flags_on_diff():
+    obs = '1061313128_99bl_1pol_half_time'
+    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    file_type = 'uvfits'
+    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    ss = SS()
+
+    ss.read(testfile, diff=True, flag_choice='original')
+
+    assert np.all(ss.flag_array == ss.data_array.mask), "Flag arrays are not equal"
+    assert ss.flag_choice == 'original', "Flag choice attribute was not changed"
+
+
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:diff on read")
 def test_mixture_prob():
