@@ -124,20 +124,24 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     elif convert_times:
         # This case is for when extent is set, manual settings have not been made, and conversion is desired.
         # Otherwise just use what came from extent
+        yticks = ax.get_yticks()
         if extent_time_format.lower() == 'jd':
-            ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+            yticklabels = [Time(ytick, format='jd').iso[:-4] for ytick in yticks]
         elif extent_time_format.lower() == 'lst':
-            ax.set_yticklabels([Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
+            set_yticklabels = [Longitude(ytick * units.radian).hourangle for ytick in yticks]
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
 
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
 
 
 def set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels):
+    from matplotlib import ticker
+
     if xticks is not None:
-        ax.set_xticks(xticks)
+        ax.xaxis.set_major_locator(ticker.FixedLocator(xticks))
     if yticks is not None:
-        ax.set_yticks(yticks)
+        ax.yaxis.set_major_locator(ticker.FixedLocator(yticks))
     if xticklabels is not None:
         ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
