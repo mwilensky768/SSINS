@@ -92,7 +92,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=colormap, aspect=aspect, interpolation='none',
-                        norm=colors.MidpointNormalize(vcenter=0, vmin=vmin, vmax=vmax),
+                        norm=MidpointNormalize(vcenter=0, vmin=vmin, vmax=vmax),
                         extent=extent, alpha=alpha)
     elif log:
         cax = ax.imshow(data, cmap=colormap, norm=colors.LogNorm(), aspect=aspect,
