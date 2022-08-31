@@ -7,6 +7,7 @@ from astropy.time import Time
 from astropy import units
 from astropy.coordinates import Longitude
 import warnings
+import copy
 
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
@@ -24,7 +25,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         fig: The fig object to modify
         ax: The axis object to modify
         data: The data to plot
-        cmap: A colormap from matplotlib.cm e.g. cm.coolwarm
+        cmap: Name of a colormap from matplotlib
         vmin: The minimum value for the colormap
         vmax: The maximum value for the colormap
         title: The title for ax
@@ -60,31 +61,27 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     from matplotlib import colors, cm
 
-    if cmap is None:
-        cmap = cm.plasma
-
     class MidpointNormalize(colors.Normalize):
-
-        """
-        A short class which is used by image_plot to keep zero at the color-center
-        of diverging colormaps.
-        """
-
-        def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
-            """
-            A short init line using inheritance
-            """
-            self.midpoint = midpoint
-            colors.Normalize.__init__(self, vmin, vmax, clip)
+        def __init__(self, vmin=None, vmax=None, vcenter=None, clip=False):
+            self.vcenter = vcenter
+            super().__init__(vmin, vmax, clip)
 
         def __call__(self, value, clip=None):
-            """
-            Colormapping function
-            """
-            # ignoring masked values and all kinds of edge cases
+            # Note also that we must extrapolate beyond vmin/vmax
             result, is_scalar = self.process_value(value)
-            x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
-            return np.ma.array(np.interp(value, x, y), mask=result.mask, copy=False)
+            x, y = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1.]
+            return np.ma.masked_array(np.interp(value, x, y,
+                                                left=-np.inf, right=np.inf),
+                                                mask=result.mask)
+
+        def inverse(self, value):
+            y, x = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1]
+            return np.interp(value, x, y, left=-np.inf, right=np.inf)
+
+    if cmap is None:
+        cmap = 'plasma'
+    colormap = copy.copy(getattr(cm, cmap)) # Copy so as not to mutate the global cmap instance
+    colormap.set_bad(color=mask_color)
 
     # Make sure it does the yticks correctly
     if extent is not None:
@@ -94,22 +91,23 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
-        cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
-                        norm=MidpointNormalize(midpoint=0, vmin=vmin, vmax=vmax),
+        cax = ax.imshow(data, cmap=colormap, aspect=aspect, interpolation='none',
+                        norm=MidpointNormalize(vcenter=0, vmin=vmin, vmax=vmax),
                         extent=extent, alpha=alpha)
     elif log:
-        cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, norm=colors.LogNorm(), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
                         extent=extent, alpha=alpha)
     elif symlog:
-        cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
                         extent=extent, alpha=alpha)
     else:
-        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, vmin=vmin, vmax=vmax, aspect=aspect,
                         interpolation='none', extent=extent, alpha=alpha)
 
-    cmap.set_bad(color=mask_color)
+
+
     cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks, extend=extend)
     cbar.set_label(cbar_label, fontsize=font_size)
 
@@ -126,20 +124,24 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     elif convert_times:
         # This case is for when extent is set, manual settings have not been made, and conversion is desired.
         # Otherwise just use what came from extent
+        yticks = ax.get_yticks()
         if extent_time_format.lower() == 'jd':
-            ax.set_yticklabels([Time(ytick, format='jd').iso[:-4] for ytick in ax.get_yticks()])
+            yticklabels = [Time(ytick, format='jd').iso[:-4] for ytick in yticks]
         elif extent_time_format.lower() == 'lst':
-            ax.set_yticklabels([Longitude(ytick * units.radian).hourangle for ytick in ax.get_yticks()])
+            set_yticklabels = [Longitude(ytick * units.radian).hourangle for ytick in yticks]
+        set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels)
 
     cbar.ax.tick_params(labelsize=font_size)
     ax.tick_params(labelsize=font_size)
 
 
 def set_ticks_labels(ax, xticks, yticks, xticklabels, yticklabels):
+    from matplotlib import ticker
+
     if xticks is not None:
-        ax.set_xticks(xticks)
+        ax.xaxis.set_major_locator(ticker.FixedLocator(xticks))
     if yticks is not None:
-        ax.set_yticks(yticks)
+        ax.yaxis.set_major_locator(ticker.FixedLocator(yticks))
     if xticklabels is not None:
         ax.set_xticklabels(xticklabels)
     if yticklabels is not None:
@@ -207,7 +209,7 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
             yerr = error_sig * np.append(yerr, 0)
             ax.fill_between(bins, model_y - yerr, model_y + yerr, alpha=alpha,
                             step='post', color=model_color)
-            model_label += ' and %s$\sigma$ Uncertainty' % error_sig
+            model_label += ' and %s' % (error_sig) + r'$\sigma$ Uncertainty'
         ax.plot(bins, model_y, label=model_label, drawstyle='steps-post', color=model_color)
 
     if legend:
