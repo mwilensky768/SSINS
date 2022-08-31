@@ -67,12 +67,12 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
             super().__init__(vmin, vmax, clip)
 
         def __call__(self, value, clip=None):
-            # I'm ignoring masked values and all kinds of edge cases to make a
-            # simple example...
             # Note also that we must extrapolate beyond vmin/vmax
+            result, is_scalar = self.process_value(value)
             x, y = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1.]
             return np.ma.masked_array(np.interp(value, x, y,
-                                                left=-np.inf, right=np.inf))
+                                                left=-np.inf, right=np.inf),
+                                                mask=result.mask)
 
         def inverse(self, value):
             y, x = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1]
