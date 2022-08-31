@@ -74,11 +74,6 @@ def test_sig_plot():
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
     mf.apply_match_test(ins)
 
-    xticks = np.arange(0, 384, 96)
-    xticklabels = ['%.1f' % (10**-6 * ins.freq_array[tick]) for tick in xticks]
-    yticks = np.arange(0, 50, 10)
-    yticklabels = ['%i' % (2 * tick) for tick in yticks]
-
     cp.INS_plot(ins, prefix)
 
     assert os.path.exists(outfile), "The first plot was not made"
