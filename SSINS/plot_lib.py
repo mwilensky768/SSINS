@@ -24,7 +24,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
         fig: The fig object to modify
         ax: The axis object to modify
         data: The data to plot
-        cmap: A colormap from matplotlib.cm e.g. cm.coolwarm
+        cmap: Name of a colormap from matplotlib
         vmin: The minimum value for the colormap
         vmax: The maximum value for the colormap
         title: The title for ax
@@ -61,7 +61,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     from matplotlib import colors, cm
 
     if cmap is None:
-        cmap = cm.plasma
+        cmap = 'plasma'
 
     class MidpointNormalize(colors.Normalize):
 
