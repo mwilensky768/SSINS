@@ -159,7 +159,7 @@ Making and writing an incoherent noise spectrum
   >>> # Let's choose a diverging colorbar and center it on zero using the cmap and midpoint keywords.
   >>> plot_lib.image_plot(fig, ax[1], ins.metric_ms[:, :, 0],
   ...                     title='XX z-scores', xticks=xticks,
-  ...                     xticklabels=xticklabels, cmap=cm.coolwarm,
+  ...                     xticklabels=xticklabels, cmap='coolwarm',
   ...                     midpoint=True)
   >>> fig.savefig('%s_plot_lib_SSINS.pdf' % prefix)
   >>> print(os.path.exists('%s_plot_lib_SSINS.pdf' % prefix))
