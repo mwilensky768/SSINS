@@ -55,15 +55,32 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     Note for arguments midpoint, log, symlog, linthresh:
         * Only one of these arguments can be expressed in the plot (can't have a plot with multiple different colorbar metrics).
-        * If multiple of these arguments are passed, default is linear (centered) followed by log, symlog.
+        * If multiple of these arguments are passed, default is linear (midpoint) followed by log, symlog.
         * Linthresh only applies when using symmetrical log (symlog) and will be ignored otherwise.
     """
 
     from matplotlib import colors, cm
 
+    class MidpointNormalize(colors.Normalize):
+        def __init__(self, vmin=None, vmax=None, vcenter=None, clip=False):
+            self.vcenter = vcenter
+            super().__init__(vmin, vmax, clip)
+
+        def __call__(self, value, clip=None):
+            # I'm ignoring masked values and all kinds of edge cases to make a
+            # simple example...
+            # Note also that we must extrapolate beyond vmin/vmax
+            x, y = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1.]
+            return np.ma.masked_array(np.interp(value, x, y,
+                                                left=-np.inf, right=np.inf))
+
+        def inverse(self, value):
+            y, x = [self.vmin, self.vcenter, self.vmax], [0, 0.5, 1]
+            return np.interp(value, x, y, left=-np.inf, right=np.inf)
+
     if cmap is None:
         cmap = 'plasma'
-    colormap = copy(getattr(cm, cmap)) # Copy so as not to mutate the global cmap instance
+    colormap = copy.copy(getattr(cm, cmap)) # Copy so as not to mutate the global cmap instance
     colormap.set_bad(color=mask_color)
 
     # Make sure it does the yticks correctly
@@ -75,7 +92,7 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
         cax = ax.imshow(data, cmap=colormap, aspect=aspect, interpolation='none',
-                        norm=colors.CenteredNorm(vmin=vmin, vmax=vmax),
+                        norm=colors.MidpointNormalize(vcenter=0, vmin=vmin, vmax=vmax),
                         extent=extent, alpha=alpha)
     elif log:
         cax = ax.imshow(data, cmap=colormap, norm=colors.LogNorm(), aspect=aspect,
