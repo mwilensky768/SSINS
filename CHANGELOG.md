@@ -1,7 +1,7 @@
 # SSINS Change Log
 
 ## Unreleased
-- Got rid of old matplotlib functionality that was deprecated
+- **notable api change** Got rid of old matplotlib functionality that was deprecated. Must now supply a _string_ for the cmap argument in all the plotting code, which is the name of the colormap you would like to use, rather than the actual colormap object.
 - Update diff unit test to be more flexible with pyuvdata antenna_number conventions
 - Call SS.apply_flags at end of SS.diff so that object is always ready to pass
 to INS after diff
