@@ -205,7 +205,7 @@ def hist_plot(fig, ax, data, bins='auto', yscale='log', xscale='linear',
             yerr = error_sig * np.append(yerr, 0)
             ax.fill_between(bins, model_y - yerr, model_y + yerr, alpha=alpha,
                             step='post', color=model_color)
-            model_label += ' and %s$\sigma$ Uncertainty' % error_sig
+            model_label += ' and %s' % (error_sig) + r'$\sigma$ Uncertainty'
         ax.plot(bins, model_y, label=model_label, drawstyle='steps-post', color=model_color)
 
     if legend:
