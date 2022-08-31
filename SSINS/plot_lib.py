@@ -7,6 +7,7 @@ from astropy.time import Time
 from astropy import units
 from astropy.coordinates import Longitude
 import warnings
+import copy
 
 
 def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
@@ -62,6 +63,8 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     if cmap is None:
         cmap = 'plasma'
+    colormap = copy(getattr(cm, cmap)) # Copy so as not to mutate the global cmap instance
+    colormap.set_bad(color=mask_color)
 
     # Make sure it does the yticks correctly
     if extent is not None:
@@ -71,22 +74,23 @@ def image_plot(fig, ax, data, cmap=None, vmin=None, vmax=None, title='',
 
     # colorization methods: linear, normalized log, symmetrical log
     if midpoint:
-        cax = ax.imshow(data, cmap=cmap, aspect=aspect, interpolation='none',
+        cax = ax.imshow(data, cmap=colormap, aspect=aspect, interpolation='none',
                         norm=colors.CenteredNorm(vmin=vmin, vmax=vmax),
                         extent=extent, alpha=alpha)
     elif log:
-        cax = ax.imshow(data, cmap=cmap, norm=colors.LogNorm(), aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, norm=colors.LogNorm(), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
                         extent=extent, alpha=alpha)
     elif symlog:
-        cax = ax.imshow(data, cmap=cmap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, norm=colors.SymLogNorm(linthresh), aspect=aspect,
                         vmin=vmin, vmax=vmax, interpolation='none',
                         extent=extent, alpha=alpha)
     else:
-        cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect,
+        cax = ax.imshow(data, cmap=colormap, vmin=vmin, vmax=vmax, aspect=aspect,
                         interpolation='none', extent=extent, alpha=alpha)
 
-    cmap.set_bad(color=mask_color)
+
+
     cbar = fig.colorbar(cax, ax=ax, ticks=cbar_ticks, extend=extend)
     cbar.set_label(cbar_label, fontsize=font_size)
 
