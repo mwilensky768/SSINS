@@ -112,7 +112,7 @@ class INS(UVFlag):
             if "Initialized spectrum_type:" in self.history:
                 raise ValueError("Requested spectrum type disagrees with saved spectrum. "
                                  "Make opposite choice on initialization.")
-            elif self.spectrum_type == "auto":
+            elif self.spectrum_type == "auto": # Reading in an old file
                 raise ValueError("Reading in a 'cross' spectrum as 'auto'. Check"
                                  " spectrum_type for INS initialization.")
         if not hasattr(self.metric_array, 'mask'):
