@@ -203,12 +203,12 @@ def test_rev_ind():
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:some nsamples", "ignore:elementwise")
-def test_write():
+def test_write(tmp_path):
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     file_type = 'uvfits'
-    outfile = os.path.join(DATA_PATH, 'test_write.uvfits')
+    outfile = os.path.join(tmp_path, 'test_write.uvfits')
 
     ss = SS()
     ss.read(testfile, diff=True)
@@ -232,7 +232,6 @@ def test_write():
 
     new_blt_inds = np.logical_not(np.isin(UV.time_array, np.unique(UV.time_array)[10:12]))
     assert not np.any(UV.flag_array[new_blt_inds, :, 64:128, :]), "More flags were made than expected"
-    os.remove(outfile)
 
     # Test bad read.
     bad_uv_filepath = os.path.join(DATA_PATH, '1061312640_mix.uvfits')
@@ -242,11 +241,11 @@ def test_write():
         ss.write(outfile, 'uvfits', bad_uv)
 
 
-def test_read_multifiles():
+def test_read_multifiles(tmp_path):
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    new_fp1 = os.path.join(DATA_PATH, f'{obs}_new1.uvfits')
-    new_fp2 = os.path.join(DATA_PATH, f'{obs}_new2.uvfits')
+    new_fp1 = os.path.join(tmp_path, f'{obs}_new1.uvfits')
+    new_fp2 = os.path.join(tmp_path, f'{obs}_new2.uvfits')
     flist = [new_fp1, new_fp2]
 
     file_type = 'uvfits'
@@ -278,9 +277,6 @@ def test_read_multifiles():
 
     assert np.all(np.isclose(ss_orig.data_array, ss_multi.data_array)), "Diffs were different!"
     assert ss_multi.Ntimes == (uvd_full.Ntimes - 1), "Too many diffs were done"
-
-    for path in flist:
-        os.remove(path)
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:diff on read")
