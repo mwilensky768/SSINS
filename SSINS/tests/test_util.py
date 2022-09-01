@@ -8,9 +8,9 @@ import pytest
 from pyuvdata import UVData, UVFlag
 
 
-def test_obslist():
+def test_obslist(tmp_path):
     obsfile = os.path.join(DATA_PATH, 'test_obs_list.txt')
-    outfile = os.path.join(DATA_PATH, 'test_obs_list_out.txt')
+    outfile = os.path.join(tmp_path, 'test_obs_list_out.txt')
     obslist_test = ['1061313008', '1061313128', '1061318864', '1061318984']
     obslist = util.make_obslist(obsfile)
     util.make_obsfile(obslist, outfile)
@@ -19,8 +19,6 @@ def test_obslist():
     assert obslist_test == obslist, "The lists were not equal"
     assert os.path.exists(outfile), "A file was not written"
     assert obslist_test == obslist_test_2, "The new file did not read in properly"
-
-    os.remove(outfile)
 
 
 def test_event_count():
@@ -89,11 +87,13 @@ def test_calc_occ():
     assert "narrow_%.3fMHz" % (ins.freq_array[1] * 10**(-6)) not in occ_dict.keys()
     assert "narrow_%.3fMHz" % (ins.freq_array[30] * 10**(-6)) not in occ_dict.keys()
 
-    yml_outpath = os.path.join(DATA_PATH, "test_occ_.yml")
+    yml_outpath = os.path.join(tmp_path, "test_occ_.yml")
     with open(yml_outpath, "w") as occ_file:
         yaml.safe_dump(occ_dict, occ_file)
 
-    os.remove(yml_outpath)
+    with open(yml_outpath, "r") as occ_file:
+        occ_dict_reread = yaml.safe_load(occ_file)
+    assert occ_dict_reread == occ_dict, "Occ dict different on read"
 
 
 def test_make_ticks():
@@ -222,10 +222,10 @@ def test_combine_ins_errors():
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_write_meta():
+def test_write_meta(tmp_path):
     obs = "1061313128_99bl_1pol_half_time"
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
-    prefix = os.path.join(DATA_PATH, f"{obs}_test")
+    prefix = os.path.join(tmp_path, f"{obs}_test")
 
     uvd = UVData()
     uvd.read(testfile, freq_chans=np.arange(32))
@@ -257,8 +257,6 @@ def test_write_meta():
     for data_type in ["data", "mask", "flags"]:
         path = f"{prefix}_SSINS_{data_type}.h5"
         assert os.path.exists(path)
-        os.remove(path)
     for data_type in ["match_events", "matchfilter"]:
         path = f"{prefix}_SSINS_{data_type}.yml"
         assert os.path.exists(path)
-        os.remove(path)
