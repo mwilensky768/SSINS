@@ -353,7 +353,8 @@ def test_apply_samp_thresh_dep_error_match_test():
 def test_MF_write(tmp_path):
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
-    prefix = os.path.join(tmp_path, f'{obs}')
+    prefix = os.path.join(tmp_path, obs)
+    control_prefix = os.path.join(DATA_PATH, obs)
     outfile = f"{prefix}_test_SSINS_matchfilter.yml"
 
     ins = INS(insfile)
@@ -368,7 +369,7 @@ def test_MF_write(tmp_path):
 
     assert os.path.exists(outfile), "Outfile was not written or has the wrong name."
 
-    with open(f"{prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
+    with open(f"{control_prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
         control_dict = yaml.safe_load(control_file)
     control_dict.pop("version")
     test_dict = mf._make_yaml_dict()
