@@ -7,13 +7,13 @@ import pytest
 
 
 @pytest.mark.filterwarnings("ignore:default base")
-def test_INS_plot():
+def test_INS_plot(tmp_path):
 
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
-    outdir = os.path.join(DATA_PATH, 'test_plots')
+    outdir = os.path.join(tmp_path, 'test_plots')
 
     prefix = f'{outdir}/{obs}_raw'
     outfile = f'{prefix}_SSINS.pdf'
@@ -48,19 +48,14 @@ def test_INS_plot():
     assert os.path.exists(log_outfile), "The second plot was not made"
     assert os.path.exists(symlog_outfile), "The third plot was not made"
 
-    os.remove(outfile)
-    os.remove(log_outfile)
-    os.remove(symlog_outfile)
-    os.rmdir(outdir)
 
-
-def test_sig_plot():
+def test_sig_plot(tmp_path):
 
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
-    outdir = os.path.join(DATA_PATH, 'test_plots')
+    outdir = os.path.join(tmp_path, 'test_plots')
 
     prefix = '%s/%s_flagged' % (outdir, obs)
     dataplotfile = '%s_SSINS.pdf' % prefix
@@ -84,19 +79,15 @@ def test_sig_plot():
     assert os.path.exists(outfile), "The first plot was not made"
     assert os.path.exists(dataplotfile), "The second plot was not made"
 
-    os.remove(outfile)
-    os.remove(dataplotfile)
-    os.rmdir(outdir)
-
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_VDH_plot():
+def test_VDH_plot(tmp_path):
 
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    outdir = os.path.join(DATA_PATH, 'test_plots')
+    outdir = os.path.join(tmp_path, 'test_plots')
 
     prefix = f'{outdir}/{obs}'
     outfile = f'{prefix}_VDH.pdf'
@@ -114,19 +105,15 @@ def test_VDH_plot():
     assert os.path.exists(outfile), "The first plot was not made"
     assert os.path.exists(dens_outfile), "The second plot was not made"
 
-    os.remove(outfile)
-    os.remove(dens_outfile)
-    os.rmdir(outdir)
-
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_VDH_no_model():
+def test_VDH_no_model(tmp_path):
 
     matplotlib = pytest.importorskip("matplotlib")
 
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    outdir = os.path.join(DATA_PATH, 'test_plots')
+    outdir = os.path.join(tmp_path, 'test_plots')
     prefix = f'{outdir}/{obs}'
     outfile = f'{prefix}_VDH.pdf'
 
@@ -137,6 +124,3 @@ def test_VDH_no_model():
         cp.VDH_plot(ss, prefix, pre_model=False, post_model=False)
 
     assert os.path.exists(outfile), "The plot was not made"
-
-    os.remove(outfile)
-    os.rmdir(outdir)
