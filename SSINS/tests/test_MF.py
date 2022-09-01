@@ -134,11 +134,11 @@ def test_apply_match_test():
     assert np.all(ins.metric_ms.mask[:, 7:13]), "All the times were not flagged for the shape"
 
 
-def test_time_broadcast():
+def test_time_broadcast(tmp_path):
 
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
-    out_prefix = os.path.join(DATA_PATH, f'{obs}_test')
+    out_prefix = os.path.join(tmp_path, f'{obs}_test')
     match_outfile = f'{out_prefix}_SSINS_match_events.yml'
 
     ins = INS(insfile)
@@ -177,7 +177,6 @@ def test_time_broadcast():
     # Test that writing with samp_thresh flags is OK
     ins.write(out_prefix, output_type='match_events')
     test_match_events_read = ins.match_events_read(match_outfile)
-    os.remove(match_outfile)
     assert ins.match_events == test_match_events_read
 
     # Test that exception is raised when tb_aggro is too high
@@ -351,10 +350,11 @@ def test_apply_samp_thresh_dep_error_match_test():
         mf.apply_match_test(ins, apply_samp_thresh=True)
 
 
-def test_MF_write():
+def test_MF_write(tmp_path):
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, f'{obs}_SSINS.h5')
-    prefix = os.path.join(DATA_PATH, f'{obs}')
+    prefix = os.path.join(tmp_path, obs)
+    control_prefix = os.path.join(DATA_PATH, obs)
     outfile = f"{prefix}_test_SSINS_matchfilter.yml"
 
     ins = INS(insfile)
@@ -369,7 +369,7 @@ def test_MF_write():
 
     assert os.path.exists(outfile), "Outfile was not written or has the wrong name."
 
-    with open(f"{prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
+    with open(f"{control_prefix}_control_SSINS_matchfilter.yml", 'r') as control_file:
         control_dict = yaml.safe_load(control_file)
     control_dict.pop("version")
     test_dict = mf._make_yaml_dict()
@@ -378,5 +378,3 @@ def test_MF_write():
 
     with pytest.raises(ValueError, match="matchfilter file with prefix"):
         mf.write(f"{prefix}_test", clobber=False)
-
-    os.remove(outfile)
