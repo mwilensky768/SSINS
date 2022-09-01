@@ -37,7 +37,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
         vmax (float): The maximum of the colormap for the INS (non-mean-subtracted)
         ms_vmin (float): The minimum of the colormap for the mean-subtracted INS
         ms_vmax (float): The maximum of the colormap for the mean-subtracted INS
-        data_cmap (colormap): The colormap for the non-mean-subtracted data
+        data_cmap (str): The colormap for the non-mean-subtracted data
         xticklabels (sequence of str): The labels for the frequency ticks
         yticklabels (sequence of str): The labels for the time ticks
         aspect (float or 'auto' or 'equal'): Set the aspect ratio of the waterfall plots.
@@ -99,7 +99,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                     'linthresh': linthresh},
                    {'cbar_label': 'Deviation ($\hat{\sigma})$',
                     'mask_color': 'black',
-                    'cmap': cm.coolwarm,
+                    'cmap': 'coolwarm',
                     'vmin': ms_vmin,
                     'vmax': ms_vmax,
                     'cbar_ticks': ms_cbar_ticks,
@@ -112,7 +112,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'cmap': sig_cmap,
                          'midpoint': False},
                         {'cbar_label': 'Event Index',
-                         'cmap': cm.viridis_r,
+                         'cmap': 'viridis_r',
                          'mask_color': 'white',
                          'midpoint': False,
                          'log': False,
@@ -121,7 +121,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                          'vmin': sample_sig_vmin,
                          'vmax': sample_sig_vmax,
                          'midpoint': True,
-                         'cmap': cm.coolwarm,
+                         'cmap': 'coolwarm',
                          'mask_color': 'black'}]
 
     fig, ax = plt.subplots(nrows=INS.metric_array.shape[2],

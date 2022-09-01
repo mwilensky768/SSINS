@@ -120,7 +120,7 @@ def test_apply_flags():
     with pytest.raises(ValueError):
         ss.apply_flags(flag_choice='bad_choice')
 
-
+@pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
 def test_apply_flags_on_diff():
     obs = '1061313128_99bl_1pol_half_time'
     testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
