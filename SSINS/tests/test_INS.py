@@ -111,12 +111,12 @@ def test_polyfit():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_mask_to_flags():
+def test_mask_to_flags(tmp_path):
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     file_type = 'uvfits'
-    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
-    flags_outfile = '%s_SSINS_flags.h5' % prefix
+    prefix = os.path.join(tmp_path, f'{obs}_test')
+    flags_outfile = f'{prefix}_SSINS_flags.h5'
 
     ss = SS()
     ss.read(testfile, diff=True)
@@ -178,23 +178,21 @@ def test_mask_to_flags():
     ins.write(prefix, output_type='flags', uvf=uvf)
     read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
     # Check equality
-    assert read_uvf == uvf, "UVFlag objsect differs after read"
-
-    os.remove(flags_outfile)
+    assert read_uvf == uvf, "UVFlag object differs after read"
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read", "ignore:invalid value")
-def test_write():
+def test_write(tmp_path):
 
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     file_type = 'uvfits'
-    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
-    data_outfile = '%s_SSINS_data.h5' % prefix
-    z_score_outfile = '%s_SSINS_z_score.h5' % prefix
-    mask_outfile = '%s_SSINS_mask.h5' % prefix
-    match_outfile = '%s_SSINS_match_events.yml' % prefix
-    sep_data_outfile = '%s.SSINS.data.h5' % prefix
+    prefix = os.path.join(tmp_path, f'{obs}_test')
+    data_outfile = f'{prefix}_SSINS_data.h5'
+    z_score_outfile = f'{prefix}_SSINS_z_score.h5'
+    mask_outfile = f'{prefix}_SSINS_mask.h5'
+    match_outfile = f'{prefix}_SSINS_match_events.yml'
+    sep_data_outfile = f'{prefix}.SSINS.data.h5'
 
     ss = SS()
     ss.read(testfile, flag_choice='original', diff=True)
@@ -222,19 +220,15 @@ def test_write():
     assert np.all(ins.metric_array.mask == new_ins.metric_array.mask), "Elements of the mask were not equal"
     assert np.all(ins.metric_ms == new_ins.metric_ms), "Elements of the metric_ms were not equal"
     assert np.all(ins.match_events == new_ins.match_events), "Elements of the match_events were not equal"
-    assert os.path.exists(sep_data_outfile), "sep_data_outfile was note written"
-
-    for path in [data_outfile, z_score_outfile, mask_outfile, match_outfile,
-                 sep_data_outfile]:
-        os.remove(path)
+    assert os.path.exists(sep_data_outfile), "sep_data_outfile was not written"
 
 
-def test_write_mwaf():
+def test_write_mwaf(tmp_path):
     from astropy.io import fits
 
     obs = '1061313128_99bl_1pol_half_time_SSINS'
-    testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
-    prefix = os.path.join(DATA_PATH, '%s_test' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.h5')
+    prefix = os.path.join(tmp_path, f'{obs}_test')
     ins = INS(testfile)
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
@@ -266,19 +260,16 @@ def test_write_mwaf():
     with pytest.raises(ValueError):
         ins.write(prefix, output_type='mwaf', mwaf_files=mwaf_files)
 
-    ins.write('%s_add' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
+    ins.write(f'{prefix}_add', output_type='mwaf', mwaf_files=mwaf_files,
               metafits_file=metafits_file)
-    ins.write('%s_replace' % prefix, output_type='mwaf', mwaf_files=mwaf_files,
+    ins.write(f'{prefix}_replace', output_type='mwaf', mwaf_files=mwaf_files,
               mwaf_method='replace', metafits_file=metafits_file)
 
     with fits.open(mwaf_files[0]) as old_mwaf_hdu:
-        with fits.open('%s_add_12.mwaf' % prefix) as add_mwaf_hdu:
+        with fits.open(f'{prefix}_add_12.mwaf') as add_mwaf_hdu:
             assert np.all(add_mwaf_hdu[1].data['FLAGS'] == old_mwaf_hdu[1].data['FLAGS'] + new_flags)
-    with fits.open('%s_replace_12.mwaf' % prefix) as replace_mwaf_hdu:
+    with fits.open(f'{prefix}_replace_12.mwaf') as replace_mwaf_hdu:
         assert np.all(replace_mwaf_hdu[1].data['FLAGS'] == new_flags)
-
-    for path in ['%s_add_12.mwaf' % prefix, '%s_replace_12.mwaf' % prefix]:
-        os.remove(path)
 
 
 def test_select():
@@ -335,7 +326,7 @@ def test_spectrum_type_file_init():
         ins = INS(cross_testfile, spectrum_type="auto")
 
     del ins
-    ins = INS(cross_testfile)
+    ins = INS(cross_testfile) # I think this line just gets coverage?
     del ins
     ins = INS(auto_testfile, spectrum_type="auto")
 
@@ -398,7 +389,7 @@ def test_mix_spectrum():
 def test_use_integration_weights():
 
     obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
     file_type = 'uvfits'
 
     ss = SS()
