@@ -48,9 +48,6 @@ if args.metrics_files != []:
 else:
     xants=[]
 
-version_info_list = [f'{key}: {version.version_info[key]}, ' for key in version.version_info]
-version_hist_substr = reduce(lambda x, y: x + y, version_info_list)
-
 # Make the uvflag object for storing flags later, and grab bls for partial I/O
 uvd = UVData()
 uvd.read(args.filename, read_data=False)
@@ -105,7 +102,7 @@ mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict, tb_aggro=args.tb_aggr
 
 # Do flagging
 mf.apply_match_test(ins, time_broadcast=True)
-ins.history += f"Flagged using apply_match_test on SSINS {version_hist_substr}."
+ins.history += f"Flagged using apply_match_test on SSINS {version.version}."
 
 # Write outputs
 ins.write(args.prefix, output_type='mask', sep='.', clobber=args.clobber)
