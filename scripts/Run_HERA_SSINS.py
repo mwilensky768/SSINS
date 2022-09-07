@@ -25,7 +25,7 @@ parser.add_argument("-t", "--tb_aggro", type=float,
                     help="The tb_aggro parameter for the match filter.")
 parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
-parser.add_argument("-x", "--no_diff", action='store_false',
+parser.add_argument("-x", "--no_diff", default=True, action='store_false',
                     help="Flag to turn off differencing. Use if files are already time-differenced.")
 parser.add_argument("-m", "--metrics_files", type=str, nargs='*', default=[],
                     help="path to file containing ant_metrics or auto_metrics readable by "
@@ -70,7 +70,7 @@ if args.num_baselines > 0:
     for slice_ind in range(args.num_baselines, Nbls, args.num_baselines):
         ss = SS()
         ss.read(args.filename, bls=bls[slice_ind:slice_ind + args.num_baselines],
-                diff=args.no_diff)
+                diff=(not args.no_diff))
         new_ins = INS(ss)
         ins = util.combine_ins(ins, new_ins)
 else:
