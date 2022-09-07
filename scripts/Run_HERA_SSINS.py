@@ -64,7 +64,7 @@ del uvd
 ss = SS()
 if args.num_baselines > 0:
     ss.read(args.filename, bls=bls[:args.num_baselines],
-            diff=args.no_diff)
+            diff=(not args.no_diff))
     ins = INS(ss)
     Nbls = len(bls)
     for slice_ind in range(args.num_baselines, Nbls, args.num_baselines):
@@ -74,7 +74,7 @@ if args.num_baselines > 0:
         new_ins = INS(ss)
         ins = util.combine_ins(ins, new_ins)
 else:
-    ss.read(args.filename, antenna_nums=use_ants, diff=args.no_diff)
+    ss.read(args.filename, antenna_nums=use_ants, diff=(not args.no_diff))
     ss.select(ant_str='cross')
     ins = INS(ss)
 
