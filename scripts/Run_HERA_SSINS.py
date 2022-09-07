@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+import h5py
+import hdf5plugin
 from SSINS import SS, INS, version, MF, util
 from SSINS.data import DATA_PATH
 from functools import reduce
