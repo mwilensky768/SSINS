@@ -25,7 +25,7 @@ parser.add_argument("-t", "--tb_aggro", type=float,
                     help="The tb_aggro parameter for the match filter.")
 parser.add_argument("-c", "--clobber", action='store_true',
                     help="Whether to overwrite files that have already been written")
-parser.add_argument("-x", "--no_diff", default=True, action='store_false',
+parser.add_argument("-x", "--no_diff", default=False, action='store_true',
                     help="Flag to turn off differencing. Use if files are already time-differenced.")
 parser.add_argument("-m", "--metrics_files", type=str, nargs='*', default=[],
                     help="path to file containing ant_metrics or auto_metrics readable by "
