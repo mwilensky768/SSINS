@@ -1,5 +1,8 @@
 # SSINS Change Log
 
+## Unreleased
+- Handle some optional phasing keywords correctly when they are not present
+
 
 ## 1.4.6
 - Requires pyuvdata 2.2.8 or greater, which changes the astropy dependency. Since
