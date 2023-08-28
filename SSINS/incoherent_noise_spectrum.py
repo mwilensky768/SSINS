@@ -75,18 +75,18 @@ class INS(UVFlag):
 
                 self.history += spec_type_str
                 # Check if the data has a mask yet. If not, mask it and set flag_choice to None.
-                if not isinstance(input.data_array, np.ma.MaskedArray):
-                    input.apply_flags()
+                if not isinstance(indata.data_array, np.ma.MaskedArray):
+                    indata.apply_flags()
 
-                self.metric_array = np.abs(input.data_array)
+                self.metric_array = np.abs(indata.data_array)
                 """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
-                self.weights_array = np.logical_not(input.data_array.mask).astype(float)
+                self.weights_array = np.logical_not(indata.data_array.mask).astype(float)
                 """The number of baselines that contributed to each element of the metric_array"""
                 if use_integration_weights:
                     # Set nsample default if some are zero
-                    input.nsample_array[input.nsample_array == 0] = nsample_default
+                    indata.nsample_array[indata.nsample_array == 0] = nsample_default
                     # broadcast problems with single pol
-                    self.weights_array *= (input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
+                    self.weights_array *= (indata.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * indata.nsample_array)
 
                 cross_bool = self.ant_1_array != self.ant_2_array
                 auto_bool = self.ant_1_array == self.ant_2_array
