@@ -99,7 +99,7 @@ class INS(UVFlag):
             self.match_events = []
             """A list of tuples that contain information about events caught during match filtering"""
         else:
-            self.match_events = self.match_events_read(match_events_file)
+            self.match_events = self.match_events_read(self.match_events_file)
         
         self.set_ins_data_params()
 
@@ -218,6 +218,7 @@ class INS(UVFlag):
                 self.select(ant_str="auto")
 
         super().to_waterfall(method='mean', return_weights_square=True)
+        self._mask_check() # Have to remask after waterfalling
         self.history +=  self.spec_type_str 
         self.match_events = []
         self.set_ins_data_params()
