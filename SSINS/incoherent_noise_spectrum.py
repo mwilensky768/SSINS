@@ -534,14 +534,16 @@ class INS(UVFlag):
     def _data_params(self):
         """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
 
+        UVFlag_params = super(INS, self)._data_params
+
         # Prevents a bug that occurs during __init__
         if not hasattr(self, '_has_ins_data_params'):
-            return(None)
+            return UVFlag_params
         else:
-            UVFlag_params = super(INS, self)._data_params
             Extra_params = ['metric_ms', 'sig_array']
             SSINS_params = UVFlag_params + Extra_params
-        return(SSINS_params)
+            
+            return SSINS_params
 
     def select(self, inplace=True, **kwargs):
         """Thin wrapper around UVFlag.select that also recalculates the ms array
