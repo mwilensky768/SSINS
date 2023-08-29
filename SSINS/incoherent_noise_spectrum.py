@@ -52,10 +52,11 @@ class INS(UVFlag):
                          waterfall=False, history=history, label=label, 
                          use_future_array_shapes=use_future_array_shapes)
 
-        # Used in _data_params to determine when not to return None
-        self._super_complete = True
+        
 
         if indata is not None:
+            # Used in _data_params to determine when not to return None
+            self._super_complete = True
 
             if np.any(self.polarization_array > 0):
                 raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
