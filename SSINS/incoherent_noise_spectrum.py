@@ -78,12 +78,8 @@ class INS(UVFlag):
         # Make sure the right type of spectrum is being used, otherwise raise errors.
         # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
         if self.spec_type_str not in self.history:
-            if "Initialized spectrum_type:" in self.history:
-                raise ValueError("Requested spectrum type disagrees with saved spectrum. "
-                                    "Make opposite choice on initialization.")
-            elif self.spectrum_type == "auto": # Reading in an old file
-                raise ValueError("Reading in a 'cross' spectrum as 'auto'. Check"
-                                    " spectrum_type for INS initialization.")
+            raise ValueError("Requested spectrum type disagrees with saved spectrum. "
+                             "Make opposite choice on initialization.")
             
         self._mask_check()
         if self.mask_file is None:

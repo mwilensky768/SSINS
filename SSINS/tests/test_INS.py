@@ -318,8 +318,6 @@ def test_spectrum_type_file_init():
 
     assert ins.spectrum_type == "cross"
 
-    with pytest.raises(ValueError, match="Reading in a 'cross' spectrum as 'auto'."):
-        ins = INS(testfile, spectrum_type="auto")
     with pytest.raises(ValueError, match="Requested spectrum type disagrees with saved spectrum. "):
         ins = INS(auto_testfile, spectrum_type="cross")
     with pytest.raises(ValueError, match="Requested spectrum type disagrees with saved spectrum. "):
