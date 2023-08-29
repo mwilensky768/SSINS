@@ -61,9 +61,7 @@ class INS(UVFlag):
     def read(self, filename, history="", use_future_array_shapes=False, run_check=True, check_extra=True,
              run_check_acceptability=True):
         
-        if self._has_ins_data_params:
-            raise NotImplementedError("SSINS does not currently support reading a new file from a fully instaniated INS "
-                                      " object. Instantiate a new object in memory to read in new data.")
+        self._has_data_params_check()
         
         # super().read clears attributes, but we need to be able to read these in
         attrs = ("mask_file", "match_events_file", "spectrum_type", "spec_type_str")
@@ -105,11 +103,16 @@ class INS(UVFlag):
         
         self.set_ins_data_params()
 
+    def _has_data_params_check(self):
+        if hasattr(self, "_has_ins_data_params"):
+            raise NotImplementedError("SSINS does not currently support reading a new file from a fully instaniated INS "
+                                      " object. Instantiate a new object in memory to read in new data.")
+
     def _mask_check(self):
         """
         Check if metric array is masked array; cast as masked array if not.
         """
-        if not issubclass(self.metric_array, np.ma.masked_array):
+        if not isinstance(self.metric_array, np.ma.MaskedArray):
             self.metric_array = np.ma.masked_array(self.metric_array)
 
 
@@ -160,12 +163,13 @@ class INS(UVFlag):
             raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
                                 " currently support pseudo-Stokes spectra.")
 
-    def from_uvdata(self, indata, history="",
+    def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, history="",
                     label="", use_future_array_shapes=False, run_check=True, check_extra=True,
                     run_check_acceptability=True):
         
+        self._has_data_params_check()
         # Must be in metric mode, do not copy flags -- have own flag handling
-        # will turn to waterfall later
+        # will turn to waterfall later. These are just here to match signature.
         super().from_uvdata(indata, mode="metric", copy_flags=False, waterfall=False, 
                             history=history, label=label, use_future_array_shapes=use_future_array_shapes,
                             run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
@@ -178,7 +182,6 @@ class INS(UVFlag):
 
         self.metric_array = np.abs(indata.data_array)
         """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
-        self._mask_check()
 
         self.weights_array = np.logical_not(indata.data_array.mask).astype(float)
         """The number of baselines that contributed to each element of the metric_array"""
@@ -216,6 +219,7 @@ class INS(UVFlag):
 
         super().to_waterfall(method='mean', return_weights_square=True)
         self.history +=  self.spec_type_str 
+        self.match_events = []
         self.set_ins_data_params()
 
     def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
