@@ -49,7 +49,7 @@ class INS(UVFlag):
         """
 
         super().__init__(indata=indata, mode='metric', copy_flags=False,
-                         waterfall=False, history='', label='', 
+                         waterfall=False, history=history, label=label, 
                          use_future_array_shapes=use_future_array_shapes)
 
         # Used in _data_params to determine when not to return None
