@@ -64,7 +64,7 @@ class INS(UVFlag):
         self._has_data_params_check()
         
         # super().read clears attributes, but we need to be able to read these in
-        attrs = ("mask_file", "match_events_file", "spectrum_type", "spec_type_str")
+        attrs = ("order", "use_integration_weights", "nsample_default", "mask_file", "match_events_file", "spectrum_type", "spec_type_str")
         attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
         super().read(filename, history=history, use_future_array_shapes=use_future_array_shapes, run_check=run_check,
