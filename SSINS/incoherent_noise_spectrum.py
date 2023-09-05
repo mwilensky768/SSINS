@@ -22,31 +22,37 @@ class INS(UVFlag):
     def __init__(self, indata=None, history="", label="", use_future_array_shapes=False, run_check=True,
                  check_extra=True, run_check_acceptability=True, order=0, mask_file=None,
                  match_events_file=None, spectrum_type="cross",
-                 use_integration_weights=False, nsample_default=1):
+                 use_integration_weights=False, nsample_default=1, **kwargs):
 
         """
         init function for the INS class.
 
         Args:
-            indata: An SS object or a path to an h5 file whose contents are a previously 
+            indata (SS or str): An SS object or a path to an h5 file whose contents are a previously 
                 saved INS object. If None, initializes an empty object.
-            history: History string to attach to object.
-            label: String used for labeling the object (e.g. 'MWA Highband').
-            use_future_array_shapes: Option to convert to the future planned array shapes before the changes go
-                into effect by removing the spectral window axis.
-            order: Sets the order or polynomial used when doing mean subtraction. Setting to 0 
+            history (str): History to append to object's history string.
+            label (str): String used for labeling the object (e.g. 'MWA Highband').
+            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
+                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
                 (default) just does a mean subtraction
-            mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
-            match_events_file: A path to a .yml file that has events caught by the match filter
-            spectrum_type: Type of visibilities to use in making the spectrum. Options are 'auto' 
+            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file (str): A path to a .yml file that has events caught by the match filter
+            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
                 or 'cross'.
-            use_integration_weights: Whether to use the integration time and nsample array to 
+            use_integration_weights (bool): Whether to use the integration time and nsample array to 
                 compute the weights
-            nsample_default: The default nsample value to fill zeros in the
+            nsample_default (float): The default nsample value to fill zeros in the
                 nsample_array with when there are some nsample=0. Important when
                 working with data from uvfits files, which combine information
                 from the flag_array and nsample_array in the weights field of
                 the uvfits file.
+            **kwargs: keyword arguments to pass to UVFlag.__init__. Kept for more future compatibility with updates to
+                pyuvdata.
         """
 
 
@@ -55,11 +61,30 @@ class INS(UVFlag):
 
         super().__init__(indata=indata, mode='metric', copy_flags=False, waterfall=False, history=history, label=label, 
                          use_future_array_shapes=use_future_array_shapes, run_check=run_check, check_extra=check_extra,
-                         run_check_acceptability=run_check_acceptability)
+                         run_check_acceptability=run_check_acceptability, **kwargs)
 
 
     def read(self, filename, history="", use_future_array_shapes=False, run_check=True, check_extra=True,
-             run_check_acceptability=True):
+             run_check_acceptability=True, **kwargs):
+        """
+        Populate the object by reading a file. This is called during instantiation, but due to inheritance issues, is not
+            implemented in such a way as to allow overwriting a previously instantiated object (as is possible with a
+            UVFlag object, the parent class for the INS object).
+        
+        Args:
+            filename (str): Path to the file to be read.
+            history (str): History to be appended to the object's history string.
+            use_future_array_shapes (bool): Whether to assume a spectral index axis -- should do nothing since all INS
+                objects should be written out in waterfall mode.
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            **kwargs: keywords to pass to UVFlag.read -- used for more reliable future compatibility with pyuvdata
+
+        Returns:
+
+        """
         
         self._has_data_params_check()
         
@@ -68,7 +93,7 @@ class INS(UVFlag):
         attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
         super().read(filename, history=history, use_future_array_shapes=use_future_array_shapes, run_check=run_check,
-                     check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                     check_extra=check_extra, run_check_acceptability=run_check_acceptability, **kwargs)
         
         self._pol_check()
         
@@ -135,7 +160,22 @@ class INS(UVFlag):
     def set_extra_params(self, order=0, spectrum_type="cross", use_integration_weights=False, nsample_default=1,
                          mask_file=None, match_events_file=None):
         """
-        Set non-datalike parameters that are not inherited from UVFlag.
+        Set non-datalike required parameters that are not inherited from UVFlag.
+
+        Args:
+             order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
+                (default) just does a mean subtraction
+            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file (str): A path to a .yml file that has events caught by the match filter
+            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
+                or 'cross'.
+            use_integration_weights (bool): Whether to use the integration time and nsample array to 
+                compute the weights
+            nsample_default (float): The default nsample value to fill zeros in the
+                nsample_array with when there are some nsample=0. Important when
+                working with data from uvfits files, which combine information
+                from the flag_array and nsample_array in the weights field of
+                the uvfits file.
         """
 
         self.spectrum_type = spectrum_type
@@ -155,20 +195,44 @@ class INS(UVFlag):
         self.match_events_file = match_events_file
 
     def _pol_check(self):
+        """
+        Check if invalid (pseudostokes) polarizations exist in the data.
+        """
+
         if np.any(self.polarization_array > 0):
             raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
                                 " currently support pseudo-Stokes spectra.")
 
     def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, history="",
                     label="", use_future_array_shapes=False, run_check=True, check_extra=True,
-                    run_check_acceptability=True):
+                    run_check_acceptability=True, **kwargs):
+        """
+        Construct an INS object from a UVData (SS) object. This is called during instantiation, but due to inheritance 
+            issues, is not implemented in such a way as to allow overwriting an already instantiated object 
+            (as is possible with a UVFlag object, the parent class for the INS object).
+
+        Args:
+            indata (SS): An SS object from which to construct the INS object.
+            mode (str): Does nothing -- for compatibility with base class.
+            copy_flags (bool): Does nothing -- for compatibility with base class.
+            waterfall (bool): Does nothing -- for compatibility with base class.
+            history (str): History to be appended to history string of object.
+            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
+                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            **kwargs: keywords to pass to UVFlag.from_uvdata -- used for more reliable future compatibility with pyuvdata
+        """
         
         self._has_data_params_check()
         # Must be in metric mode, do not copy flags -- have own flag handling
         # will turn to waterfall later. These are just here to match signature.
         super().from_uvdata(indata, mode="metric", copy_flags=False, waterfall=False, 
                             history=history, label=label, use_future_array_shapes=use_future_array_shapes,
-                            run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                            run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability,
+                            **kwargs)
         
         self._pol_check()
 
