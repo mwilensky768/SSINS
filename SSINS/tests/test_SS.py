@@ -52,6 +52,9 @@ def test_diff():
     diff_nsamples = 0.5 * (uv.nsample_array[::2] + uv.nsample_array[1::2])
     diff_ints = uv.integration_time[::2] + uv.integration_time[1::2]
     diff_uvw = 0.5 * (uv.uvw_array[::2] + uv.uvw_array[1::2])
+    diff_pcad = 0.5 * (uv.phase_center_app_dec[::2] + uv.phase_center_app_dec[1::2])
+    diff_pcar = 0.5 * (uv.phase_center_app_ra[::2] + uv.phase_center_app_ra[1::2])
+    diff_pcfp = 0.5 * (uv.phase_center_frame_pa[::2] + uv.phase_center_frame_pa[1::2])
 
     with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
         ss.read(testfile, diff=True, times=times, bls=bls)
@@ -65,6 +68,9 @@ def test_diff():
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
     assert np.all(ss.ant_1_array == np.array([uv.antenna_numbers[0], uv.antenna_numbers[0]])), f"ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([uv.antenna_numbers[1], uv.antenna_numbers[2]])), "ant_2_array disagrees!"
+    assert np.all(ss.phase_center_app_dec == diff_pcad)
+    assert np.all(ss.phase_center_app_ra == diff_pcar)
+    assert np.all(ss.phase_center_frame_pa == diff_pcfp)
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
