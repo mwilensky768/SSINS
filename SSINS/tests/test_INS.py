@@ -6,6 +6,27 @@ import pytest
 from pyuvdata import UVData, UVFlag
 from datetime import datetime
 
+@pytest.fixture
+def mix_obs():
+    return "1061312640_mix"
+
+@pytest.fixture
+def mix_file(mix_obs):
+    return os.path.join(DATA_PATH, f"{mix_obs}.uvfits")
+
+
+@pytest.fixture
+def cross_obs(mix_obs):
+    return f"{mix_obs}_cross_SSINS_data"
+
+
+@pytest.fixture
+def cross_testfile(cross_obs):
+    return os.path.join(DATA_PATH, f"{cross_obs}.h5")
+
+
+
+
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:invalid value",
                             "ignore:SS.read")
@@ -307,13 +328,13 @@ def test_data_params():
     assert ins._data_params == test_params
 
 
-def test_spectrum_type_file_init():
+def test_spectrum_type_file_init(cross_testfile):
     obs = "1061313128_99bl_1pol_half_time_SSINS"
     auto_obs = "1061312640_mix_auto_SSINS_data"
-    cross_obs = "1061312640_mix_cross_SSINS_data"
+
     testfile = os.path.join(DATA_PATH, f"{obs}.h5")
     auto_testfile = os.path.join(DATA_PATH, f"{auto_obs}.h5")
-    cross_testfile = os.path.join(DATA_PATH, f"{cross_obs}.h5")
+
     ins = INS(testfile)
 
     assert ins.spectrum_type == "cross"
@@ -420,3 +441,21 @@ def test_add():
     assert np.all(combo_ins.metric_array.mask == first_ins.metric_array.mask)
     assert np.all(combo_ins.metric_array.data == truth_ins.metric_array.data)
     assert np.all(combo_ins.metric_array.mask == truth_ins.metric_array.mask)
+
+def test_read_from_instance(cross_testfile):
+    ins = INS(cross_testfile)
+
+    with pytest.raises(NotImplementedError, match="SSINS does not currently support "):
+        ins.read(cross_testfile)
+
+
+def test_set_weights_square_array(cross_testfile):
+
+    ins = INS(cross_testfile)
+    copy_ins = ins.copy()
+    
+    ins.weights_square_array = None
+    ins.set_ins_data_params()
+
+    assert ins.weights_square_array is not None
+    assert np.array_equal(ins.metric_ms, copy_ins.metric_ms) # check that the goods are intact
