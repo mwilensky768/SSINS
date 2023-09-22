@@ -279,6 +279,7 @@ class INS(UVFlag):
 
         super().to_waterfall(method='mean', return_weights_square=True)
         self._mask_check() # Have to remask after waterfalling
+        self.metric_array.mask = self.weights_array == 0
         self.history +=  self.spec_type_str 
         self.match_events = []
         self.set_ins_data_params()
