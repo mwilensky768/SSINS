@@ -25,19 +25,26 @@ def cross_testfile(cross_obs):
     return os.path.join(DATA_PATH, f"{cross_obs}.h5")
 
 
+@pytest.fixture
+def tv_obs():
+    return '1061313128_99bl_1pol_half_time'
 
+
+@pytest.fixture
+def tv_testfile(tv_obs):
+    return os.path.join(DATA_PATH, f'{tv_obs}.uvfits')
+
+@pytest.fixture
+def tv_ins_testfile(tv_obs):
+    return os.path.join(DATA_PATH, f"{tv_obs}_SSINS.h5")
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:invalid value",
                             "ignore:SS.read")
-def test_init():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_init(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read(tv_testfile, flag_choice='original', diff=True)
     # Needs to be in time order for averaging comparison to work
     ss.reorder_blts(order='time')
 
@@ -57,18 +64,15 @@ def test_init():
     assert np.all(test_weights == ins.weights_array), "Weights did not sum properly"
 
 
-def test_no_diff_start():
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_no_diff_start(tv_testfile):
 
     # Don't diff - will fail to mask data array
     ss = SS()
     with pytest.warns(UserWarning, match="flag_choice will be ignored"):
-        ss.read(testfile, flag_choice='original', diff=False)
+        ss.read(tv_testfile, flag_choice='original', diff=False)
 
     with pytest.warns(UserWarning, match="diff on read defaults to False"):
-        ss.read(testfile, flag_choice='original', diff=False)
+        ss.read(tv_testfile, flag_choice='original', diff=False)
 
     ins = INS(ss)
 
@@ -76,14 +80,10 @@ def test_no_diff_start():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_mean_subtract():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_mean_subtract(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     ins = INS(ss, order=0)
 
@@ -100,14 +100,10 @@ def test_mean_subtract():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_polyfit():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_polyfit(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     ins = INS(ss, order=1)
 
@@ -132,18 +128,16 @@ def test_polyfit():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_mask_to_flags(tmp_path):
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    file_type = 'uvfits'
-    prefix = os.path.join(tmp_path, f'{obs}_test')
+def test_mask_to_flags(tmp_path, tv_obs, tv_testfile):
+
+    prefix = os.path.join(tmp_path, f'{tv_obs}_test')
     flags_outfile = f'{prefix}_SSINS_flags.h5'
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     uvd = UVData()
-    uvd.read(testfile)
+    uvd.read(tv_testfile)
 
     uvf = UVFlag(uvd, mode='flag', waterfall=True)
     # start with some flags so that we can test the intended OR operation
@@ -203,12 +197,10 @@ def test_mask_to_flags(tmp_path):
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read", "ignore:invalid value")
-def test_write(tmp_path):
+def test_write(tmp_path, tv_obs, tv_testfile):
 
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    file_type = 'uvfits'
-    prefix = os.path.join(tmp_path, f'{obs}_test')
+
+    prefix = os.path.join(tmp_path, f'{tv_obs}_test')
     data_outfile = f'{prefix}_SSINS_data.h5'
     z_score_outfile = f'{prefix}_SSINS_z_score.h5'
     mask_outfile = f'{prefix}_SSINS_mask.h5'
@@ -216,7 +208,7 @@ def test_write(tmp_path):
     sep_data_outfile = f'{prefix}.SSINS.data.h5'
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read(tv_testfile, flag_choice='original', diff=True)
 
     ins = INS(ss)
     # Mock some events
@@ -242,15 +234,14 @@ def test_write(tmp_path):
     assert np.all(ins.metric_ms == new_ins.metric_ms), "Elements of the metric_ms were not equal"
     assert np.all(ins.match_events == new_ins.match_events), "Elements of the match_events were not equal"
     assert os.path.exists(sep_data_outfile), "sep_data_outfile was not written"
+    assert os.path.exists(z_score_outfile)
 
 
-def test_write_mwaf(tmp_path):
+def test_write_mwaf(tmp_path, tv_obs, tv_ins_testfile):
     from astropy.io import fits
-
-    obs = '1061313128_99bl_1pol_half_time_SSINS'
-    testfile = os.path.join(DATA_PATH, f'{obs}.h5')
-    prefix = os.path.join(tmp_path, f'{obs}_test')
-    ins = INS(testfile)
+ 
+    prefix = os.path.join(tmp_path, f'{tv_obs}_SSINS_test')
+    ins = INS(tv_ins_testfile)
     mwaf_files = [os.path.join(DATA_PATH, '1061313128_12.mwaf')]
     bad_mwaf_files = [os.path.join(DATA_PATH, 'bad_file_path')]
     metafits_file = os.path.join(DATA_PATH, '1061313128.metafits')
@@ -293,11 +284,9 @@ def test_write_mwaf(tmp_path):
         assert np.all(replace_mwaf_hdu[1].data['FLAGS'] == new_flags)
 
 
-def test_select():
+def test_select(tv_ins_testfile):
 
-    obs = '1061313128_99bl_1pol_half_time_SSINS'
-    testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
-    ins = INS(testfile)
+    ins = INS(tv_ins_testfile)
     ins.metric_array.mask[7, :12] = True
 
     new_ins = ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24),
@@ -318,24 +307,21 @@ def test_select():
     assert new_ins == ins
 
 
-def test_data_params():
-    obs = '1061313128_99bl_1pol_half_time_SSINS'
-    testfile = os.path.join(DATA_PATH, '%s.h5' % obs)
-    ins = INS(testfile)
+def test_data_params(tv_ins_testfile):
+
+    ins = INS(tv_ins_testfile)
     test_params = ['metric_array', 'weights_array', 'weights_square_array',
                    'metric_ms', 'sig_array']
 
     assert ins._data_params == test_params
 
 
-def test_spectrum_type_file_init(cross_testfile):
-    obs = "1061313128_99bl_1pol_half_time_SSINS"
-    auto_obs = "1061312640_mix_auto_SSINS_data"
+def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
 
-    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+    auto_obs = "1061312640_mix_auto_SSINS_data"
     auto_testfile = os.path.join(DATA_PATH, f"{auto_obs}.h5")
 
-    ins = INS(testfile)
+    ins = INS(tv_ins_testfile)
 
     assert ins.spectrum_type == "cross"
 
@@ -351,12 +337,10 @@ def test_spectrum_type_file_init(cross_testfile):
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_spectrum_type_bl_init():
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+def test_spectrum_type_bl_init(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     ins = INS(ss)
     assert "Initialized spectrum_type:cross from visibility data." in ins.history
@@ -365,11 +349,10 @@ def test_spectrum_type_bl_init():
         ins = INS(ss, spectrum_type="auto")
 
 
-def test_spectrum_type_bad_input():
-    obs = "1061313128_99bl_1pol_half_time_SSINS"
-    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+def test_spectrum_type_bad_input(tv_ins_testfile):
+
     with pytest.raises(ValueError, match="Requested spectrum_type is invalid."):
-        ins = INS(testfile, spectrum_type="foo")
+        ins = INS(tv_ins_testfile, spectrum_type="foo")
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
@@ -385,12 +368,10 @@ def test_no_cross_auto_spectrum():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_mix_spectrum():
-    obs = "1061312640_mix"
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
+def test_mix_spectrum(mix_file):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(mix_file, diff=True)
 
     with pytest.warns(UserWarning, match="Requested spectrum type is 'cross'. Removing autos before averaging."):
         ins = INS(ss)
@@ -405,14 +386,10 @@ def test_mix_spectrum():
 
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read", "ignore:invalid value")
-def test_use_integration_weights():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    file_type = 'uvfits'
+def test_use_integration_weights(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, flag_choice='original', diff=True)
+    ss.read(tv_testfile, flag_choice='original', diff=True)
 
     ins = INS(ss, use_integration_weights=True)
 
@@ -421,16 +398,14 @@ def test_use_integration_weights():
     assert not np.all(ins.weights_array == ins.weights_square_array)
 
 
-def test_add():
-    obs = "1061313128_99bl_1pol_half_time_SSINS"
-    testfile = os.path.join(DATA_PATH, f"{obs}.h5")
+def test_add(tv_ins_testfile):
 
-    truth_ins = INS(testfile)
+    truth_ins = INS(tv_ins_testfile)
 
-    first_ins = INS(testfile)
+    first_ins = INS(tv_ins_testfile)
     first_ins.select(freq_chans=np.arange(192))
 
-    second_ins = INS(testfile)
+    second_ins = INS(tv_ins_testfile)
     second_ins.select(freq_chans=np.arange(192, 384))
 
     combo_ins = first_ins.__add__(second_ins, axis='frequency')
