@@ -101,10 +101,13 @@ class INS(UVFlag):
             setattr(self, attr, attr_dict[attr])
 
         # Make sure the right type of spectrum is being used, otherwise raise errors.
-        # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
+        # If other spectrum type not in history string, then it is an old spectrum and is therefore a cross-only spectrum.
         if self.spec_type_str not in self.history:
-            raise ValueError("Requested spectrum type disagrees with saved spectrum. "
-                             "Make opposite choice on initialization.")
+            other_spec_type = "auto" if self.spectrum_type == "cross" else "cross"
+            if other_spec_type in self.history:
+                raise ValueError("Requested spectrum type disagrees with saved spectrum. "
+                                "Make opposite choice on initialization.")
+
             
         self._mask_check()
         if self.mask_file is None:
