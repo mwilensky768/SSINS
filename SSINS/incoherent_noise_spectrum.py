@@ -107,6 +107,9 @@ class INS(UVFlag):
             if other_spec_type in self.history:
                 raise ValueError("Requested spectrum type disagrees with saved spectrum. "
                                 "Make opposite choice on initialization.")
+            elif self.spectrum_type != "cross":
+                raise ValueError("spectrum_type is set to auto, but file input is a cross spectrum from an old file."
+                                 " Set spectrum_type to cross or verify that correct file is being read.")
 
             
         self._mask_check()
