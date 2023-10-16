@@ -46,6 +46,8 @@ class SS(UVData):
                       " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
         super().read(filename, **kwargs)
+        if self.Nphase > 1:
+            raise NotImplementedError("SSINS cannot handle files with more than one phase center.")
 
         if (self.data_array is not None):
             if diff:
@@ -180,7 +182,7 @@ class SS(UVData):
 
             blt_slice = slice(blstart, blstart + len_diff)
             self.data_array[blt_slice, :, :, :] = diff_dat
-            """The differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols). Can be differenced in both time and frequency."""
+            """The differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
             self.flag_array[blt_slice, :, :, :] = diff_flags
             """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
 
@@ -196,16 +198,19 @@ class SS(UVData):
             diff_uvw = self.uvw_array[where_bl]
             diff_uvw = 0.5 * (diff_uvw[:-1] + diff_uvw[1:])
 
-            # pyuvdata 2.2 optional parameters
-            if(hasattr(self, 'phase_center_app_dec') and (self.phase_center_app_dec is not None)):
-                diff_pcad = self.phase_center_app_dec[where_bl]
-                diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
-            if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
-                diff_pcar = self.phase_center_app_ra[where_bl]
-                diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
-            if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_frame_pa is not None)):
-                diff_pcfp = self.phase_center_frame_pa[where_bl]
-                diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
+
+
+            diff_pcad = self.phase_center_app_dec[where_bl]
+            diff_pcad = 0.5 * (diff_pcad[:-1] + diff_pcad[1:])
+            self.phase_center_app_dec[blt_slice] = diff_pcad
+
+            diff_pcar = self.phase_center_app_ra[where_bl]
+            diff_pcar = 0.5 * (diff_pcar[:-1] + diff_pcar[1:])
+            self.phase_center_app_ra[blt_slice] = diff_pcar
+
+            diff_pcfp = self.phase_center_frame_pa[where_bl]
+            diff_pcfp = 0.5 * (diff_pcfp[:-1] + diff_pcfp[1:])
+            self.phase_center_frame_pa[blt_slice] = diff_pcfp
 
             self.integration_time[blt_slice] = diff_ints
             """Total amount of integration time (sum of the differenced visibilities) at each baseline-time (length Nblts)"""
@@ -222,13 +227,10 @@ class SS(UVData):
 
         blt_attr_names = ['data_array', 'flag_array', 'time_array',
                           'nsample_array', 'integration_time', 'baseline_array',
-                          'ant_1_array', 'ant_2_array', 'uvw_array']
-        if(hasattr(self, 'phase_center_app_dec') and (self.phase_center_app_dec is not None)):
-            blt_attr_names.append('phase_center_app_dec')
-        if(hasattr(self, 'phase_center_app_ra') and (self.phase_center_app_ra is not None)):
-            blt_attr_names.append('phase_center_app_ra')
-        if(hasattr(self, 'phase_center_frame_pa') and (self.phase_center_frame_pa is not None)):
-            blt_attr_names.append('phase_center_frame_pa')
+                          'ant_1_array', 'ant_2_array', 'uvw_array', 
+                          'phase_center_app_dec', 'phase_center_app_ra', 'phase_center_frame_pa',
+                          'phase_center_id_array']
+
         for blts_attr in blt_attr_names:
             setattr(self, blts_attr, getattr(self, blts_attr)[:-self.Nbls])
 
