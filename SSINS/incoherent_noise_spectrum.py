@@ -10,6 +10,7 @@ from functools import reduce
 import warnings
 from itertools import combinations
 from SSINS.match_filter import Event
+from copy import deepcopy
 
 
 class INS(UVFlag):
@@ -18,119 +19,134 @@ class INS(UVFlag):
     the UVFlag class, a member of the pyuvdata software package.
     """
 
-    def __init__(self, input, history='', label='', order=0, mask_file=None,
+    def __init__(self, indata=None, history="", label="", use_future_array_shapes=False, run_check=True,
+                 check_extra=True, run_check_acceptability=True, order=0, mask_file=None,
                  match_events_file=None, spectrum_type="cross",
-                 use_integration_weights=False, nsample_default=1):
+                 use_integration_weights=False, nsample_default=1, **kwargs):
 
         """
         init function for the INS class.
 
         Args:
-            input: See UVFlag documentation
-            history: See UVFlag documentation
-            label: See UVFlag documentation
-            order: Sets the order parameter for the INS object
-            mask_file: A path to an .h5 (UVFlag) file that contains a mask for the metric_array
-            match_events_file: A path to a .yml file that has events caught by the match filter
-            spectrum_type: Type of visibilities to use in making the specturm. Options are 'auto' or 'cross'.
-            use_integration_weights: Whether to use the integration time and nsample array to compute the weights
-            nsample_default: The default nsample value to fill zeros in the
+            indata (SS or str): An SS object or a path to an h5 file whose contents are a previously 
+                saved INS object. If None, initializes an empty object.
+            history (str): History to append to object's history string.
+            label (str): String used for labeling the object (e.g. 'MWA Highband').
+            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
+                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
+                (default) just does a mean subtraction
+            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file (str): A path to a .yml file that has events caught by the match filter
+            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
+                or 'cross'.
+            use_integration_weights (bool): Whether to use the integration time and nsample array to 
+                compute the weights
+            nsample_default (float): The default nsample value to fill zeros in the
                 nsample_array with when there are some nsample=0. Important when
                 working with data from uvfits files, which combine information
                 from the flag_array and nsample_array in the weights field of
                 the uvfits file.
+            **kwargs: keyword arguments to pass to UVFlag.__init__. Kept for more future compatibility with updates to
+                pyuvdata.
         """
 
-        super().__init__(input, mode='metric', copy_flags=False,
-                         waterfall=False, history='', label='')
 
-        # Used in _data_params to determine when not to return None
-        self._super_complete = True
+        self.set_extra_params(order=order, spectrum_type=spectrum_type, use_integration_weights=use_integration_weights,
+                              nsample_default=nsample_default, mask_file=mask_file, match_events_file=match_events_file)
 
-        if np.any(self.polarization_array > 0):
-            raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
-                             " currently support pseudo-Stokes spectra.")
+        super().__init__(indata=indata, mode='metric', copy_flags=False, waterfall=False, history=history, label=label, 
+                         use_future_array_shapes=use_future_array_shapes, run_check=run_check, check_extra=check_extra,
+                         run_check_acceptability=run_check_acceptability, **kwargs)
 
-        self.spectrum_type = spectrum_type
-        """The type of visibilities the spectrum was made from."""
-        if self.spectrum_type not in ['cross', 'auto']:
-            raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
 
-        spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+    def read(self, filename, history="", use_future_array_shapes=False, run_check=True, check_extra=True,
+             run_check_acceptability=True, **kwargs):
+        """
+        Populate the object by reading a file. This is called during instantiation, but due to inheritance issues, is not
+            implemented in such a way as to allow overwriting a previously instantiated object (as is possible with a
+            UVFlag object, the parent class for the INS object).
+        
+        Args:
+            filename (str): Path to the file to be read.
+            history (str): History to be appended to the object's history string.
+            use_future_array_shapes (bool): Whether to assume a spectral index axis -- should do nothing since all INS
+                objects should be written out in waterfall mode.
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            **kwargs: keywords to pass to UVFlag.read -- used for more reliable future compatibility with pyuvdata
 
-        self.order = order
-        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+        Returns:
 
-        if self.type == 'baseline':
+        """
+        
+        self._has_data_params_check()
+        
+        # super().read clears attributes, but we need to be able to read these in
+        attrs = ("order", "use_integration_weights", "nsample_default", "mask_file", "match_events_file", "spectrum_type", "spec_type_str")
+        attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
-            self.history += spec_type_str
-            # Check if the data has a mask yet. If not, mask it and set flag_choice to None.
-            if not isinstance(input.data_array, np.ma.MaskedArray):
-                input.apply_flags()
+        super().read(filename, history=history, use_future_array_shapes=use_future_array_shapes, run_check=run_check,
+                     check_extra=check_extra, run_check_acceptability=run_check_acceptability, **kwargs)
+        
+        self._pol_check()
+        
+        for attr in attr_dict:
+            setattr(self, attr, attr_dict[attr])
 
-            self.metric_array = np.abs(input.data_array)
-            """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
-            self.weights_array = np.logical_not(input.data_array.mask).astype(float)
-            """The number of baselines that contributed to each element of the metric_array"""
-            if use_integration_weights:
-                # Set nsample default if some are zero
-                input.nsample_array[input.nsample_array == 0] = nsample_default
-                # broadcast problems with single pol
-                self.weights_array *= (input.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * input.nsample_array)
-
-            cross_bool = self.ant_1_array != self.ant_2_array
-            auto_bool = self.ant_1_array == self.ant_2_array
-
-            if self.spectrum_type == "cross":
-
-                has_crosses = np.any(cross_bool)
-                if not has_crosses:
-                    raise ValueError("Requested spectrum type is 'cross', but no cross"
-                                     " correlations exist. Check SS input.")
-
-                has_autos = np.any(auto_bool)
-                if has_autos:
-                    warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
-                    self.select(ant_str="cross")
-
-            elif self.spectrum_type == "auto":
-                has_autos = np.any(auto_bool)
-                if not has_autos:
-                    raise ValueError("Requested spectrum type is 'auto', but no autos"
-                                     " exist. Check SS input.")
-
-                has_crosses = np.any(cross_bool)
-                if has_crosses:
-                    warnings.warn("Requested spectrum type is 'auto'. Removing"
-                                  " crosses before averaging.")
-                    self.select(ant_str="auto")
-
-            super().to_waterfall(method='mean', return_weights_square=True)
         # Make sure the right type of spectrum is being used, otherwise raise errors.
-        # If neither statement inside is true, then it is an old spectrum and is therefore a cross-only spectrum.
-        elif spec_type_str not in self.history:
-            if "Initialized spectrum_type:" in self.history:
+        # If other spectrum type not in history string, then it is an old spectrum and is therefore a cross-only spectrum.
+        if self.spec_type_str not in self.history:
+            other_spec_type = "auto" if self.spectrum_type == "cross" else "cross"
+            if other_spec_type in self.history:
                 raise ValueError("Requested spectrum type disagrees with saved spectrum. "
-                                 "Make opposite choice on initialization.")
-            elif self.spectrum_type == "auto": # Reading in an old file
-                raise ValueError("Reading in a 'cross' spectrum as 'auto'. Check"
-                                 " spectrum_type for INS initialization.")
-        if not hasattr(self.metric_array, 'mask'):
-            self.metric_array = np.ma.masked_array(self.metric_array)
-        if mask_file is None:
-            # Only mask elements initially if no baselines contributed
+                                "Make opposite choice on initialization.")
+            elif self.spectrum_type != "cross":
+                raise ValueError("spectrum_type is set to auto, but file input is a cross spectrum from an old file."
+                                 " Set spectrum_type to cross or verify that correct file is being read.")
+
+            
+        self._mask_check()
+        if self.mask_file is None:
+             # Only mask elements initially if no baselines contributed
             self.metric_array.mask = self.weights_array == 0
         else:
             # Read in the flag array
-            flag_uvf = UVFlag(mask_file)
+            flag_uvf = UVFlag(self.mask_file)
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 
-        if match_events_file is None:
+        if self.match_events_file is None:
             self.match_events = []
             """A list of tuples that contain information about events caught during match filtering"""
         else:
-            self.match_events = self.match_events_read(match_events_file)
+            self.match_events = self.match_events_read(self.match_events_file)
+        
+        self.set_ins_data_params()
+
+    def _has_data_params_check(self):
+        if hasattr(self, "_has_ins_data_params"):
+            raise NotImplementedError("SSINS does not currently support reading a new file from a fully instaniated INS "
+                                      " object. Instantiate a new object in memory to read in new data.")
+
+    def _mask_check(self):
+        """
+        Check if metric array is masked array; cast as masked array if not.
+        """
+        if not isinstance(self.metric_array, np.ma.MaskedArray):
+            self.metric_array = np.ma.masked_array(self.metric_array)
+
+
+    def set_ins_data_params(self):
+        """
+        Set special parameters specific to INS object that are not included in parent UVFlag object.
+        """
 
         # For backwards compatibilty before weights_square_array was a thing
         # Works because weights are all 1 or 0 before this feature was added
@@ -140,7 +156,139 @@ class INS(UVFlag):
         """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
         """An array that is initially equal to the z-score of each data point. During flagging,
-        the entries are assigned according to their z-score at the time of their flagging."""
+            the entries are assigned according to their z-score at the time of their flagging."""
+
+        # Used in _data_params to determine when not to return None
+        self._has_ins_data_params = True
+            
+
+
+    def set_extra_params(self, order=0, spectrum_type="cross", use_integration_weights=False, nsample_default=1,
+                         mask_file=None, match_events_file=None):
+        """
+        Set non-datalike required parameters that are not inherited from UVFlag.
+
+        Args:
+             order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
+                (default) just does a mean subtraction
+            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
+            match_events_file (str): A path to a .yml file that has events caught by the match filter
+            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
+                or 'cross'.
+            use_integration_weights (bool): Whether to use the integration time and nsample array to 
+                compute the weights
+            nsample_default (float): The default nsample value to fill zeros in the
+                nsample_array with when there are some nsample=0. Important when
+                working with data from uvfits files, which combine information
+                from the flag_array and nsample_array in the weights field of
+                the uvfits file.
+        """
+
+        self.spectrum_type = spectrum_type
+        """The type of visibilities the spectrum was made from."""
+        if self.spectrum_type not in ['cross', 'auto']:
+            raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
+
+        self.spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
+
+        self.order = order
+        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+        
+        self.use_integration_weights = use_integration_weights
+        self.nsample_default = nsample_default
+
+        self.mask_file = mask_file
+        self.match_events_file = match_events_file
+
+    def _pol_check(self):
+        """
+        Check if invalid (pseudostokes) polarizations exist in the data.
+        """
+
+        if np.any(self.polarization_array > 0):
+            raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
+                                " currently support pseudo-Stokes spectra.")
+
+    def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, history="",
+                    label="", use_future_array_shapes=False, run_check=True, check_extra=True,
+                    run_check_acceptability=True, **kwargs):
+        """
+        Construct an INS object from a UVData (SS) object. This is called during instantiation, but due to inheritance 
+            issues, is not implemented in such a way as to allow overwriting an already instantiated object 
+            (as is possible with a UVFlag object, the parent class for the INS object).
+
+        Args:
+            indata (SS): An SS object from which to construct the INS object.
+            mode (str): Does nothing -- for compatibility with base class.
+            copy_flags (bool): Does nothing -- for compatibility with base class.
+            waterfall (bool): Does nothing -- for compatibility with base class.
+            history (str): History to be appended to history string of object.
+            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
+                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
+            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
+                (default True).
+            **kwargs: keywords to pass to UVFlag.from_uvdata -- used for more reliable future compatibility with pyuvdata
+        """
+        
+        self._has_data_params_check()
+        # Must be in metric mode, do not copy flags -- have own flag handling
+        # will turn to waterfall later. These are just here to match signature.
+        super().from_uvdata(indata, mode="metric", copy_flags=False, waterfall=False, 
+                            history=history, label=label, use_future_array_shapes=use_future_array_shapes,
+                            run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability,
+                            **kwargs)
+        
+        self._pol_check()
+
+        # Check if the data has a mask yet. If not, mask it and set flag_choice to None.
+        if not isinstance(indata.data_array, np.ma.MaskedArray):
+            indata.apply_flags()
+
+        self.metric_array = np.abs(indata.data_array)
+        """The baseline-averaged sky-subtracted visibility amplitudes (numpy masked array)"""
+
+        self.weights_array = np.logical_not(indata.data_array.mask).astype(float)
+        """The number of baselines that contributed to each element of the metric_array"""
+        if self.use_integration_weights:
+            # Set nsample default if some are zero
+            indata.nsample_array[indata.nsample_array == 0] = self.nsample_default
+            # broadcast problems with single pol
+            self.weights_array *= (indata.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * indata.nsample_array)
+
+        cross_bool = self.ant_1_array != self.ant_2_array
+        auto_bool = self.ant_1_array == self.ant_2_array
+
+        if self.spectrum_type == "cross":
+            has_crosses = np.any(cross_bool)
+            if not has_crosses:
+                raise ValueError("Requested spectrum type is 'cross', but no cross"
+                                        " correlations exist. Check SS input.")
+
+            has_autos = np.any(auto_bool)
+            if has_autos:
+                warnings.warn("Requested spectrum type is 'cross'. Removing autos before averaging.")
+                self.select(ant_str="cross")
+
+        elif self.spectrum_type == "auto":
+            has_autos = np.any(auto_bool)
+            if not has_autos:
+                raise ValueError("Requested spectrum type is 'auto', but no autos"
+                                        " exist. Check SS input.")
+
+            has_crosses = np.any(cross_bool)
+            if has_crosses:
+                warnings.warn("Requested spectrum type is 'auto'. Removing"
+                                    " crosses before averaging.")
+                self.select(ant_str="auto")
+
+        super().to_waterfall(method='mean', return_weights_square=True)
+        self._mask_check() # Have to remask after waterfalling
+        self.metric_array.mask = self.weights_array == 0
+        self.history +=  self.spec_type_str 
+        self.match_events = []
+        self.set_ins_data_params()
 
     def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
 
@@ -457,14 +605,16 @@ class INS(UVFlag):
     def _data_params(self):
         """Overrides UVFlag._data_params property to add additional datalike parameters to list"""
 
+        UVFlag_params = super(INS, self)._data_params
+
         # Prevents a bug that occurs during __init__
-        if not hasattr(self, '_super_complete'):
-            return(None)
+        if not hasattr(self, '_has_ins_data_params'):
+            return UVFlag_params
         else:
-            UVFlag_params = super(INS, self)._data_params
             Extra_params = ['metric_ms', 'sig_array']
             SSINS_params = UVFlag_params + Extra_params
-        return(SSINS_params)
+            
+            return SSINS_params
 
     def select(self, inplace=True, **kwargs):
         """Thin wrapper around UVFlag.select that also recalculates the ms array

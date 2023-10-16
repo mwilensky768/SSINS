@@ -9,21 +9,28 @@ from pyuvdata import UVData
 Tests the various capabilities of the sky_subtract class
 """
 
+@pytest.fixture
+def tv_obs():
+    return '1061313128_99bl_1pol_half_time'
+
+
+@pytest.fixture
+def tv_testfile(tv_obs):
+    return os.path.join(DATA_PATH, f'{tv_obs}.uvfits')
+
 
 @pytest.mark.filterwarnings("ignore:Reordering", "ignore:SS.read")
-def test_SS_read():
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+def test_SS_read(tv_testfile):
 
     ss = SS()
 
     # Test reading in only metadata skips if block and warning
     with pytest.warns(PendingDeprecationWarning, match="SS.read will be renamed"):
-        ss.read(testfile, read_data=False)
+        ss.read(tv_testfile, read_data=False)
     assert ss.data_array is None, "Data array is not None"
 
     # Test select on read and diff
-    ss.read(testfile, times=np.unique(ss.time_array)[1:10], diff=True)
+    ss.read(tv_testfile, times=np.unique(ss.time_array)[1:10], diff=True)
     assert ss.Ntimes == 8, "Number of times after diff disagrees!"
     assert ss.Nbls == 99, "Number of baselines is incorrect"
 
@@ -31,19 +38,17 @@ def test_SS_read():
     assert ss.check()
 
 
-def test_diff():
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
+def test_diff(tv_testfile):
 
     ss = SS()
     uv = UVData()
 
     # Read in two times and two baselines of data, so that the diff is obvious.
-    uv.read(testfile, read_data=False)
+    uv.read(tv_testfile, read_data=False)
     times = np.unique(uv.time_array)[:2]
     bls = [(uv.antenna_numbers[0], uv.antenna_numbers[1]),
            (uv.antenna_numbers[0], uv.antenna_numbers[2])]
-    uv.read(testfile, times=times, bls=bls)
+    uv.read(tv_testfile, times=times, bls=bls)
     uv.reorder_blts(order='baseline')
 
     diff_dat = uv.data_array[1::2] - uv.data_array[::2]
@@ -52,9 +57,12 @@ def test_diff():
     diff_nsamples = 0.5 * (uv.nsample_array[::2] + uv.nsample_array[1::2])
     diff_ints = uv.integration_time[::2] + uv.integration_time[1::2]
     diff_uvw = 0.5 * (uv.uvw_array[::2] + uv.uvw_array[1::2])
+    diff_pcad = 0.5 * (uv.phase_center_app_dec[::2] + uv.phase_center_app_dec[1::2])
+    diff_pcar = 0.5 * (uv.phase_center_app_ra[::2] + uv.phase_center_app_ra[1::2])
+    diff_pcfp = 0.5 * (uv.phase_center_frame_pa[::2] + uv.phase_center_frame_pa[1::2])
 
     with pytest.warns(UserWarning, match="Reordering data array to baseline order to perform differencing."):
-        ss.read(testfile, diff=True, times=times, bls=bls)
+        ss.read(tv_testfile, diff=True, times=times, bls=bls)
     ss.reorder_blts(order='baseline')
 
     assert np.all(ss.data_array == diff_dat), "Data values are different!"
@@ -65,18 +73,18 @@ def test_diff():
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
     assert np.all(ss.ant_1_array == np.array([uv.antenna_numbers[0], uv.antenna_numbers[0]])), f"ant_1_array disagrees!"
     assert np.all(ss.ant_2_array == np.array([uv.antenna_numbers[1], uv.antenna_numbers[2]])), "ant_2_array disagrees!"
+    assert np.all(ss.phase_center_app_dec == diff_pcad)
+    assert np.all(ss.phase_center_app_ra == diff_pcar)
+    assert np.all(ss.phase_center_frame_pa == diff_pcfp)
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_apply_flags():
+def test_apply_flags(tv_obs, tv_testfile):
 
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    insfile = os.path.join(DATA_PATH, f"{tv_obs}_SSINS.h5")
     ss = SS()
 
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     # Make sure no flags are applied to start with
     assert not np.any(ss.data_array.mask), "There are some flags to start with."
@@ -121,14 +129,10 @@ def test_apply_flags():
         ss.apply_flags(flag_choice='bad_choice')
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_apply_flags_on_diff():
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+def test_apply_flags_on_diff(tv_testfile):
     ss = SS()
 
-    ss.read(testfile, diff=True, flag_choice='original')
+    ss.read(tv_testfile, diff=True, flag_choice='original')
 
     assert np.all(ss.flag_array == ss.data_array.mask), "Flag arrays are not equal"
     assert ss.flag_choice == 'original', "Flag choice attribute was not changed"
@@ -136,14 +140,10 @@ def test_apply_flags_on_diff():
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:diff on read")
-def test_mixture_prob():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_mixture_prob(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
     ss.apply_flags('original')
 
     # Generate the mixture probabilities
@@ -154,7 +154,7 @@ def test_mixture_prob():
 
     # Do a new read, but don't diff. Run and check mask.
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read(tv_testfile, diff=False)
 
     mixture_prob = ss.mixture_prob(bins='auto')
 
@@ -163,14 +163,10 @@ def test_mixture_prob():
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:diff on read")
-def test_rev_ind():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_rev_ind(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     # Make a band that will pick out only the largest value in the data
     dat_sort = np.sort(np.abs(ss.data_array), axis=None)
@@ -194,7 +190,7 @@ def test_rev_ind():
 
     # Do a new read, but don't diff. Run and check mask.
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read(tv_testfile, diff=False)
 
     rev_ind_hist = ss.rev_ind(band)
 
@@ -203,15 +199,12 @@ def test_rev_ind():
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:some nsamples", "ignore:elementwise")
-def test_write(tmp_path):
+def test_write(tmp_path, tv_testfile):
 
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    file_type = 'uvfits'
     outfile = os.path.join(tmp_path, 'test_write.uvfits')
 
     ss = SS()
-    ss.read(testfile, diff=True)
+    ss.read(tv_testfile, diff=True)
 
     blt_inds = np.where(ss.time_array == np.unique(ss.time_array)[10])
     custom = np.zeros_like(ss.data_array.mask)
@@ -222,7 +215,7 @@ def test_write(tmp_path):
 
     # Write this out without combining flags, will issue a warning
     with pytest.warns(UserWarning, match="Some nsamples are 0, which will result in failure to propagate flags. Setting nsample to default values where 0."):
-        ss.write(outfile, 'uvfits', filename_in=testfile, combine=False)
+        ss.write(outfile, 'uvfits', filename_in=tv_testfile, combine=False)
 
     # Check if the flags propagated correctly
     UV = UVData()
@@ -241,26 +234,23 @@ def test_write(tmp_path):
         ss.write(outfile, 'uvfits', bad_uv)
 
 
-def test_read_multifiles(tmp_path):
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, f'{obs}.uvfits')
-    new_fp1 = os.path.join(tmp_path, f'{obs}_new1.uvfits')
-    new_fp2 = os.path.join(tmp_path, f'{obs}_new2.uvfits')
-    flist = [new_fp1, new_fp2]
+def test_read_multifiles(tmp_path, tv_obs, tv_testfile):
 
-    file_type = 'uvfits'
+    new_fp1 = os.path.join(tmp_path, f'{tv_obs}_new1.uvfits')
+    new_fp2 = os.path.join(tmp_path, f'{tv_obs}_new2.uvfits')
+    flist = [new_fp1, new_fp2]
 
     # Read in a file's metadata and split it into two objects
     uvd_full = UVData()
-    uvd_full.read(testfile, read_data=False)
+    uvd_full.read(tv_testfile, read_data=False)
     times1 = np.unique(uvd_full.time_array)[:14]
     times2 = np.unique(uvd_full.time_array)[14:]
 
     # Write two separate files to be read in later
     uvd_split1 = UVData()
     uvd_split2 = UVData()
-    uvd_split1.read(testfile, times=times1)
-    uvd_split2.read(testfile, times=times2)
+    uvd_split1.read(tv_testfile, times=times1)
+    uvd_split2.read(tv_testfile, times=times2)
     uvd_split1.write_uvfits(new_fp1)
     uvd_split2.write_uvfits(new_fp2)
 
@@ -271,7 +261,7 @@ def test_read_multifiles(tmp_path):
     with pytest.warns(UserWarning, match=("diff on read defaults to False now. Please double"
                                           " check SS.read call and ensure the appropriate"
                                           " keyword arguments for your intended use case.")):
-        ss_orig.read(testfile, diff=False)
+        ss_orig.read(tv_testfile, diff=False)
         ss_orig.diff()
         ss_multi.read(flist, diff=True)
 
@@ -280,14 +270,10 @@ def test_read_multifiles(tmp_path):
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:diff on read")
-def test_newmask():
-
-    obs = '1061313128_99bl_1pol_half_time'
-    testfile = os.path.join(DATA_PATH, '%s.uvfits' % obs)
-    file_type = 'uvfits'
+def test_newmask(tv_testfile):
 
     ss = SS()
-    ss.read(testfile, diff=False)
+    ss.read(tv_testfile, diff=False)
 
     assert not isinstance(ss.data_array, np.ma.MaskedArray)
 
@@ -295,3 +281,41 @@ def test_newmask():
 
     assert ss.flag_choice is None
     assert isinstance(ss.data_array, np.ma.MaskedArray)
+
+
+def test_Nphase_gt_1(tmp_path, tv_testfile):
+    uvd = UVData()
+    uvd.read(tv_testfile, read_data=False)
+
+    # Split the object so we can phase to separate locations
+    unique_times = np.unique(uvd.time_array)
+    first_times = unique_times[:10]
+    last_times = unique_times[-10:]
+
+    uvfirst = UVData()
+    uvfirst.read(tv_testfile, times=first_times)
+
+    uvlast = UVData()
+    uvlast.read(tv_testfile, times=last_times)
+
+    # Adjust phase of one object and write new file
+    og_pc_ra = uvd.phase_center_app_ra[0]
+    og_pc_dec = uvd.phase_center_app_dec[0]
+
+    phase_shift = 1e-2
+    uvfirst.phase(ra=og_pc_ra + phase_shift, dec=og_pc_dec + phase_shift,
+                  cat_name="test_phase")
+
+    uv_nphase2 = uvfirst + uvlast
+
+    assert uv_nphase2.Nphase == 2
+
+    nphase2_file = os.path.join(tmp_path, "test_nphase2.uvh5")
+    uv_nphase2.write_uvh5(nphase2_file)
+
+    ss = SS()
+    with pytest.raises(NotImplementedError, match="SSINS cannot handle files with more than one phase center."):
+        ss.read(nphase2_file)
+
+
+
