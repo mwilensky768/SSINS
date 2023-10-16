@@ -1,10 +1,11 @@
 # SSINS Change Log
 
 ## Unreleased
-- Now requires pyuvdata 2.4, which introduces several new required parameters for 
+- Now requires pyuvdata 2.4.1, which introduces several new required parameters for 
 UVData (thus SS) and UVFlag (thus INS). This required refactoring the INS constructor,
 though the API has been preserved. However, if reading SSINS h5 files written with an earlier 
 pyuvdata version, there may be an error issued from pyuvdata about the new required keywords.
+In this case, one will need to specify the originating telescope of the file, or disable run_check to proceed.
 - Changed how `_data_params` property is handled.
 
 
