@@ -79,9 +79,9 @@ def test_diff(tv_testfile):
 
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering")
-def test_apply_flags(tv_testfile):
+def test_apply_flags(tv_obs, tv_testfile):
 
-    insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
+    insfile = os.path.join(DATA_PATH, f"{tv_obs}_SSINS.h5")
     ss = SS()
 
     ss.read(tv_testfile, diff=True)
@@ -163,7 +163,7 @@ def test_mixture_prob(tv_testfile):
 
 @pytest.mark.filterwarnings("ignore:SS.read", "ignore:Reordering",
                             "ignore:diff on read")
-def test_rev_ind():
+def test_rev_ind(tv_testfile):
 
     ss = SS()
     ss.read(tv_testfile, diff=True)
@@ -303,13 +303,14 @@ def test_Nphase_gt_1(tmp_path, tv_testfile):
     og_pc_dec = uvd.phase_center_app_dec[0]
 
     phase_shift = 1e-2
-    uvfirst.phase(ra=og_pc_ra + phase_shift, dec=og_pc_dec + phase_shift)
+    uvfirst.phase(ra=og_pc_ra + phase_shift, dec=og_pc_dec + phase_shift,
+                  cat_name="test_phase")
 
     uv_nphase2 = uvfirst + uvlast
 
     assert uv_nphase2.Nphase == 2
 
-    nphase2_file = os.path.join(tmp_dir, "test_nphase2.uvh5")
+    nphase2_file = os.path.join(tmp_path, "test_nphase2.uvh5")
     uv_nphase2.write_uvh5(nphase2_file)
 
     ss = SS()
