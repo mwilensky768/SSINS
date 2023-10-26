@@ -4,7 +4,7 @@ library. Each function is named according to the class that they plot.
 """
 import os
 import numpy as np
-from SSINS.plot_lib import image_plot, hist_plot
+from SSINS.plot_lib import image_plot, hist_plot, line_plot
 import warnings
 
 
