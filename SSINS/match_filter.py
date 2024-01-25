@@ -143,6 +143,22 @@ class MF():
                 sig = np.absolute(INS.metric_ms[t, f, p])
                 t = slice(t, t + 1)
                 f = slice(f, f + 1)
+            elif shape == 'center_packet_loss':
+                N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
+                                     axis=1)
+                sliced_arr = (INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
+                t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmin(),
+                                        sliced_arr.shape)
+                t = slice(t, t + 1)
+                f = self.slice_dict[shape]
+                # Pull out the number instead of a sliced arr
+                sig = sliced_arr[t, p][0]
+                if sig < 0:
+                    print('found packet loss')
+                    print(sig)
+                    sig = np.absolute(sig)
+                else:
+                    continue
             else:
                 N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
                                      axis=1)
