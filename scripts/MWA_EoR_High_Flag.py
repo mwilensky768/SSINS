@@ -22,7 +22,7 @@ def execbody (ins_filepath):
     sig_thresh['narrow'] = 5
     sig_thresh['streak'] = 8
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict,
-            N_samp_thresh=len(ins.time_array) // 2)
+            tb_aggro=len(ins.time_array) // 2)
 
     ins.metric_array[ins.metric_array == 0] = np.ma.masked
     ins.metric_ms = ins.mean_subtract()
