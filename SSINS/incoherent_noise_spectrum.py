@@ -20,39 +20,73 @@ class INS(UVFlag):
     """
 
     def __init__(self, indata=None, history="", label="", use_future_array_shapes=False, run_check=True,
-                 check_extra=True, run_check_acceptability=True, order=0, mask_file=None,
-                 match_events_file=None, spectrum_type="cross",
+                 check_extra=True, run_check_acceptability=True, time_order=0, 
+                 freq_order=None, tf_order_pairs=None, subband_freq_chans=None,
+                 mask_file=None, match_events_file=None, spectrum_type="cross", 
                  use_integration_weights=False, nsample_default=1, **kwargs):
 
         """
         init function for the INS class.
 
         Args:
-            indata (SS or str): An SS object or a path to an h5 file whose contents are a previously 
-                saved INS object. If None, initializes an empty object.
-            history (str): History to append to object's history string.
-            label (str): String used for labeling the object (e.g. 'MWA Highband').
-            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
-                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
-            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
-            check_extra (bool): Whether to also check optional parameters (default True)
-            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
-                (default True).
-            order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
-                (default) just does a mean subtraction
-            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
-            match_events_file (str): A path to a .yml file that has events caught by the match filter
-            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
-                or 'cross'.
-            use_integration_weights (bool): Whether to use the integration time and nsample array to 
+            indata (SS or str): 
+                An SS object or a path to an h5 file whose contents are a 
+                previously  saved INS object. If None, initializes an empty object.
+            history (str): 
+                History to append to object's history string.
+            label (str): 
+                String used for labeling the object (e.g. 'MWA Highband').
+            use_future_array_shapes (bool): 
+                Option to convert to the future planned array shapes before the 
+                changes go into effect by removing the spectral window axis 
+                (potentially necessary for initializing from SS).
+            run_check (bool): 
+                Whether to check that the object's parameters have the right 
+                shape (default True).
+            check_extra (bool): 
+                Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): 
+                Whether to check that the object's parameters take appropriate 
+                values (default True).
+            time_order (int): 
+                Sets the order of polynomial used on the time axis when doing 
+                mean subtraction. Setting to 0 (default) just does a mean
+                subtraction, while setting a higher value regresses for a 
+                polynomial of that order. Interacts with freq_order.
+            freq_order (int):
+                If time_order is nonzero, this allows the user to set a
+                polynomial for fitting in the frequency axis. If None (default),
+                will just do a per-frequency fit down the time axis. This order
+                is used for all subbands, and each subband is fit indepdently
+                (see subband_freq_chans).
+            tf_order_pairs (sequence):
+                A sequence of pairs of integers where each pair of values, 
+                (t, f) indicates a pair of time and frequency polynomials that 
+                are coupled. If None (default), will just couple all possible
+                pairs.
+            subband_freq_chans (sequence):
+                A sequence of integers indicating the start of each frequency
+                subband. Each subband is fit independently. If None (default),
+                the whole band is used as the only subband. Does nothing if
+                freq_order is None.
+            mask_file (str): 
+                A path to an .h5 (UVFlag) file that contains a mask for the 
+                metric_array
+            match_events_file (str): 
+                A path to a .yml file that has events caught by the match filter.
+            spectrum_type (str): 
+                Type of visibilities to use in making the spectrum. Options are 
+                'auto' or 'cross'.
+            use_integration_weights (bool): 
+                Whether to use the integration time and nsample array to 
                 compute the weights
-            nsample_default (float): The default nsample value to fill zeros in the
-                nsample_array with when there are some nsample=0. Important when
-                working with data from uvfits files, which combine information
-                from the flag_array and nsample_array in the weights field of
-                the uvfits file.
-            **kwargs: keyword arguments to pass to UVFlag.__init__. Kept for more future compatibility with updates to
-                pyuvdata.
+            nsample_default (float): 
+                The default nsample value to fill zeros in the nsample_array 
+                with when there are some nsample=0. Important when working with 
+                data from uvfits files, which combine information from the 
+                flag_array and nsample_array in the weights field of the uvfits file.
+            **kwargs: keyword arguments to pass to UVFlag.__init__. Kept for 
+                more future compatibility with updates to pyuvdata.
         """
 
 
@@ -145,7 +179,8 @@ class INS(UVFlag):
 
     def set_ins_data_params(self):
         """
-        Set special parameters specific to INS object that are not included in parent UVFlag object.
+        Set special parameters specific to INS object that are not included in 
+        parent UVFlag object.
         """
 
         # For backwards compatibilty before weights_square_array was a thing
@@ -163,25 +198,54 @@ class INS(UVFlag):
             
 
 
-    def set_extra_params(self, order=0, spectrum_type="cross", use_integration_weights=False, nsample_default=1,
-                         mask_file=None, match_events_file=None):
+    def set_extra_params(self, time_order=0, freq_order=None, 
+                         tf_order_pairs=None, subband_freq_chans=None, 
+                         spectrum_type="cross", use_integration_weights=False, 
+                         nsample_default=1, mask_file=None, 
+                         match_events_file=None):
         """
         Set non-datalike required parameters that are not inherited from UVFlag.
 
         Args:
-             order (int): Sets the order or polynomial used when doing mean subtraction. Setting to 0 
-                (default) just does a mean subtraction
-            mask_file (str): A path to an .h5 (UVFlag) file that contains a mask for the metric_array
-            match_events_file (str): A path to a .yml file that has events caught by the match filter
-            spectrum_type (str): Type of visibilities to use in making the spectrum. Options are 'auto' 
-                or 'cross'.
-            use_integration_weights (bool): Whether to use the integration time and nsample array to 
-                compute the weights
-            nsample_default (float): The default nsample value to fill zeros in the
-                nsample_array with when there are some nsample=0. Important when
-                working with data from uvfits files, which combine information
-                from the flag_array and nsample_array in the weights field of
-                the uvfits file.
+            time_order (int): 
+                Sets the order of polynomial used on the time axis when doing 
+                mean subtraction. Setting to 0 (default) just does a mean
+                subtraction, while setting a higher value regresses for a 
+                polynomial of that order. Interacts with freq_order.
+            freq_order (int):
+                If time_order is nonzero, this allows the user to set a
+                polynomial for fitting in the frequency axis. If None (default),
+                will just do a per-frequency fit down the time axis. This order
+                is used for all subbands, and each subband is fit indepdently
+                (see subband_freq_chans).
+            tf_order_pairs (sequence):
+                A sequence of pairs of integers where each pair of values, 
+                (t, f) indicates a pair of time and frequency polynomials that 
+                are coupled. If None (default), will just couple all possible
+                pairs.
+            subband_freq_chans (sequence):
+                A sequence of integers indicating the start of each frequency
+                subband. Each subband is fit independently. If None (default),
+                the whole band is used as the only subband. Does nothing if
+                freq_order is None.
+            mask_file (str): 
+                A path to an .h5 (UVFlag) file that contains a mask for the 
+                metric_array
+            match_events_file (str): 
+                A path to a .yml file that has events caught by the match 
+                filter.
+            spectrum_type (str): 
+                Type of visibilities to use in making the spectrum. Options are 
+                'auto' or 'cross'.
+            use_integration_weights (bool): 
+                Whether to use the integration time and nsample array to 
+                compute the weights.
+            nsample_default (float): 
+                The default nsample value to fill zeros in the nsample_array 
+                with when there are some nsample=0. Important when working with 
+                data from uvfits files, which combine information from the 
+                flag_array and nsample_array in the weights field of the uvfits 
+                file.
         """
 
         self.spectrum_type = spectrum_type
