@@ -21,7 +21,7 @@ class INS(UVFlag):
 
     def __init__(self, indata=None, history="", label="", use_future_array_shapes=False, run_check=True,
                  check_extra=True, run_check_acceptability=True, time_order=0, 
-                 freq_order=None, tf_order_pairs=None, subband_freq_chans=None,
+                 freq_order=None, subband_freq_chans=None,
                  mask_file=None, match_events_file=None, spectrum_type="cross", 
                  use_integration_weights=False, nsample_default=1, **kwargs):
 
@@ -57,13 +57,8 @@ class INS(UVFlag):
                 If time_order is nonzero, this allows the user to set a
                 polynomial for fitting in the frequency axis. If None (default),
                 will just do a per-frequency fit down the time axis. This order
-                is used for all subbands, and each subband is fit indepdently
+                is used for all subbands, and each subband is fit independently
                 (see subband_freq_chans).
-            tf_order_pairs (sequence):
-                A sequence of pairs of integers where each pair of values, 
-                (t, f) indicates a pair of time and frequency polynomials that 
-                are coupled. If None (default), will just couple all possible
-                pairs.
             subband_freq_chans (sequence):
                 A sequence of integers indicating the start of each frequency
                 subband. Each subband is fit independently. If None (default),
@@ -90,8 +85,13 @@ class INS(UVFlag):
         """
 
 
-        self.set_extra_params(order=order, spectrum_type=spectrum_type, use_integration_weights=use_integration_weights,
-                              nsample_default=nsample_default, mask_file=mask_file, match_events_file=match_events_file)
+        self.set_extra_params(time_order=time_order, freq_order=freq_order, 
+                              subband_freq_chans=subband_freq_chans, 
+                              spectrum_type=spectrum_type, 
+                              use_integration_weights=use_integration_weights,
+                              nsample_default=nsample_default, 
+                              mask_file=mask_file, 
+                              match_events_file=match_events_file)
 
         super().__init__(indata=indata, mode='metric', copy_flags=False, waterfall=False, history=history, label=label, 
                          use_future_array_shapes=use_future_array_shapes, run_check=run_check, check_extra=check_extra,
@@ -199,7 +199,7 @@ class INS(UVFlag):
 
 
     def set_extra_params(self, time_order=0, freq_order=None, 
-                         tf_order_pairs=None, subband_freq_chans=None, 
+                         subband_freq_chans=None, 
                          spectrum_type="cross", use_integration_weights=False, 
                          nsample_default=1, mask_file=None, 
                          match_events_file=None):
@@ -218,11 +218,6 @@ class INS(UVFlag):
                 will just do a per-frequency fit down the time axis. This order
                 is used for all subbands, and each subband is fit indepdently
                 (see subband_freq_chans).
-            tf_order_pairs (sequence):
-                A sequence of pairs of integers where each pair of values, 
-                (t, f) indicates a pair of time and frequency polynomials that 
-                are coupled. If None (default), will just couple all possible
-                pairs.
             subband_freq_chans (sequence):
                 A sequence of integers indicating the start of each frequency
                 subband. Each subband is fit independently. If None (default),
@@ -255,14 +250,33 @@ class INS(UVFlag):
 
         self.spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
 
-        self.order = order
-        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
+        self.time_order = time_order
+        """The order of polynomial fit in time during 
+        mean-subtraction. Default is 0, which just calculates the mean."""
+
+        self.freq_order = freq_order
+        """The order of the polynomial fit in frequency for each subband."""
+
+        self.subband_freq_chans = subband_freq_chans
+        """The frequency channels corresponding to the beginning of each subband.
+        Does nothing by default."""
+
+        if self.subband_freq_chans is None:
+            Nsb = 0
+        else:
+            Nsb = len(self.subband_freq_chans)
+        self.Nsubband = Nsb
+        """Number of subbands"""
         
         self.use_integration_weights = use_integration_weights
+        """Whether to use integration time to weight the spectrum"""
         self.nsample_default = nsample_default
+        """Default nsamples when an invalid value is present."""
 
         self.mask_file = mask_file
+        """The file from which the mask was obtained (potentially None)"""
         self.match_events_file = match_events_file
+        """The file from which the matcH_events were obtained (potentially None)"""
 
     def _pol_check(self):
         """
@@ -282,18 +296,30 @@ class INS(UVFlag):
             (as is possible with a UVFlag object, the parent class for the INS object).
 
         Args:
-            indata (SS): An SS object from which to construct the INS object.
-            mode (str): Does nothing -- for compatibility with base class.
-            copy_flags (bool): Does nothing -- for compatibility with base class.
-            waterfall (bool): Does nothing -- for compatibility with base class.
-            history (str): History to be appended to history string of object.
-            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
-                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
-            run_check (bool): Whether to check that the object's parameters have the right shape (default True).
-            check_extra (bool): Whether to also check optional parameters (default True)
-            run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
-                (default True).
-            **kwargs: keywords to pass to UVFlag.from_uvdata -- used for more reliable future compatibility with pyuvdata
+            indata (SS): 
+                An SS object from which to construct the INS object.
+            mode (str): 
+                Does nothing -- for compatibility with base class.
+            copy_flags (bool): 
+                Does nothing -- for compatibility with base class.
+            waterfall (bool): 
+                Does nothing -- for compatibility with base class.
+            history (str): 
+                History to be appended to history string of object.
+            use_future_array_shapes (bool): 
+                Option to convert to the future planned array shapes before the 
+                changes go into effect by removing the spectral window axis 
+                (potentially necessary for initializing from SS).
+            run_check (bool): 
+                Whether to check that the object's parameters have the right shape (default True).
+            check_extra (bool): 
+                Whether to also check optional parameters (default True)
+            run_check_acceptability (bool): 
+                Whether to check that the object's parameters take appropriate 
+                values (default True).
+            **kwargs: 
+                keywords to pass to UVFlag.from_uvdata -- used for more reliable 
+                future compatibility with pyuvdata
         """
         
         self._has_data_params_check()
@@ -385,7 +411,7 @@ class INS(UVFlag):
 
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
-        if not self.order:
+        if not self.time_order:
             coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
             weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
