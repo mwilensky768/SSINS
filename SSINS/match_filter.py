@@ -138,38 +138,41 @@ class MF():
         shape_max = None
         for shape in self.slice_dict:
             if shape == 'narrow':
-                t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
+                if self.sig_thresh[shape] < 0:
+                    t, f, p = np.unravel_index((INS.metric_ms).argmin(),
                                            INS.metric_ms.shape)
-                sig = np.absolute(INS.metric_ms[t, f, p])
+                    sig = INS.metric_ms[t, f, p]
+                    if sig < 0:
+                        sig = np.absolute(sig)
+                    else:
+                        continue
+                else:
+                    t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
+                                            INS.metric_ms.shape)
+                    sig = np.absolute(INS.metric_ms[t, f, p])
                 t = slice(t, t + 1)
                 f = slice(f, f + 1)
-            elif shape == 'center_packet_loss':
-                N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
-                                     axis=1)
-                sliced_arr = (INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
-                t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmin(),
-                                        sliced_arr.shape)
-                t = slice(t, t + 1)
-                f = self.slice_dict[shape]
-                # Pull out the number instead of a sliced arr
-                sig = sliced_arr[t, p][0]
-                if sig < 0:
-                    print('found packet loss')
-                    print(sig)
-                    sig = np.absolute(sig)
-                else:
-                    continue
             else:
                 N = np.count_nonzero(np.logical_not(INS.metric_ms[:, self.slice_dict[shape]].mask),
                                      axis=1)
-                sliced_arr = np.absolute(INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
-                t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmax(),
+                if self.sig_thresh[shape] < 0:
+                    sliced_arr = (INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
+                    t, p = np.unravel_index((sliced_arr / np.abs(self.sig_thresh[shape])).argmin(),
                                         sliced_arr.shape)
+                else:
+                    sliced_arr = np.absolute(INS.metric_ms[:, self.slice_dict[shape]].mean(axis=1)) * np.sqrt(N)
+                    t, p = np.unravel_index((sliced_arr / self.sig_thresh[shape]).argmax(),
+                                             sliced_arr.shape)
                 t = slice(t, t + 1)
                 f = self.slice_dict[shape]
                 # Pull out the number instead of a sliced arr
                 sig = sliced_arr[t, p][0]
-            if sig > self.sig_thresh[shape]:
+                if self.sig_thresh[shape] < 0:
+                    if sig < 0:
+                        sig = np.absolute(sig)
+                    else:
+                        continue
+            if sig > np.absolute(self.sig_thresh[shape]):
                 if sig > sig_max:
                     t_max, f_max, shape_max, sig_max = (t, f, shape, sig)
 
