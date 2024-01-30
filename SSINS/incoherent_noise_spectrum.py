@@ -3,12 +3,12 @@ The incoherent noise spectrum class.
 """
 
 import numpy as np
+from scipy.special import legendre
+
 import os
 from pyuvdata import UVFlag
 import yaml
-from functools import reduce
 import warnings
-from itertools import combinations
 from SSINS.match_filter import Event
 from copy import deepcopy
 
@@ -261,8 +261,16 @@ class INS(UVFlag):
         """The frequency channels corresponding to the beginning of each subband.
         Does nothing by default."""
 
+        if self.freq_order is None and time_order == 0:
+            dmatr = None
+        else:
+            dmatr = self.get_dmatr()
+        self.dmatr = dmatr
+        """The design matrix for fitting. Only relevant if freq_order or 
+        time_order are being set. Kept in factorized form."""
+
         if self.subband_freq_chans is None:
-            Nsb = 0
+            Nsb = 1
         else:
             Nsb = len(self.subband_freq_chans)
         self.Nsubband = Nsb
@@ -277,6 +285,38 @@ class INS(UVFlag):
         """The file from which the mask was obtained (potentially None)"""
         self.match_events_file = match_events_file
         """The file from which the matcH_events were obtained (potentially None)"""
+
+    def get_dmatr(self):
+        """
+        Get the design matrix for least-squares fitting in mean-subtract when
+        using the time_order or freq_order parameters. Uses evenly sampled 
+        Legendre polynomials as a basis. 
+
+        Returns:
+            tmatr (array):
+                The time part of the design matrix.
+            fmatr (array):
+                The frequency part of the design matrix, or None if 
+                self.freq_order is None.
+        """
+        Npoly_time = self.time_order + 1
+        tmatr = np.zeros([self.Ntimes, Npoly_time])
+        t = np.linspace(-1, 1, num=self.Ntimes)
+        for order in range(Npoly_time):
+            tmatr[:, order] = legendre(order)(t)
+
+        if self.freq_order is not None:
+            Npoly_freq = self.freq_order + 1
+            # FIXME: Ragged subbands won't handle this nicely
+            Nfreq_sb = self.Nfreqs // self.Nsubband
+            f = np.linspace(-1, 1, num=Nfreq_sb)
+            fmatr = np.zeros(Nfreq_sb, Npoly_freq)
+            for order in range(Npoly_freq):
+                fmatr[:, order] = legendre(order)(f)
+        else:
+            fmatr = None
+        
+        return tmatr, fmatr
 
     def _pol_check(self):
         """
@@ -411,42 +451,38 @@ class INS(UVFlag):
 
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
 
-        if not self.time_order:
+        if self.dmatr is not None:
             coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
             weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
             MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
         else:
+            tmatr, fmatr = self.dmatr
             MS = np.zeros_like(self.metric_array[:, freq_slice])
-            coeffs = np.zeros((self.order + 1, ) + MS.shape[1:])
-            # Make sure x is not zero so that np.polyfit can proceed without nans
-            x = np.arange(1, self.metric_array.shape[0] + 1)
-            # We want to iterate over only a subset of the frequencies, so we need to investigate
-            y_0 = self.metric_array[:, freq_slice]
-            # Find which channels are not fully masked (only want to iterate over those)
-            # This gives an array of channel indexes into the freq_slice
-            good_chans = np.where(np.logical_not(np.all(y_0.mask, axis=0)))[0]
-            # Only do this if there are unmasked channels
-            if len(good_chans) > 0:
-                # np.ma.polyfit does not take 2-d weights (!!!) so we just do the slow implementation and go chan by chan, pol-by-pol
-                for chan in good_chans:
-                    for pol_ind in range(self.Npols):
-                        y = self.metric_array[:, chan, pol_ind]
-                        w = self.weights_array[:, chan, pol_ind]
-                        w_sq = self.weights_square_array[:, chan, pol_ind]
-                        # Make the fit
-                        coeff = np.ma.polyfit(x, y, self.order, w=w)
-                        coeffs[:, chan, pol_ind] = coeff
-                        # Do the magic
-                        mu = np.sum([coeff[poly_ind] * x**(self.order - poly_ind)
-                                     for poly_ind in range(self.order + 1)],
-                                    axis=0)
-                        weights_factor = w / np.sqrt(C * w_sq)
-                        MS[:, chan, pol_ind] = (y / mu - 1) * weights_factor
-            else:
+            mask = self.metric_array[:, freq_slice].mask
+            data = self.matric_array[:, freq_slice].data
+            wt_slice = self.weights_array[:, freq_slice]
+            wt = np.where(np.logical_not(mask), wt_slice, 0)
+            wt_data = wt * data # shape tfp
+            if np.any(wt > 0):
+                if fmatr is None: # Separates over frequency
+                    
+                        # make the left-hand-side of lsq operator
+                        ttmatr = tmatr[:, np.newaxis] * tmatr[:, :, np.newaxis] # shape tAa
+                        lhs_op = np.tensordot(w, ttmatr, axes=((0, ), (0, ))) # shape fpAa
+
+                        # Make the vector on the rhs
+                        rhs_vec = np.tensordot(tmatr.T, wt_data, axes=1) # shape afp
+
+                        soln = np.linalg.solve(lhs_op, rhs_vec) # shape afp
+                        MS = np.tensordot(tmatr, soln)
+                else:
+                    pass
+            else: # Whole slice has been flagged. Don't rely on solve returning 0.
                 MS[:] = np.ma.masked
+                
 
         if return_coeffs:
-            return(MS, coeffs)
+            return(MS, soln)
         else:
             return(MS)
 
