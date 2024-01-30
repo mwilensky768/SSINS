@@ -286,6 +286,9 @@ class INS(UVFlag):
         self.match_events_file = match_events_file
         """The file from which the matcH_events were obtained (potentially None)"""
 
+        self.C = self.get_C()
+        """Constant that relates INS metric array to noise level"""
+
     def get_dmatr(self):
         """
         Get the design matrix for least-squares fitting in mean-subtract when
@@ -436,6 +439,46 @@ class INS(UVFlag):
             MS (masked array): The mean-subtracted data array.
         """
 
+        
+
+        wt_slice = self.weights_array[:, freq_slice]
+        wt = np.where(np.logical_not(mask), wt_slice, 0)
+        if np.any(wt > 0):
+            weights_factor = wt_slice / np.sqrt(self.C * self.weights_square_array[:, freq_slice])
+            if self.dmatr is not None:
+                fitspec = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=wt_slice)
+            else:
+                tmatr, fmatr = self.dmatr
+                mask = self.metric_array[:, freq_slice].mask
+                data = self.matric_array[:, freq_slice].data
+                
+                wt_data = wt * data # shape tfp
+                
+                if fmatr is None: # Separates over frequency
+                        
+                    # make the left-hand-side of lsq operator
+                    ttmatr = tmatr[:, np.newaxis] * tmatr[:, :, np.newaxis] # shape tAa
+                    lhs_op = np.tensordot(w, ttmatr, axes=((0, ), (0, ))) # shape fpAa
+
+                    # Make the vector on the rhs
+                    rhs_vec = np.tensordot(tmatr.T, wt_data, axes=1) # shape afp
+
+                    soln = np.linalg.solve(lhs_op, rhs_vec) # shape afp
+                    fitspec = np.tensordot(tmatr, soln)
+                else:
+                    raise NotImplementedError("Frequency fitting not available yet.")
+            MS = (self.metric_array / fitspec - 1) * weights_factor
+        else: # Whole slice has been flagged. Don't rely on solve returning 0.
+            MS[:] = np.ma.masked
+            
+                
+
+        if return_coeffs:
+            return(MS, soln)
+        else:
+            return(MS)
+
+    def get_C(self):
         if self.spectrum_type == 'cross':
             # This constant is determined by the Rayleigh distribution, which
             # describes the ratio of its rms to its mean
@@ -450,41 +493,7 @@ class INS(UVFlag):
                          -5: C_fold, -6: C_fold, -7: C_ray, -8: C_ray}
 
             C = np.array([C_pol_map[pol] for pol in self.polarization_array])
-
-        if self.dmatr is not None:
-            coeffs = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=self.weights_array[:, freq_slice])
-            weights_factor = self.weights_array[:, freq_slice] / np.sqrt(C * self.weights_square_array[:, freq_slice])
-            MS = (self.metric_array[:, freq_slice] / coeffs - 1) * weights_factor
-        else:
-            tmatr, fmatr = self.dmatr
-            MS = np.zeros_like(self.metric_array[:, freq_slice])
-            mask = self.metric_array[:, freq_slice].mask
-            data = self.matric_array[:, freq_slice].data
-            wt_slice = self.weights_array[:, freq_slice]
-            wt = np.where(np.logical_not(mask), wt_slice, 0)
-            wt_data = wt * data # shape tfp
-            if np.any(wt > 0):
-                if fmatr is None: # Separates over frequency
-                    
-                        # make the left-hand-side of lsq operator
-                        ttmatr = tmatr[:, np.newaxis] * tmatr[:, :, np.newaxis] # shape tAa
-                        lhs_op = np.tensordot(w, ttmatr, axes=((0, ), (0, ))) # shape fpAa
-
-                        # Make the vector on the rhs
-                        rhs_vec = np.tensordot(tmatr.T, wt_data, axes=1) # shape afp
-
-                        soln = np.linalg.solve(lhs_op, rhs_vec) # shape afp
-                        MS = np.tensordot(tmatr, soln)
-                else:
-                    pass
-            else: # Whole slice has been flagged. Don't rely on solve returning 0.
-                MS[:] = np.ma.masked
-                
-
-        if return_coeffs:
-            return(MS, soln)
-        else:
-            return(MS)
+        return C
 
     def mask_to_flags(self):
         """
