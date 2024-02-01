@@ -393,31 +393,32 @@ def test_negative_sig_thresh():
     # Make a shape dictionary for a shape that will be injected later
     ch_wid = ins.freq_array[1] - ins.freq_array[0]
     shape = [ins.freq_array[127] - 0.2 * ch_wid, ins.freq_array[255] + 0.2 * ch_wid]
-    shape_dict = {'neg_shape': shape}
-    sig_thresh = {'neg_shape': -5, 'narrow': 5, 'streak': 5}
+    shape_dict = {'neg_shape': shape, 'pos_shape': shape}
+    sig_thresh = {'neg_shape': -5, 'pos_shape': 5, 'narrow': 5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
 
-    # Inject a packet loss event and a streak event
+    # Inject a negative shape event and a streak event
     ins.metric_array[7, 127:256] = -10
-    ins.metric_array[13, 127:256] = 10
+    ins.metric_array[13] = 10
     ins.metric_ms = ins.mean_subtract()
 
     mf.apply_match_test(ins, event_record=True)
 
-    # Check that the right events are flagged
+    # Check that events are flagged correctly
     test_mask = np.zeros(ins.metric_array.shape, dtype=bool)
     test_mask[7, 127:256] = 1
     test_mask[13, :] = 1
 
     assert np.all(test_mask == ins.metric_array.mask), "Flags are incorrect"
 
-    test_match_events_slc = [(slice(7, 8, None), slice(127, 256, None), 'neg_shape'),
-                            (slice(13, 14, None), slice(0, 384, None), 'streak')]
+    test_match_events_slc = [(slice(13, 14, None), slice(0, 384, None), 'streak'),
+                            (slice(7, 8, None), slice(127, 256, None), 'neg_shape')
+                            ]
 
     for i, event in enumerate(test_match_events_slc):
         assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
 
-def test_all_negative_sig_thresh():
+def test_negative_narrow():
     obs = '1061313128_99bl_1pol_half_time'
     insfile = os.path.join(DATA_PATH, '%s_SSINS.h5' % obs)
 
@@ -429,19 +430,20 @@ def test_all_negative_sig_thresh():
     ins.weights_square_array = np.copy(ins.weights_array)
 
     # Make a shape dictionary
-    ch_wid = ins.freq_array[1] - ins.freq_array[0]
-    shape = [ins.freq_array[127] - 0.2 * ch_wid, ins.freq_array[255] + 0.2 * ch_wid]
-    shape_dict = {'neg_shape': shape}
-    sig_thresh = {'neg_shape': -5, 'narrow': -5, 'streak': -5}
+    shape_dict={}
+    sig_thresh = {'narrow': -5, 'streak': 5}
     mf = MF(ins.freq_array, sig_thresh, shape_dict=shape_dict)
 
-    # Inject some positive rfi events
-    ins.metric_array[13, 299] = 10
-    ins.metric_array[7, :125] = 10
+    # Inject a positive narrowband rfi
+    ins.metric_array[7:9, 125] = 10
     ins.metric_ms = ins.mean_subtract()
 
+    with pytest.warns(UserWarning, match="negative sig_thresh not supported"):
     mf.apply_match_test(ins, event_record=True)
 
-    # No events should be flagged
-    assert np.all(~ins.metric_array.mask), "Flags are incorrect"
-    assert not ins.match_events, "Match events are incorrect"
+    # Check that the narrowband rfi was detected
+    test_match_events_slc = [(slice(7, 8, None), slice(125, 126, None), 'narrow_%.3fMHz' % (ins.freq_array[125] * 10**(-6))),
+                             (slice(8, 9, None), slice(125, 126, None), 'narrow_%.3fMHz' % (ins.freq_array[125] * 10**(-6)))]
+
+    for i, event in enumerate(test_match_events_slc):
+    assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"

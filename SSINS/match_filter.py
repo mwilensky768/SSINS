@@ -139,17 +139,12 @@ class MF():
         for shape in self.slice_dict:
             if shape == 'narrow':
                 if self.sig_thresh[shape] < 0:
-                    t, f, p = np.unravel_index((INS.metric_ms).argmin(),
+                    warnings.warn("negative sig_thresh not supported for shape: 'narrow'. The absolute "
+                                  " value of sig_thresh will be used.")
+                    self.sig_thresh[shape] = np.abs(self.sig_thresh[shape])
+                t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
                                            INS.metric_ms.shape)
-                    sig = INS.metric_ms[t, f, p]
-                    if sig < 0:
-                        sig = np.absolute(sig)
-                    else:
-                        continue
-                else:
-                    t, f, p = np.unravel_index(np.absolute(INS.metric_ms).argmax(),
-                                            INS.metric_ms.shape)
-                    sig = np.absolute(INS.metric_ms[t, f, p])
+                sig = np.absolute(INS.metric_ms[t, f, p])
                 t = slice(t, t + 1)
                 f = slice(f, f + 1)
             else:
