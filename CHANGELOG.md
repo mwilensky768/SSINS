@@ -1,6 +1,10 @@
 # SSINS Change Log
 
 ## Unreleased
+- Added handling for negative `sig_thresh` such that when set, the associated shape will only trigger
+on a negative sig smaller than `sig_thresh`. Behavior for positive `sig_thresh` is unchanged;
+this will continue to use the absolute value of sig. Setting a negative `sig_thresh` for the
+`narrow` shape is not supported and will trigger a warning.
 - Now requires pyuvdata 2.4.1, which introduces several new required parameters for 
 UVData (thus SS) and UVFlag (thus INS). This required refactoring the INS constructor,
 though the API has been preserved. However, if reading SSINS h5 files written with an earlier 
