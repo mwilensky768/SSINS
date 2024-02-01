@@ -439,11 +439,11 @@ def test_negative_narrow():
     ins.metric_ms = ins.mean_subtract()
 
     with pytest.warns(UserWarning, match="negative sig_thresh not supported"):
-    mf.apply_match_test(ins, event_record=True)
+        mf.apply_match_test(ins, event_record=True)
 
     # Check that the narrowband rfi was detected
     test_match_events_slc = [(slice(7, 8, None), slice(125, 126, None), 'narrow_%.3fMHz' % (ins.freq_array[125] * 10**(-6))),
                              (slice(8, 9, None), slice(125, 126, None), 'narrow_%.3fMHz' % (ins.freq_array[125] * 10**(-6)))]
 
     for i, event in enumerate(test_match_events_slc):
-    assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
+        assert ins.match_events[i][:-1] == test_match_events_slc[i], f"{i}th event is wrong"
