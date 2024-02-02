@@ -123,7 +123,10 @@ class INS(UVFlag):
         self._has_data_params_check()
         
         # super().read clears attributes, but we need to be able to read these in
-        attrs = ("order", "use_integration_weights", "nsample_default", "mask_file", "match_events_file", "spectrum_type", "spec_type_str")
+        attrs = ("time_order", "freq_order", "subband_freq_chans", 
+                 "use_integration_weights", "nsample_default", 
+                 "mask_file", "match_events_file", "spectrum_type", 
+                 "spec_type_str")
         attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
         super().read(filename, history=history, use_future_array_shapes=use_future_array_shapes, run_check=run_check,
@@ -182,6 +185,7 @@ class INS(UVFlag):
         Set special parameters specific to INS object that are not included in 
         parent UVFlag object.
         """
+        self.set_dmatr_params()
 
         # For backwards compatibilty before weights_square_array was a thing
         # Works because weights are all 1 or 0 before this feature was added
@@ -260,8 +264,22 @@ class INS(UVFlag):
         self.subband_freq_chans = subband_freq_chans
         """The frequency channels corresponding to the beginning of each subband.
         Does nothing by default."""
+        
+        self.use_integration_weights = use_integration_weights
+        """Whether to use integration time to weight the spectrum"""
+        self.nsample_default = nsample_default
+        """Default nsamples when an invalid value is present."""
 
-        if self.freq_order is None and time_order == 0:
+        self.mask_file = mask_file
+        """The file from which the mask was obtained (potentially None)"""
+        self.match_events_file = match_events_file
+        """The file from which the matcH_events were obtained (potentially None)"""
+
+        self.C = self.get_C()
+        """Constant that relates INS metric array to noise level"""
+
+    def set_dmatr_params(self):
+        if self.freq_order is None and self.time_order == 0:
             dmatr = None
         else:
             dmatr = self.get_dmatr()
@@ -277,19 +295,6 @@ class INS(UVFlag):
         """Number of subbands"""
         self.Nfreq_sb = self.Nfreqs // self.Nsubband
         """Number of frequencies per subband"""
-        
-        self.use_integration_weights = use_integration_weights
-        """Whether to use integration time to weight the spectrum"""
-        self.nsample_default = nsample_default
-        """Default nsamples when an invalid value is present."""
-
-        self.mask_file = mask_file
-        """The file from which the mask was obtained (potentially None)"""
-        self.match_events_file = match_events_file
-        """The file from which the matcH_events were obtained (potentially None)"""
-
-        self.C = self.get_C()
-        """Constant that relates INS metric array to noise level"""
 
     def get_dmatr(self):
         """
@@ -440,17 +445,14 @@ class INS(UVFlag):
             MS (masked array): The mean-subtracted data array.
         """
 
-        
-
         wt_slice = self.weights_array[:, freq_slice]
-        wt = np.where(np.logical_not(mask), wt_slice, 0)
+        wt = np.where(np.logical_not(self.metric_array.mask), wt_slice, 0)
         if np.any(wt > 0):
             weights_factor = wt_slice / np.sqrt(self.C * self.weights_square_array[:, freq_slice])
-            if self.dmatr is not None:
+            if self.dmatr is None:
                 fitspec = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=wt_slice)
             else:
                 tmatr, fmatr = self.dmatr
-                mask = self.metric_array[:, freq_slice].mask
                 data = self.matric_array[:, freq_slice].data
                 
                 wt_data = wt * data # shape tfp
