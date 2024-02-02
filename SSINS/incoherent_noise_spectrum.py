@@ -165,6 +165,7 @@ class INS(UVFlag):
         else:
             self.match_events = self.match_events_read(self.match_events_file)
         
+        self.zero_mask()
         self.set_ins_data_params()
 
     def _has_data_params_check(self):
@@ -279,13 +280,10 @@ class INS(UVFlag):
         """Constant that relates INS metric array to noise level"""
 
     def set_dmatr_params(self):
-        if self.freq_order is None and self.time_order == 0:
-            dmatr = None
-        else:
-            dmatr = self.get_dmatr()
-        self.dmatr = dmatr
-        """The design matrix for fitting. Only relevant if freq_order or 
-        time_order are being set. Kept in factorized form."""
+        """
+        Set parameters associated with design matrix when doing polynomial
+        fitting.
+        """
 
         if self.subband_freq_chans is None:
             Nsb = 1
@@ -295,6 +293,16 @@ class INS(UVFlag):
         """Number of subbands"""
         self.Nfreq_sb = self.Nfreqs // self.Nsubband
         """Number of frequencies per subband"""
+        
+        if self.freq_order is None and self.time_order == 0:
+            dmatr = None
+        else:
+            dmatr = self.get_dmatr()
+        self.dmatr = dmatr
+        """The design matrix for fitting. Only relevant if freq_order or 
+        time_order are being set. Kept in factorized form."""
+
+
 
     def get_dmatr(self):
         """
@@ -319,7 +327,7 @@ class INS(UVFlag):
             Npoly_freq = self.freq_order + 1
             # FIXME: Ragged subbands won't handle this nicely
             f = np.linspace(-1, 1, num=self.Nfreq_sb)
-            fmatr = np.zeros(self.Nfreq_sb, Npoly_freq)
+            fmatr = np.zeros([self.Nfreq_sb, Npoly_freq])
             for order in range(Npoly_freq):
                 fmatr[:, order] = legendre(order)(f)
         else:
@@ -425,9 +433,20 @@ class INS(UVFlag):
         super().to_waterfall(method='mean', return_weights_square=True)
         self._mask_check() # Have to remask after waterfalling
         self.metric_array.mask = self.weights_array == 0
+
+        self.zero_mask()
+
         self.history +=  self.spec_type_str 
         self.match_events = []
         self.set_ins_data_params()
+
+    def zero_mask(self):
+        # Set these to 0 instead of infinity. They will always receive 0 weight.
+        # Will make the polynomial fitter return nan otherwise
+        self.metric_array[self.metric_array.mask] = 0 
+        if np.any(np.isinf(self.metric_array.compressed())):
+            raise ValueError("Infinities in metric array entries of nonzero weight. "
+                             "Check validity of input data.")
 
     def mean_subtract(self, freq_slice=slice(None), return_coeffs=False):
 
@@ -453,8 +472,8 @@ class INS(UVFlag):
                 fitspec = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=wt_slice)
             else:
                 tmatr, fmatr = self.dmatr
-                data = self.matric_array[:, freq_slice].data
-                
+                data = self.metric_array[:, freq_slice].data
+            
                 wt_data = wt * data # shape tfp
                 
                 ttmatr = tmatr[:, np.newaxis] * tmatr[:, :, np.newaxis] # shape tAa
@@ -497,7 +516,7 @@ class INS(UVFlag):
                     fitspec_res = np.tensordot(fmatr, fitspec_tmult, axes=((1, ), (3, ))) # shape wtNp
                     fitspec_res = fitspec_res.transpose(1, 2, 0, 3)
 
-                    fitspec = fitspec.reshape(self.Ntimes, self.Nfreqs, self.Npols)
+                    fitspec = fitspec_res.reshape(self.Ntimes, self.Nfreqs, self.Npols)
 
             MS = (self.metric_array / fitspec - 1) * weights_factor
         else: # Whole slice has been flagged. Don't rely on solve returning 0.
