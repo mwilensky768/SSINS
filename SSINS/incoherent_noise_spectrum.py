@@ -148,7 +148,6 @@ class INS(UVFlag):
                 raise ValueError("spectrum_type is set to auto, but file input is a cross spectrum from an old file."
                                  " Set spectrum_type to cross or verify that correct file is being read.")
 
-            
         self._mask_check()
         if self.mask_file is None:
              # Only mask elements initially if no baselines contributed
@@ -443,7 +442,8 @@ class INS(UVFlag):
     def zero_mask(self):
         # Set these to 0 instead of infinity. They will always receive 0 weight.
         # Will make the polynomial fitter return nan otherwise
-        self.metric_array[self.metric_array.mask] = 0 
+        # Have to set the data attribute or else it will unmask entries!
+        self.metric_array.data[self.metric_array.mask] = 0 
         if np.any(np.isinf(self.metric_array.compressed())):
             raise ValueError("Infinities in metric array entries of nonzero weight. "
                              "Check validity of input data.")
@@ -464,12 +464,13 @@ class INS(UVFlag):
             MS (masked array): The mean-subtracted data array.
         """
 
-        wt_slice = self.weights_array[:, freq_slice]
-        wt = np.where(np.logical_not(self.metric_array.mask), wt_slice, 0)
+
+        wt = np.where(np.logical_not(self.metric_array.mask), self.weights_array[:, freq_slice], 0)
+        wtsq = np.where(np.logical_not(self.metric_array.mask), self.weights_square_array[:, freq_slice], 0)
         if np.any(wt > 0):
-            weights_factor = wt_slice / np.sqrt(self.C * self.weights_square_array[:, freq_slice])
+            weights_factor = np.where(wt > 0, wt / np.sqrt(self.C * wtsq), 0)
             if self.dmatr is None:
-                fitspec = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=wt_slice)
+                fitspec = np.ma.average(self.metric_array[:, freq_slice], axis=0, weights=wt)
             else:
                 tmatr, fmatr = self.dmatr
                 data = self.metric_array[:, freq_slice].data
@@ -518,7 +519,7 @@ class INS(UVFlag):
 
                     fitspec = fitspec_res.reshape(self.Ntimes, self.Nfreqs, self.Npols)
 
-            MS = (self.metric_array / fitspec - 1) * weights_factor
+            MS = (self.metric_array[:, freq_slice] / fitspec - 1) * weights_factor
         else: # Whole slice has been flagged. Don't rely on solve returning 0.
             MS[:] = np.ma.masked
             
