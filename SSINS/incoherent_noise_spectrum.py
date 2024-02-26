@@ -499,27 +499,42 @@ class INS(UVFlag):
                         freq_slice_fit = slice(None)
                         freq_slice_into_fitspec = slice(None)
                     else: # FIXME: Have to compute which subbands should be refit. Should really precompute these.
+                        # digitize is 1-indexed...
                         low_ind = np.digitize(freq_slice.start, self.subband_freq_chans) - 1
-                        high_ind = np.digitize(freq_slice.stop,  self.subband_freq_chans)
-                        Nsb = high_ind - low_ind
+                        high_ind = np.digitize(freq_slice.stop,  self.subband_freq_chans) - 1
+                        # If these indices are the same, diff=0, and we need to load 1 subband
+                        # If the diff is 1, there are 2 subbands in question
+                        # and so on
+                        Nsb = high_ind - low_ind + 1
                         
                         low_freq = self.subband_freq_chans[low_ind]
-                        high_freq = self.subband_freq_chans[high_ind]
+                        # Need to get the right-edge of the subband
+                        high_freq = self.subband_freq_chans[high_ind]  + self.Nfreq_sb
                         Nfreqs_fit = high_freq - low_freq
 
-                        freq_slice_fit = slice(low_freq, high_freq)
+                        freq_slice_fit = slice(low_freq, high_freq) 
 
                         # Invert the slice above to be compatible with what MF expects
                         freq_chans = np.arange(self.Nfreqs)
                         freq_chans_fit = freq_chans[freq_slice_fit]
                         low_ind = np.where(freq_chans_fit == freq_slice.start)[0][0]
-                        high_ind = np.where(freq_chans_fit == freq_slice.stop)[0][0]
-                        freq_slice_into_fitspec = slice(low_ind, high_ind)
+                        # Have to subtract 1 in this line since the slice is non-inclusive on the right
+                        high_ind = np.where(freq_chans_fit == freq_slice.stop - 1)[0][0]
+                        # Have to add 1 back since we are making a slice
+                        freq_slice_into_fitspec = slice(low_ind, high_ind + 1)
 
                     new_shape = (self.Ntimes, Nsb, self.Nfreq_sb, self.Npols)
                     
                     # Make RHS vec by multiplying by design matrix transpose
                     wt_data_res = wt_data[:, freq_slice_fit].reshape(new_shape)
+                    ###INDEX LEGEND###
+                    # N: subband
+                    # w: freq chan within a subband
+                    # p: pol
+                    # a: time basis function
+                    # b: freq basis function
+                    # A: time basis dual
+                    # B: freq basis dual
                     rhs_tmult = np.tensordot(wt_data_res, tmatr, axes=((0, ), (0, ))) # shape Nwpa
                     rhs_vec = np.tensordot(rhs_tmult, fmatr, axes=((1,), (0,))) # shape Npab
                     Ncoeff = (self.time_order + 1) * (self.freq_order + 1)
