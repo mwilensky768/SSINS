@@ -338,8 +338,19 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
 
 def test_old_file():
     old_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
-    with pytest.raises(ValueError, match="Required UVParameter _Nants has not been set."):
-        ins = INS(old_ins_file)
+    try:
+        # this works with pyuvdata>=3.0
+        with pytest.raises(
+            ValueError, match="Required UVParameter _Nants has not been set."
+        ):
+            ins = INS(old_ins_file)
+    except AssertionError:
+        # this works with pyuvdata<3.0
+        with pytest.raises(
+            ValueError, match="Required UVParameter _antenna_names has not been set."
+        ):
+            ins = INS(old_ins_file)
+
 
     with pytest.raises(ValueError, 
                        match="spectrum_type is set to auto, but file input is a cross spectrum from an old file."):
