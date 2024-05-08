@@ -45,7 +45,8 @@ class SS(UVData):
         warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
                       " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
-        super().read(filename, **kwargs)
+        kwargs.pop("use_future_array_shapes", None)
+        super().read(filename, use_future_array_shapes=True, **kwargs)
         if self.Nphase > 1:
             raise NotImplementedError("SSINS cannot handle files with more than one phase center.")
 
@@ -92,7 +93,7 @@ class SS(UVData):
                 # Skip if nothing to flag
                 if len(freq_inds) > 0:
                     blt_inds = np.where(self.time_array == time)
-                    self.data_array.mask[blt_inds, :, freq_inds, pol_inds] = True
+                    self.data_array.mask[blt_inds, freq_inds, pol_inds] = True
         elif flag_choice == 'custom':
             self.data_array.mask[:] = False
             if custom is not None:
@@ -181,14 +182,14 @@ class SS(UVData):
             blend = bltaxisboundaries2[bl_num + 1]                                # index in baseline-time axis to end
 
             blt_slice = slice(blstart, blstart + len_diff)
-            self.data_array[blt_slice, :, :, :] = diff_dat
+            self.data_array[blt_slice] = diff_dat
             """The differenced visibilities. Complex array of shape (Nblts, Nspws, Nfreqs, Npols)."""
-            self.flag_array[blt_slice, :, :, :] = diff_flags
+            self.flag_array[blt_slice] = diff_flags
             """The flag array, which results from boolean OR of the flags corresponding to visibilities that are differenced from one another."""
 
             self.time_array[blt_slice] = diff_times
             """The center time of the differenced visibilities. Length Nblts."""
-            self.nsample_array[blt_slice, :, :, :] = diff_nsamples
+            self.nsample_array[blt_slice] = diff_nsamples
             """See pyuvdata documentation. Here we average the nsample_array of the visibilities that are differenced"""
 
             where_bl = np.where(self.baseline_array == bl)
@@ -245,7 +246,7 @@ class SS(UVData):
         frequency. Used for developing a mixture fit.
         """
 
-        self.MLE = np.sqrt(0.5 * np.mean(np.absolute(self.data_array)**2, axis=(0, 1, -1)))
+        self.MLE = np.sqrt(0.5 * np.mean(np.absolute(self.data_array)**2, axis=(0, -1)))
 
     def mixture_prob(self, bins):
         """
@@ -265,7 +266,7 @@ class SS(UVData):
         if type(bins) == str:
             _, bins = np.histogram(np.abs(self.data_array[np.logical_not(self.data_array.mask)]))
 
-        N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, 1, -1))
+        N_spec = np.sum(np.logical_not(self.data_array.mask), axis=(0, -1))
         N_total = np.sum(N_spec)
 
         # Calculate the fraction belonging to each frequency
@@ -345,7 +346,7 @@ class SS(UVData):
             self.reorder_blts(order='baseline')
         if UV is None:
             UV = UVData()
-            UV.read(filename_in, **read_kwargs)
+            UV.read(filename_in, use_future_array_shapes=True, **read_kwargs)
 
         # Option to keep old flags
         if not combine:
