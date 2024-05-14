@@ -18,7 +18,9 @@ Generating the sky-subtracted visibilities
 (a) Initializing an SS object and reading in raw data
 *****************************************************
 ::
+  >>> import os
   >>> from SSINS import SS
+  >>> from SSINS.data import DATA_PATH
 
   >>> # The SS object is a subclass of a UVData object, and therefore has all of its attributes and methods
   >>> # We initialize it identically
@@ -26,7 +28,7 @@ Generating the sky-subtracted visibilities
   >>> ss = SS()
 
   >>> # Read data by specifying a filepath as an argument to the read method
-  >>> filepath = 'SSINS/data/1061313128_99bl_1pol_half_time.uvfits'
+  >>> filepath = os.path.join(DATA_PATH, '1061313128_99bl_1pol_half_time.uvfits')
   >>> # By default, the visibilities are NOT differenced in time on read (see paper). This is for compatibility with multi-file reading.
   >>> ss.read(filepath, diff=True)
 
@@ -60,7 +62,7 @@ Generating the sky-subtracted visibilities
   >>> # You can apply flags from a custom flag array that is the same shape as the data
   >>> custom = np.zeros(ss.data_array.shape, dtype=bool)
   >>> # Let us make it so that only the first frequency channel is flagged and nothing else
-  >>> custom[:, 0, 0, :] = True
+  >>> custom[:, 0, :] = True
   >>> # Apply these flags in the following way
   >>> ss.apply_flags(flag_choice='custom', custom=custom)
   >>> print(ss.flag_choice)
@@ -82,7 +84,7 @@ Generating the sky-subtracted visibilities
   >>> # See the documentation: https://ssins.readthedocs.io/en/latest/Catalog_Plot.html
   >>> # Each function in Catalog_Plot requires a class instance and a filename prefix as arguments (a suffix is appended by the wrapper)
   >>> # Whatever unique identifying information for the plot should be specified in the prefix
-  >>> prefix = 'SSINS/data/test_data'
+  >>> prefix = os.path.join('.', 'test_data')
 
   >>> # To make a Histogram of the Visibility Differences (a VDH, figure 1 of paper), and save it as a pdf, do the following
   >>> # This also plots a fit estimated from the data
@@ -120,7 +122,7 @@ Making and writing an incoherent noise spectrum
     >>> auto_ss = SS()
 
     >>> # Read data by specifying a filepath as an argument to the read method
-    >>> auto_filepath = 'SSINS/data/1061312640_autos.uvfits'
+    >>> auto_filepath = os.path.join(DATA_PATH, '1061312640_autos.uvfits')
     >>> auto_ss.read(auto_filepath, diff=True)
     >>> auto_ins = INS(auto_ss, spectrum_type="auto")
 
@@ -262,7 +264,7 @@ Flagging an INS using a match_filter (MF)
 
   >>> # We can write these out to an h5 file as well, but we need to make a UVFlag object from the original data
   >>> uvd = UVData()
-  >>> uvd.read(filepath, times=times)
+  >>> uvd.read(filepath, times=times, use_future_array_shapes=True)
   >>> uvf = UVFlag(uvd, waterfall=True, mode='flag')
   >>> ins.write(prefix, output_type='flags', clobber=True, uvf=uvf)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
@@ -274,7 +276,7 @@ Flagging an INS using a match_filter (MF)
   >>> from pyuvdata import utils as uvutils
   >>> uvf = ins.flag_uvf(uvf)
   >>> uvutils.apply_uvflag(uvd, uvf) # This is a pyuvdata utility function that safely applies flags to UVData from UVFlag
-  >>> uvd.write_uvfits('SSINS/data/tutorial_test_writeout.uvfits')
+  >>> uvd.write_uvfits(os.path.join('.', 'tutorial_test_writeout.uvfits'))
 
 (h) Writing flags to an mwaf file
 *********************************
@@ -329,7 +331,7 @@ Using INS.mean_subtract
 ***********************
 ::
   >>> from SSINS import INS
-  >>> ins = INS('SSINS/data/1061313128_99bl_1pol_half_time_SSINS.h5')
+  >>> ins = INS(os.path.join(DATA_PATH, '1061313128_99bl_1pol_half_time_SSINS.h5'))
 
   >>> # The mean_subtract method returns the result of mean_subtraction
   >>> # It does NOT automatically change the metric_ms attribute
@@ -422,4 +424,4 @@ Extra Flagging Bits
 ::
   >>> ss = SS()
   >>> ss.read(filepath, times=times, flag_choice='original', diff=True)
-  >>> ss.write('SSINS/data/tutorial_test_writeout_2.uvfits', 'uvfits', UV=uvd)
+  >>> ss.write(os.path.join('.', 'tutorial_test_writeout_2.uvfits'), 'uvfits', UV=uvd)
