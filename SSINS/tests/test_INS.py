@@ -137,22 +137,22 @@ def test_mask_to_flags(tmp_path, tv_obs, tv_testfile):
     ss.read(tv_testfile, diff=True)
 
     uvd = UVData()
-    uvd.read(tv_testfile)
+    uvd.read(tv_testfile, use_future_array_shapes=True)
 
-    uvf = UVFlag(uvd, mode='flag', waterfall=True)
+    uvf = UVFlag(uvd, mode='flag', waterfall=True, use_future_array_shapes=True)
     # start with some flags so that we can test the intended OR operation
     uvf.flag_array[6, :] = True
     ins = INS(ss)
 
     # Check error handling
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True, use_future_array_shapes=True)
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False, use_future_array_shapes=True)
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True, use_future_array_shapes=True)
         # Pretend the data is off by 1 day
         bad_uvf.time_array += 1
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
@@ -191,7 +191,7 @@ def test_mask_to_flags(tmp_path, tv_obs, tv_testfile):
 
     # Test write/read
     ins.write(prefix, output_type='flags', uvf=uvf)
-    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
+    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True, use_future_array_shapes=True)
     # Check equality
     assert read_uvf == uvf, "UVFlag object differs after read"
 
@@ -338,8 +338,19 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
 
 def test_old_file():
     old_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
-    with pytest.raises(ValueError, match="Required UVParameter _antenna_names has not been set."):
-        ins = INS(old_ins_file)
+    try:
+        # this works with pyuvdata>=3.0
+        with pytest.raises(
+            ValueError, match="Required UVParameter _Nants has not been set."
+        ):
+            ins = INS(old_ins_file)
+    except AssertionError:
+        # this works with pyuvdata<3.0
+        with pytest.raises(
+            ValueError, match="Required UVParameter _antenna_names has not been set."
+        ):
+            ins = INS(old_ins_file)
+
 
     with pytest.raises(ValueError, 
                        match="spectrum_type is set to auto, but file input is a cross spectrum from an old file."):

@@ -44,11 +44,20 @@ def test_diff(tv_testfile):
     uv = UVData()
 
     # Read in two times and two baselines of data, so that the diff is obvious.
-    uv.read(tv_testfile, read_data=False)
+    uv.read(tv_testfile, read_data=False, use_future_array_shapes=True)
     times = np.unique(uv.time_array)[:2]
-    bls = [(uv.antenna_numbers[0], uv.antenna_numbers[1]),
-           (uv.antenna_numbers[0], uv.antenna_numbers[2])]
-    uv.read(tv_testfile, times=times, bls=bls)
+    if hasattr(uv, "telescope"):
+        bls = [
+            (uv.telescope.antenna_numbers[0], uv.telescope.antenna_numbers[1]),
+            (uv.telescope.antenna_numbers[0], uv.telescope.antenna_numbers[2])
+        ]
+    else:
+        # This can be removed when we require pyuvdata>=3.0
+        bls = [
+            (uv.antenna_numbers[0], uv.antenna_numbers[1]),
+            (uv.antenna_numbers[0], uv.antenna_numbers[2])
+        ]
+    uv.read(tv_testfile, times=times, bls=bls, use_future_array_shapes=True)
     uv.reorder_blts(order='baseline')
 
     diff_dat = uv.data_array[1::2] - uv.data_array[::2]
@@ -71,8 +80,26 @@ def test_diff(tv_testfile):
     assert np.all(ss.nsample_array == diff_nsamples), "nsample_array is different!"
     assert np.all(ss.integration_time == diff_ints), "Integration times are different"
     assert np.all(ss.uvw_array == diff_uvw), "uvw_arrays disagree!"
-    assert np.all(ss.ant_1_array == np.array([uv.antenna_numbers[0], uv.antenna_numbers[0]])), f"ant_1_array disagrees!"
-    assert np.all(ss.ant_2_array == np.array([uv.antenna_numbers[1], uv.antenna_numbers[2]])), "ant_2_array disagrees!"
+    if hasattr(uv, "telescope"):
+        # This can be removed when we require pyuvdata>=3.0
+        assert np.all(
+            ss.ant_1_array == np.array(
+                [uv.telescope.antenna_numbers[0], uv.telescope.antenna_numbers[0]]
+            )
+        ), "ant_1_array disagrees!"
+        assert np.all(
+            ss.ant_2_array == np.array(
+                [uv.telescope.antenna_numbers[1], uv.telescope.antenna_numbers[2]]
+            )
+        ), "ant_2_array disagrees!"
+    else:
+        # This can be removed when we require pyuvdata>=3.0
+        assert np.all(
+            ss.ant_1_array == np.array([uv.antenna_numbers[0], uv.antenna_numbers[0]])
+        ), "ant_1_array disagrees!"
+        assert np.all(
+            ss.ant_2_array == np.array([uv.antenna_numbers[1], uv.antenna_numbers[2]])
+        ), "ant_2_array disagrees!"
     assert np.all(ss.phase_center_app_dec == diff_pcad)
     assert np.all(ss.phase_center_app_ra == diff_pcar)
     assert np.all(ss.phase_center_frame_pa == diff_pcfp)
@@ -109,9 +136,9 @@ def test_apply_flags(tv_obs, tv_testfile):
     ins = INS(insfile)
     ins.metric_array.mask[[2, 4], 1, :] = True
     ss.apply_flags(flag_choice='INS', INS=ins)
-    assert np.all(ss.data_array.mask[2::ss.Ntimes, :, 1, :]), "The 2nd time was not flagged."
-    assert np.all(ss.data_array.mask[4::ss.Ntimes, :, 1, :]), "The 4th time was not flagged."
-    assert not np.any(ss.data_array.mask[:, :, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
+    assert np.all(ss.data_array.mask[2::ss.Ntimes, 1, :]), "The 2nd time was not flagged."
+    assert np.all(ss.data_array.mask[4::ss.Ntimes, 1, :]), "The 4th time was not flagged."
+    assert not np.any(ss.data_array.mask[:, [0] + list(range(2, ss.Nfreqs)), :]), "Channels were flagged that should not have been."
     assert ss.flag_choice == 'INS'
 
     # Make a bad time array to test an error
@@ -176,8 +203,8 @@ def test_rev_ind(tv_testfile):
     ind = np.unravel_index(np.absolute(ss.data_array).argmax(), ss.data_array.shape)
     # Convert the blt to a time index
     t = ind[0] // ss.Nbls
-    f = ind[2]
-    p = ind[3]
+    f = ind[1]
+    p = ind[2]
 
     # Make the waterfall histogram
     wf_hist = ss.rev_ind(band)
@@ -208,7 +235,7 @@ def test_write(tmp_path, tv_testfile):
 
     blt_inds = np.where(ss.time_array == np.unique(ss.time_array)[10])
     custom = np.zeros_like(ss.data_array.mask)
-    custom[blt_inds, :, 64:128, :] = 1
+    custom[blt_inds, 64:128, :] = 1
 
     # Flags the first time and no others
     ss.apply_flags(flag_choice='custom', custom=custom)
@@ -219,17 +246,17 @@ def test_write(tmp_path, tv_testfile):
 
     # Check if the flags propagated correctly
     UV = UVData()
-    UV.read(outfile)
+    UV.read(outfile, use_future_array_shapes=True)
     blt_inds = np.isin(UV.time_array, np.unique(UV.time_array)[10:12])
-    assert np.all(UV.flag_array[blt_inds, :, 64:128, :]), "Not all expected flags were propagated"
+    assert np.all(UV.flag_array[blt_inds, 64:128, :]), "Not all expected flags were propagated"
 
     new_blt_inds = np.logical_not(np.isin(UV.time_array, np.unique(UV.time_array)[10:12]))
-    assert not np.any(UV.flag_array[new_blt_inds, :, 64:128, :]), "More flags were made than expected"
+    assert not np.any(UV.flag_array[new_blt_inds, 64:128, :]), "More flags were made than expected"
 
     # Test bad read.
     bad_uv_filepath = os.path.join(DATA_PATH, '1061312640_mix.uvfits')
     bad_uv = UVData()
-    bad_uv.read(bad_uv_filepath)
+    bad_uv.read(bad_uv_filepath, use_future_array_shapes=True)
     with pytest.raises(ValueError, match="UVData and SS objects were found to be incompatible."):
         ss.write(outfile, 'uvfits', bad_uv)
 
@@ -242,15 +269,15 @@ def test_read_multifiles(tmp_path, tv_obs, tv_testfile):
 
     # Read in a file's metadata and split it into two objects
     uvd_full = UVData()
-    uvd_full.read(tv_testfile, read_data=False)
+    uvd_full.read(tv_testfile, read_data=False, use_future_array_shapes=True)
     times1 = np.unique(uvd_full.time_array)[:14]
     times2 = np.unique(uvd_full.time_array)[14:]
 
     # Write two separate files to be read in later
     uvd_split1 = UVData()
     uvd_split2 = UVData()
-    uvd_split1.read(tv_testfile, times=times1)
-    uvd_split2.read(tv_testfile, times=times2)
+    uvd_split1.read(tv_testfile, times=times1, use_future_array_shapes=True)
+    uvd_split2.read(tv_testfile, times=times2, use_future_array_shapes=True)
     uvd_split1.write_uvfits(new_fp1)
     uvd_split2.write_uvfits(new_fp2)
 
@@ -284,19 +311,16 @@ def test_newmask(tv_testfile):
 
 
 def test_Nphase_gt_1(tmp_path, tv_testfile):
-    uvd = UVData()
-    uvd.read(tv_testfile, read_data=False)
+    uvd = UVData.from_file(tv_testfile, read_data=False, use_future_array_shapes=True)
 
     # Split the object so we can phase to separate locations
     unique_times = np.unique(uvd.time_array)
     first_times = unique_times[:10]
     last_times = unique_times[-10:]
 
-    uvfirst = UVData()
-    uvfirst.read(tv_testfile, times=first_times)
+    uvfirst = UVData.from_file(tv_testfile, times=first_times, use_future_array_shapes=True)
 
-    uvlast = UVData()
-    uvlast.read(tv_testfile, times=last_times)
+    uvlast = UVData.from_file(tv_testfile, times=last_times, use_future_array_shapes=True)
 
     # Adjust phase of one object and write new file
     og_pc_ra = uvd.phase_center_app_ra[0]
@@ -318,4 +342,22 @@ def test_Nphase_gt_1(tmp_path, tv_testfile):
         ss.read(nphase2_file)
 
 
+@pytest.mark.filterwarnings("ignore:SS.read will be renamed to SS.read_data soon")
+@pytest.mark.filterwarnings("ignore:The shapes of several attributes will be changing")
+@pytest.mark.filterwarnings("ignore:Reordering data array to baseline order")
+@pytest.mark.filterwarnings("ignore:Some nsamples are 0, which will result in")
+def test_loop_read_write():
+    """Taken from the tutorial which broke when all the tests passed."""
+    ss = SS()
+    filepath = os.path.join(DATA_PATH, '1061313128_99bl_1pol_half_time.uvfits')
 
+    ss.read(filepath, read_data=False)
+    times = np.unique(ss.time_array)[1:-1]
+
+    uvd = UVData()
+    uvd.read(filepath, times=times)
+
+    ss.read(filepath, times=times, flag_choice='original', diff=True)
+    ss.write(
+        os.path.join('.', 'tutorial_test_writeout_2.uvfits'), 'uvfits', UV=uvd
+    )

@@ -19,7 +19,7 @@ class INS(UVFlag):
     the UVFlag class, a member of the pyuvdata software package.
     """
 
-    def __init__(self, indata=None, history="", label="", use_future_array_shapes=False, run_check=True,
+    def __init__(self, indata=None, history="", label="", run_check=True,
                  check_extra=True, run_check_acceptability=True, order=0, mask_file=None,
                  match_events_file=None, spectrum_type="cross",
                  use_integration_weights=False, nsample_default=1, **kwargs):
@@ -32,8 +32,6 @@ class INS(UVFlag):
                 saved INS object. If None, initializes an empty object.
             history (str): History to append to object's history string.
             label (str): String used for labeling the object (e.g. 'MWA Highband').
-            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
-                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
             run_check (bool): Whether to check that the object's parameters have the right shape (default True).
             check_extra (bool): Whether to also check optional parameters (default True)
             run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
@@ -58,13 +56,12 @@ class INS(UVFlag):
 
         self.set_extra_params(order=order, spectrum_type=spectrum_type, use_integration_weights=use_integration_weights,
                               nsample_default=nsample_default, mask_file=mask_file, match_events_file=match_events_file)
-
         super().__init__(indata=indata, mode='metric', copy_flags=False, waterfall=False, history=history, label=label, 
-                         use_future_array_shapes=use_future_array_shapes, run_check=run_check, check_extra=check_extra,
+                         use_future_array_shapes=True, run_check=run_check, check_extra=check_extra,
                          run_check_acceptability=run_check_acceptability, **kwargs)
 
 
-    def read(self, filename, history="", use_future_array_shapes=False, run_check=True, check_extra=True,
+    def read(self, filename, history="", run_check=True, check_extra=True,
              run_check_acceptability=True, **kwargs):
         """
         Populate the object by reading a file. This is called during instantiation, but due to inheritance issues, is not
@@ -74,8 +71,6 @@ class INS(UVFlag):
         Args:
             filename (str): Path to the file to be read.
             history (str): History to be appended to the object's history string.
-            use_future_array_shapes (bool): Whether to assume a spectral index axis -- should do nothing since all INS
-                objects should be written out in waterfall mode.
             run_check (bool): Whether to check that the object's parameters have the right shape (default True).
             check_extra (bool): Whether to also check optional parameters (default True)
             run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
@@ -92,7 +87,8 @@ class INS(UVFlag):
         attrs = ("order", "use_integration_weights", "nsample_default", "mask_file", "match_events_file", "spectrum_type", "spec_type_str")
         attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
-        super().read(filename, history=history, use_future_array_shapes=use_future_array_shapes, run_check=run_check,
+        kwargs.pop("use_future_array_shapes", None)
+        super().read(filename, history=history, use_future_array_shapes=True, run_check=run_check,
                      check_extra=check_extra, run_check_acceptability=run_check_acceptability, **kwargs)
         
         self._pol_check()
@@ -118,7 +114,7 @@ class INS(UVFlag):
             self.metric_array.mask = self.weights_array == 0
         else:
             # Read in the flag array
-            flag_uvf = UVFlag(self.mask_file)
+            flag_uvf = UVFlag(self.mask_file, use_future_array_shapes=True)
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 
@@ -210,7 +206,7 @@ class INS(UVFlag):
                                 " currently support pseudo-Stokes spectra.")
 
     def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, history="",
-                    label="", use_future_array_shapes=False, run_check=True, check_extra=True,
+                    label="", run_check=True, check_extra=True,
                     run_check_acceptability=True, **kwargs):
         """
         Construct an INS object from a UVData (SS) object. This is called during instantiation, but due to inheritance 
@@ -223,8 +219,6 @@ class INS(UVFlag):
             copy_flags (bool): Does nothing -- for compatibility with base class.
             waterfall (bool): Does nothing -- for compatibility with base class.
             history (str): History to be appended to history string of object.
-            use_future_array_shapes (bool): Option to convert to the future planned array shapes before the changes go
-                into effect by removing the spectral window axis (potentially necessary for initializing from SS).
             run_check (bool): Whether to check that the object's parameters have the right shape (default True).
             check_extra (bool): Whether to also check optional parameters (default True)
             run_check_acceptability (bool): Whether to check that the object's parameters take appropriate values 
@@ -235,8 +229,9 @@ class INS(UVFlag):
         self._has_data_params_check()
         # Must be in metric mode, do not copy flags -- have own flag handling
         # will turn to waterfall later. These are just here to match signature.
+        kwargs.pop("use_future_array_shapes", None)
         super().from_uvdata(indata, mode="metric", copy_flags=False, waterfall=False, 
-                            history=history, label=label, use_future_array_shapes=use_future_array_shapes,
+                            history=history, label=label, use_future_array_shapes=True,
                             run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability,
                             **kwargs)
         
@@ -255,7 +250,7 @@ class INS(UVFlag):
             # Set nsample default if some are zero
             indata.nsample_array[indata.nsample_array == 0] = self.nsample_default
             # broadcast problems with single pol
-            self.weights_array *= (indata.integration_time[:, np.newaxis, np.newaxis, np.newaxis] * indata.nsample_array)
+            self.weights_array *= (indata.integration_time[:, np.newaxis, np.newaxis] * indata.nsample_array)
 
         cross_bool = self.ant_1_array != self.ant_2_array
         auto_bool = self.ant_1_array == self.ant_2_array
