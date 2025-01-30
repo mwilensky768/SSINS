@@ -346,7 +346,7 @@ def test_Nphase_gt_1(tmp_path, tv_testfile):
 @pytest.mark.filterwarnings("ignore:The shapes of several attributes will be changing")
 @pytest.mark.filterwarnings("ignore:Reordering data array to baseline order")
 @pytest.mark.filterwarnings("ignore:Some nsamples are 0, which will result in")
-def test_loop_read_write():
+def test_loop_read_write(tmpdir):
     """Taken from the tutorial which broke when all the tests passed."""
     ss = SS()
     filepath = os.path.join(DATA_PATH, '1061313128_99bl_1pol_half_time.uvfits')
@@ -358,6 +358,9 @@ def test_loop_read_write():
     uvd.read(filepath, times=times)
 
     ss.read(filepath, times=times, flag_choice='original', diff=True)
-    ss.write(
-        os.path.join('.', 'tutorial_test_writeout_2.uvfits'), 'uvfits', UV=uvd
-    )
+    write_path = os.path.join(tmpdir, 'tutorial_test_writeout_2.uvfits')
+    ss.write(write_path, 'uvfits', UV=uvd)
+
+    uvd2 = UVData.from_file(write_path)
+    uvd2._consolidate_phase_center_catalogs(reference_catalog=uvd.phase_center_catalog)
+    assert uvd2 == uvd
