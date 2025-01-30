@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@main
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup Minimamba
         uses: conda-incubator/setup-miniconda@v2
