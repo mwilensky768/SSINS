@@ -5,6 +5,7 @@ The incoherent noise spectrum class.
 import numpy as np
 import os
 from pyuvdata import UVFlag
+from pyuvdata.parameter import UVParameter
 import yaml
 from functools import reduce
 import warnings
@@ -52,7 +53,27 @@ class INS(UVFlag):
             **kwargs: keyword arguments to pass to UVFlag.__init__. Kept for more future compatibility with updates to
                 pyuvdata.
         """
-
+        self._metric_ms = UVParameter(
+            "metric_ms",
+            description=(
+                "An array containing the z-scores of the data in the incoherent "
+                "noise spectrum."
+            ),
+            form=("Ntimes", "Nfreqs", "Npols"),
+            expected_type=float,
+            required=False,
+        )
+        self._sig_array = UVParameter(
+            "sig_array",
+            description=(
+                "An array that is initially equal to the z-score of each data "
+                "point. During flagging, the entries are assigned according to "
+                "their z-score at the time of their flagging."
+            ),
+            form=("Ntimes", "Nfreqs", "Npols"),
+            expected_type=float,
+            required=False,
+        )
 
         self.set_extra_params(order=order, spectrum_type=spectrum_type, use_integration_weights=use_integration_weights,
                               nsample_default=nsample_default, mask_file=mask_file, match_events_file=match_events_file)
@@ -126,8 +147,16 @@ class INS(UVFlag):
         
         self.set_ins_data_params()
 
+    @property
+    def _has_ins_data_params(self):
+        """List of strings giving the data-like parameters."""
+        if self._metric_ms.value is not None or self._sig_array.value is not None:
+            return True
+        else:
+            return False
+
     def _has_data_params_check(self):
-        if hasattr(self, "_has_ins_data_params"):
+        if self._has_ins_data_params:
             raise NotImplementedError("SSINS does not currently support reading a new file from a fully instaniated INS "
                                       " object. Instantiate a new object in memory to read in new data.")
 
@@ -153,10 +182,6 @@ class INS(UVFlag):
         self.sig_array = np.ma.copy(self.metric_ms)
         """An array that is initially equal to the z-score of each data point. During flagging,
             the entries are assigned according to their z-score at the time of their flagging."""
-
-        # Used in _data_params to determine when not to return None
-        self._has_ins_data_params = True
-            
 
 
     def set_extra_params(self, order=0, spectrum_type="cross", use_integration_weights=False, nsample_default=1,
@@ -603,7 +628,7 @@ class INS(UVFlag):
         UVFlag_params = super(INS, self)._data_params
 
         # Prevents a bug that occurs during __init__
-        if not hasattr(self, '_has_ins_data_params'):
+        if not self._has_ins_data_params:
             return UVFlag_params
         else:
             Extra_params = ['metric_ms', 'sig_array']
@@ -633,8 +658,8 @@ class INS(UVFlag):
 
         ins.metric_array.mask = np.copy(mask_uvf.flag_array)
         # In case this is called in the middle of the constructor.
-        if hasattr(ins, 'metric_ms'):
-            ins.metric_ms = ins.mean_subtract()
+        if not self._has_ins_data_params:
+            ins.set_ins_data_params()
 
         if not inplace:
             return(ins)
