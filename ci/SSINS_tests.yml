@@ -1,7 +1,6 @@
 name: SSINS_tests
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - astropy
   - numpy
