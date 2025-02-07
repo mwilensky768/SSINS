@@ -657,9 +657,13 @@ class INS(UVFlag):
         super(INS, mask_uvf).select(inplace=True, **kwargs)
 
         ins.metric_array.mask = np.copy(mask_uvf.flag_array)
-        # In case this is called in the middle of the constructor.
-        if not self._has_ins_data_params:
+        # The constructor calls UVFlag.__init__, which can call from_uvdata
+        # from_uvdata can call select depending on spectrum type
+        # We want to recalculate data_params only if select is being done outside of from_uvdata (or read, but that functionality does not exist yet)
+        # data_params are set at the end of from_uvdata, or read, so checking this is meant to check if those are done
+        if self._has_ins_data_params:
             ins.set_ins_data_params()
+            warnings.warn("sig_array has been reset")
 
         if not inplace:
             return(ins)

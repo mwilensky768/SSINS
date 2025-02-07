@@ -289,8 +289,9 @@ def test_select(tv_ins_testfile):
     ins = INS(tv_ins_testfile)
     ins.metric_array.mask[7, :12] = True
 
-    new_ins = ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24),
-                         inplace=False)
+    with pytest.warns(UserWarning, match="sig_array has been reset"):
+        new_ins = ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24),
+                             inplace=False)
 
     Ntimes = len(ins.time_array)
     ins.select(times=ins.time_array[3:-3], freq_chans=np.arange(24))
