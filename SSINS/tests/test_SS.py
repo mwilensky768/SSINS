@@ -1,9 +1,11 @@
+from packaging.version import Version
 import pytest
 from SSINS.data import DATA_PATH
 from SSINS import SS, INS
 import os
 import numpy as np
 from pyuvdata import UVData
+import pyuvdata
 
 """
 Tests the various capabilities of the sky_subtract class
@@ -346,7 +348,7 @@ def test_Nphase_gt_1(tmp_path, tv_testfile):
 @pytest.mark.filterwarnings("ignore:The shapes of several attributes will be changing")
 @pytest.mark.filterwarnings("ignore:Reordering data array to baseline order")
 @pytest.mark.filterwarnings("ignore:Some nsamples are 0, which will result in")
-def test_loop_read_write():
+def test_loop_read_write(tmpdir):
     """Taken from the tutorial which broke when all the tests passed."""
     ss = SS()
     filepath = os.path.join(DATA_PATH, '1061313128_99bl_1pol_half_time.uvfits')
@@ -354,10 +356,17 @@ def test_loop_read_write():
     ss.read(filepath, read_data=False)
     times = np.unique(ss.time_array)[1:-1]
 
+    read_kwargs = {}
+    if Version(pyuvdata.__version__) < Version("3.0"):
+        read_kwargs = {"use_future_array_shapes": True}
+
     uvd = UVData()
-    uvd.read(filepath, times=times)
+    uvd.read(filepath, times=times, **read_kwargs)
 
     ss.read(filepath, times=times, flag_choice='original', diff=True)
-    ss.write(
-        os.path.join('.', 'tutorial_test_writeout_2.uvfits'), 'uvfits', UV=uvd
-    )
+    write_path = os.path.join(tmpdir, 'tutorial_test_writeout_2.uvfits')
+    ss.write(write_path, 'uvfits', UV=uvd)
+
+    uvd2 = UVData.from_file(write_path, **read_kwargs)
+    uvd2._consolidate_phase_center_catalogs(reference_catalog=uvd.phase_center_catalog)
+    assert uvd2 == uvd
