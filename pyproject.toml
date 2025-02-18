@@ -14,7 +14,10 @@ maintainers = [
 description = "RFI flagging package for radio arrays"
 readme = "README.md"
 dynamic = ["version"]
-dependencies = 
+dependencies = [
+    "pyuvdata>=2.4.1",
+]
+requires-python = ">=3.9"
 
 # This has to be here for Mac builds to work.
 # It's a bit weird to have this here and all the other metadata in setup.py,
