@@ -2,6 +2,20 @@
 requires = ["setuptools>=64", "wheel", "setuptools_scm>=8.1"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "SSINS"
+authors = [
+    {name = "Michael J. Wilensky", email=michael.wilensky@mcgill.ca},
+    {name = "Bryna J. Hazelton", email=brynah@uw.edu},
+]
+maintainers = [
+    {name = "Michael J. Wilensky", email=michael.wilensky@mcgill.ca},
+]
+description = "RFI flagging package for radio arrays"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = 
+
 # This has to be here for Mac builds to work.
 # It's a bit weird to have this here and all the other metadata in setup.py,
 # The right thing long term is to move it all to this file.
