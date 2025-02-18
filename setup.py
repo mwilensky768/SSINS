@@ -36,11 +36,8 @@ def package_files(package_dir, subdirectory):
 data_files = package_files('SSINS', 'data')
 
 setup_args = {
-    'name': 'SSINS',
-    'author': 'M. Wilensky',
     'url': 'https://github.com/mwilensky768/SSINS',
     'license': 'BSD',
-    'description': 'Sky-Subtracted Incoherent Noise Spectra',
     'package_dir': {'SSINS': 'SSINS'},
     'packages': ['SSINS'],
     'include_package_data': True,
