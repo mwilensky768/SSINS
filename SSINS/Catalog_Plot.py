@@ -23,7 +23,7 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
              sig_cmap=None, symlog=False, linthresh=1, sample_sig_vmin=None,
              sample_sig_vmax=None, title=None, title_x=0.5, title_y=.98,
              use_extent=True, backend=None, extent_time_format='jd',
-             convert_times=True):
+             convert_times=True,return_fig=False):
 
     """Plots an incoherent noise specturm and its mean-subtracted spectrum
 
@@ -137,8 +137,11 @@ def INS_plot(INS, prefix, file_ext='pdf', xticks=None, yticks=None, vmin=None,
                        title=pol_dict[INS.polarization_array[pol_ind]],
                        **im_kwargs)
     plt.tight_layout(h_pad=1, w_pad=1)
-    fig.savefig(f'{prefix}_SSINS.{file_ext}')
-    plt.close(fig)
+    if return_fig==True:
+        return fig
+    else:
+        fig.savefig(f'{prefix}_SSINS.{file_ext}')
+        plt.close(fig)
 
     if sig_event_plot:
         if len(INS.match_events):
