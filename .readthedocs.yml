@@ -1,6 +1,5 @@
 # Don't build any extra formats
-formats:
-    - none
+formats: []
 conda:
     file: docs/rtd-env.yml
 build:
