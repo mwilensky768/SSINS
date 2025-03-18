@@ -17,4 +17,6 @@ formats: []
 conda:
     file: docs/rtd-env.yml
 python:
+   version: "3.10"
+python:
    setup_py_install: true
