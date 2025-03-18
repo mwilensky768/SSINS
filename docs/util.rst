@@ -1,9 +1,8 @@
 util Module
 ===================
 
-This is the util module. It is a library of wrappers around plotting functions
-in the plot_lib module, whose functions are named according to the classes whose
-data they help plot.
+This is the util module. It is mostly just convenience functions, but, have a
+browse to see if they might be helpful.
 
 .. automodule:: SSINS.util
   :members:
