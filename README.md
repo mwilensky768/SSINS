@@ -28,4 +28,4 @@ There are also tutorials available here: https://ssins.readthedocs.io/en/latest/
 
 ## Contact
 
-Please feel free to email questions to michael.wilensky@manchester.ac.uk
+Please feel free to email questions to michael.wilensky@mcgill.ca
