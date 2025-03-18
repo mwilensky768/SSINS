@@ -14,11 +14,11 @@ sphinx:
 # Don't build any extra formats
 formats: []
 
-conda:
-    file: docs/rtd-env.yml
-build:
-    image: latest
-python:
-   version: "3.10"
-python:
-   setup_py_install: true
+#conda:
+    #file: docs/rtd-env.yml
+#build:
+    #image: latest
+#python:
+   #version: "3.10"
+#python:
+   #setup_py_install: true
