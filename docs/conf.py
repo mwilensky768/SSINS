@@ -19,6 +19,8 @@ sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../../..'))
 
+import SSINS
+
 
 # -- Project information -----------------------------------------------------
 
@@ -27,9 +29,11 @@ copyright = u'2018, Michael Wilensky'
 author = u'Michael Wilensky'
 
 # The short X.Y version
-version = u'1.4.7'
+# version = u'1.4.7'
 # The full version, including alpha/beta/rc tags
-release = u''
+# release = u''
+version = SSINS.__version__
+release = version
 
 
 # -- General configuration ---------------------------------------------------
