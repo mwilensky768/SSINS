@@ -2,8 +2,57 @@
 requires = ["setuptools>=64", "wheel", "setuptools_scm>=8.1"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "SSINS"
+authors = [
+    {name = "Michael J. Wilensky", email="michael.wilensky@mcgill.ca"},
+    {name = "Bryna J. Hazelton", email="brynah@uw.edu"},
+]
+maintainers = [
+    {name = "Michael J. Wilensky", email="michael.wilensky@mcgill.ca"},
+    {name = "Bryna J. Hazelton", email="brynah@uw.edu"},
+]
+description = "RFI flagging package for radio arrays"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    "pyuvdata>=2.4.1",
+]
+requires-python = ">=3.9"
+keywords = ["radio frequency interference"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib"]
+doc = ["sphinx"]
+test = ["coverage", "pytest", "pyteset-cov"]
+dev = ["SSINS[doc, test, plot]"]
+
+[project.urls]
+Repository = "https://github.com/mwilensky768/SSINS"
+Documentation = "https://ssins.readthedocs.io"
+
+# Note that this approach is "discouraged" in favor of [project.scripts], but
+# that requires entry-point functions, which would require some refactoring.
+[tool.setuptools]
+script-files = [
+    "scripts/compare_masks.py",
+    "scripts/MWA_EoR_High_Flag.py",
+    "scripts/MWA_gpubox_to_SSINS_on_Pawsey.sh",
+    "scripts/MWA_vis_to_SSINS.py",
+    "scripts/occ_csv.py",
+    "scripts/Run_HERA_SSINS.py"
+]
+
 # This has to be here for Mac builds to work.
-# It's a bit weird to have this here and all the other metadata in setup.py,
-# The right thing long term is to move it all to this file.
 [tool.setuptools_scm]
 version_file = "SSINS/version.py"
