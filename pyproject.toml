@@ -19,6 +19,18 @@ dependencies = [
     "pyuvdata>=2.4.1",
 ]
 requires-python = ">=3.9"
+keywords = ["radio frequency interference"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
 
 # This has to be here for Mac builds to work.
 # It's a bit weird to have this here and all the other metadata in setup.py,
