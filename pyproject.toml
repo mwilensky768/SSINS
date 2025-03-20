@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "SSINS"
 authors = [
-    {name = "Michael J. Wilensky", email=michael.wilensky@mcgill.ca},
-    {name = "Bryna J. Hazelton", email=brynah@uw.edu},
+    {name = "Michael J. Wilensky", email="michael.wilensky@mcgill.ca"},
+    {name = "Bryna J. Hazelton", email="brynah@uw.edu"},
 ]
 maintainers = [
     {name = "Michael J. Wilensky", email=michael.wilensky@mcgill.ca},
@@ -54,6 +54,8 @@ script-files = [
 ]
 
 [tool.setuptools_scm]
+
+
 
 # This has to be here for Mac builds to work.
 # It's a bit weird to have this here and all the other metadata in setup.py,
