@@ -10,6 +10,7 @@ authors = [
 ]
 maintainers = [
     {name = "Michael J. Wilensky", email=michael.wilensky@mcgill.ca},
+    {name = "Bryna J. Hazelton", email=brynah@uw.edu},
 ]
 description = "RFI flagging package for radio arrays"
 readme = "README.md"
