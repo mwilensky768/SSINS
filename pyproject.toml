@@ -53,12 +53,6 @@ script-files = [
     "scripts/Run_HERA_SSINS.py"
 ]
 
-[tool.setuptools_scm]
-
-
-
 # This has to be here for Mac builds to work.
-# It's a bit weird to have this here and all the other metadata in setup.py,
-# The right thing long term is to move it all to this file.
 [tool.setuptools_scm]
 version_file = "SSINS/version.py"
