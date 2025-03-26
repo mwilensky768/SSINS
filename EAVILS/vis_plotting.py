@@ -11,7 +11,7 @@ import scipy.stats as stats
 
 import my_utils
 
-import cv2
+
 
 import yaml
 import os
@@ -33,6 +33,8 @@ from SSINS import util
 # Note! This function is not used for EAVILS at all, it's used to make "movies" of visibilities.
 
 
+'''
+import cv2
 def uv_movie_maker(obs_id, uvfits_folder, output_path, uvd=None, autoscale=True):
 
     if not os.path.exists(output_path):
@@ -418,7 +420,7 @@ def uv_movie_maker(obs_id, uvfits_folder, output_path, uvd=None, autoscale=True)
                 video.write(cv2.imread(os.path.join(output_path, image)))
 
             cv2.destroyAllWindows()
-            video.release()
+            video.release()'''
 
 
 #############################################################################################
@@ -1365,14 +1367,15 @@ def vis_plotting(
         else:
             print("load_options set to False, options.yml being ignored")
             options = {}
-
+        '''
         # This will cause the positions of the visibilities in the uv plane to be more organized,
         # takes a long time so avoids unless making movie plots
         if "movie" in plot_types:
             conjugate_bool = True
         else:
             conjugate_bool = False
-
+        '''
+        
         # Reads in the object. Note that this uses the use_ss_as_uvd options,
         # which reads in as an undiffed ss object,
         # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
@@ -1413,14 +1416,14 @@ def vis_plotting(
                 )
         ################################################
 
-        if "movie" in plot_types:
+        '''if "movie" in plot_types:
             movie_output_path = os.path.join(output_path, "vis_movies")
             uv_movie_maker(
                 obs_id=obs_id,
                 uvfits_folder=uvfits_folder,
                 output_path=movie_output_path,
                 uvd=uvd_cross,
-            )
+            )'''
 
         del uvd_cross
         del uvd_autos
