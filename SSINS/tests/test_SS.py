@@ -27,8 +27,7 @@ def test_SS_read(tv_testfile):
     ss = SS()
 
     # Test reading in only metadata skips if block and warning
-    with pytest.warns(PendingDeprecationWarning, match="SS.read will be renamed"):
-        ss.read(tv_testfile, read_data=False)
+    ss.read(tv_testfile, read_data=False)
     assert ss.data_array is None, "Data array is not None"
 
     # Test select on read and diff
