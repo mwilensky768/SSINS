@@ -42,8 +42,6 @@ class SS(UVData):
             custom: A custom flag array for apply_flags()
             kwargs: Additional kwargs are passed to UVData.read()
         """
-        warnings.warn("SS.read will be renamed to SS.read_data soon to avoid"
-                      " conflicts with UVData.read.", category=PendingDeprecationWarning)
 
         kwargs.pop("use_future_array_shapes", None)
         super().read(filename, use_future_array_shapes=True, **kwargs)
