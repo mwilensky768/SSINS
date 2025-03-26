@@ -12,6 +12,8 @@ pyuvdata version, there may be an error issued from pyuvdata about the new requi
 In this case, one will need to specify the originating telescope of the file, or disable run_check to proceed.
 - Changed how `_data_params` property is handled.
 - Moved installation totally over to pyroject
+- Remove PendingDeprecation warning in SS.read
+
 
 
 ## 1.4.6
