@@ -10,7 +10,7 @@ Welcome to SSINS's documentation!
    :parser: myst_parser.sphinx_
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
 Further Documentation
 =====================
