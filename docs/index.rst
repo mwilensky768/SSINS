@@ -10,24 +10,14 @@ Welcome to SSINS's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Further Documentation
 
-   `Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
-   `INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html>`_
-   `MF class <https://ssins.readthedocs.io/en/latest/match_filter.html>`_
-   `SS class <https://ssins.readthedocs.io/en/latest/sky_subtract.html>`_
-   `util <https://ssins.readthedocs.io/en/latest/util.html>`_
-   `Catalog_Plot <https://ssins.readthedocs.io/en/latest/Catalog_Plot.html>`_
-
-Further Documentation
-=====================
-
-* `Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
-* `INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html>`_
-* `MF class <https://ssins.readthedocs.io/en/latest/match_filter.html>`_
-* `SS class <https://ssins.readthedocs.io/en/latest/sky_subtract.html>`_
-* `util <https://ssins.readthedocs.io/en/latest/util.html>`_
-* `Catalog_Plot <https://ssins.readthedocs.io/en/latest/Catalog_Plot.html>`_
+   Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>
+   INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html>
+   MF class <https://ssins.readthedocs.io/en/latest/match_filter.html>
+   SS class <https://ssins.readthedocs.io/en/latest/sky_subtract.html>
+   util <https://ssins.readthedocs.io/en/latest/util.html>
+   Catalog_Plot <https://ssins.readthedocs.io/en/latest/Catalog_Plot.html>
 
 * :ref:`genindex`
 * :ref:`modindex`
