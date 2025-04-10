@@ -12,6 +12,16 @@ Welcome to SSINS's documentation!
 .. toctree::
    :maxdepth: 1
 
+Further Documentation
+=====================
+
+* `Tutorials <https://ssins.readthedocs.io/en/latest/tutorial.html?highlight=tutorial>`_
+* `INS class <https://ssins.readthedocs.io/en/latest/incoherent_noise_spectrum.html>`_
+* `MF class <https://ssins.readthedocs.io/en/latest/match_filter.html>`_
+* `SS class <https://ssins.readthedocs.io/en/latest/sky_subtract.html>`_
+* `util <https://ssins.readthedocs.io/en/latest/util.html>`_
+* `Catalog_Plot <https://ssins.readthedocs.io/en/latest/Catalog_Plot.html>`_
+
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
