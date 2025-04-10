@@ -12,6 +12,13 @@ Welcome to SSINS's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   tutorial
+   incoherent_noise_spectrum
+   match_filter
+   sky_subtract
+   util
+   Catalog_Plot
+
 Further Documentation
 =====================
 
