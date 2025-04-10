@@ -23,7 +23,6 @@ import SSINS
 
 readme_file = os.path.join(os.path.abspath("../"), "README.md")
 
-
 # -- Project information -----------------------------------------------------
 
 project = u'SSINS'
