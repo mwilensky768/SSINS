@@ -1,5 +1,8 @@
 # SSINS Change Log
 
+## Unrealeased
+- Updates pyuvdata requirements to 3.1.4, which always uses future_array_shapes.
+
 ## 1.4.7
 - Added handling for negative `sig_thresh` such that when set, the associated shape will only trigger
 on a negative sig smaller than `sig_thresh`. Behavior for positive `sig_thresh` is unchanged;
