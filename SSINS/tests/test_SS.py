@@ -45,7 +45,7 @@ def test_diff(tv_testfile):
     uv = UVData()
 
     # Read in two times and two baselines of data, so that the diff is obvious.
-    uv.read(tv_testfile, read_data=False, use_future_array_shapes=True)
+    uv.read(tv_testfile, read_data=False)
     times = np.unique(uv.time_array)[:2]
     if hasattr(uv, "telescope"):
         bls = [
@@ -58,7 +58,7 @@ def test_diff(tv_testfile):
             (uv.antenna_numbers[0], uv.antenna_numbers[1]),
             (uv.antenna_numbers[0], uv.antenna_numbers[2])
         ]
-    uv.read(tv_testfile, times=times, bls=bls, use_future_array_shapes=True)
+    uv.read(tv_testfile, times=times, bls=bls)
     uv.reorder_blts(order='baseline')
 
     diff_dat = uv.data_array[1::2] - uv.data_array[::2]
@@ -247,7 +247,7 @@ def test_write(tmp_path, tv_testfile):
 
     # Check if the flags propagated correctly
     UV = UVData()
-    UV.read(outfile, use_future_array_shapes=True)
+    UV.read(outfile)
     blt_inds = np.isin(UV.time_array, np.unique(UV.time_array)[10:12])
     assert np.all(UV.flag_array[blt_inds, 64:128, :]), "Not all expected flags were propagated"
 
@@ -257,7 +257,7 @@ def test_write(tmp_path, tv_testfile):
     # Test bad read.
     bad_uv_filepath = os.path.join(DATA_PATH, '1061312640_mix.uvfits')
     bad_uv = UVData()
-    bad_uv.read(bad_uv_filepath, use_future_array_shapes=True)
+    bad_uv.read(bad_uv_filepath)
     with pytest.raises(ValueError, match="UVData and SS objects were found to be incompatible."):
         ss.write(outfile, 'uvfits', bad_uv)
 
@@ -270,15 +270,15 @@ def test_read_multifiles(tmp_path, tv_obs, tv_testfile):
 
     # Read in a file's metadata and split it into two objects
     uvd_full = UVData()
-    uvd_full.read(tv_testfile, read_data=False, use_future_array_shapes=True)
+    uvd_full.read(tv_testfile, read_data=False)
     times1 = np.unique(uvd_full.time_array)[:14]
     times2 = np.unique(uvd_full.time_array)[14:]
 
     # Write two separate files to be read in later
     uvd_split1 = UVData()
     uvd_split2 = UVData()
-    uvd_split1.read(tv_testfile, times=times1, use_future_array_shapes=True)
-    uvd_split2.read(tv_testfile, times=times2, use_future_array_shapes=True)
+    uvd_split1.read(tv_testfile, times=times1)
+    uvd_split2.read(tv_testfile, times=times2)
     uvd_split1.write_uvfits(new_fp1)
     uvd_split2.write_uvfits(new_fp2)
 
@@ -312,16 +312,16 @@ def test_newmask(tv_testfile):
 
 
 def test_Nphase_gt_1(tmp_path, tv_testfile):
-    uvd = UVData.from_file(tv_testfile, read_data=False, use_future_array_shapes=True)
+    uvd = UVData.from_file(tv_testfile, read_data=False)
 
     # Split the object so we can phase to separate locations
     unique_times = np.unique(uvd.time_array)
     first_times = unique_times[:10]
     last_times = unique_times[-10:]
 
-    uvfirst = UVData.from_file(tv_testfile, times=first_times, use_future_array_shapes=True)
+    uvfirst = UVData.from_file(tv_testfile, times=first_times)
 
-    uvlast = UVData.from_file(tv_testfile, times=last_times, use_future_array_shapes=True)
+    uvlast = UVData.from_file(tv_testfile, times=last_times)
 
     # Adjust phase of one object and write new file
     og_pc_ra = uvd.phase_center_app_ra[0]

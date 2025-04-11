@@ -44,7 +44,7 @@ class SS(UVData):
         """
 
         kwargs.pop("use_future_array_shapes", None)
-        super().read(filename, use_future_array_shapes=True, **kwargs)
+        super().read(filename, **kwargs)
         if self.Nphase > 1:
             raise NotImplementedError("SSINS cannot handle files with more than one phase center.")
 
@@ -344,9 +344,8 @@ class SS(UVData):
             self.reorder_blts(order='baseline')
         if UV is None:
             UV = UVData()
-            UV.read(filename_in, use_future_array_shapes=True, **read_kwargs)
-        else:
-            UV.use_future_array_shapes()
+            read_kwargs.pop("use_future_array_shapes", None)
+            UV.read(filename_in, **read_kwargs)
 
         # Option to keep old flags
         if not combine:
