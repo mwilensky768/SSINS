@@ -77,9 +77,12 @@ class INS(UVFlag):
 
         self.set_extra_params(order=order, spectrum_type=spectrum_type, use_integration_weights=use_integration_weights,
                               nsample_default=nsample_default, mask_file=mask_file, match_events_file=match_events_file)
-        super().__init__(indata=indata, mode='metric', copy_flags=False, waterfall=False, history=history, label=label, 
-                         use_future_array_shapes=True, run_check=run_check, check_extra=check_extra,
-                         run_check_acceptability=run_check_acceptability, **kwargs)
+        kwargs.pop("use_future_array_shapes", None)
+        super().__init__(indata=indata, mode='metric', copy_flags=False, 
+                         waterfall=False, history=history, label=label, 
+                         run_check=run_check, check_extra=check_extra,
+                         run_check_acceptability=run_check_acceptability, 
+                         **kwargs)
 
 
     def read(self, filename, history="", run_check=True, check_extra=True,
@@ -109,8 +112,9 @@ class INS(UVFlag):
         attr_dict = {attr: deepcopy(getattr(self, attr)) for attr in attrs}
 
         kwargs.pop("use_future_array_shapes", None)
-        super().read(filename, history=history, use_future_array_shapes=True, run_check=run_check,
-                     check_extra=check_extra, run_check_acceptability=run_check_acceptability, **kwargs)
+        super().read(filename, history=history, run_check=run_check,
+                     check_extra=check_extra, 
+                     run_check_acceptability=run_check_acceptability, **kwargs)
         
         self._pol_check()
         
@@ -135,7 +139,7 @@ class INS(UVFlag):
             self.metric_array.mask = self.weights_array == 0
         else:
             # Read in the flag array
-            flag_uvf = UVFlag(self.mask_file, use_future_array_shapes=True)
+            flag_uvf = UVFlag(self.mask_file)
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 
@@ -230,8 +234,8 @@ class INS(UVFlag):
             raise ValueError("SS input has pseudo-Stokes data. SSINS does not"
                                 " currently support pseudo-Stokes spectra.")
 
-    def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, history="",
-                    label="", run_check=True, check_extra=True,
+    def from_uvdata(self, indata, mode="metric", copy_flags=False, waterfall=False, 
+                    history="", label="", run_check=True, check_extra=True,
                     run_check_acceptability=True, **kwargs):
         """
         Construct an INS object from a UVData (SS) object. This is called during instantiation, but due to inheritance 
@@ -256,8 +260,9 @@ class INS(UVFlag):
         # will turn to waterfall later. These are just here to match signature.
         kwargs.pop("use_future_array_shapes", None)
         super().from_uvdata(indata, mode="metric", copy_flags=False, waterfall=False, 
-                            history=history, label=label, use_future_array_shapes=True,
-                            run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability,
+                            history=history, label=label,
+                            run_check=run_check, check_extra=check_extra, 
+                            run_check_acceptability=run_check_acceptability,
                             **kwargs)
         
         self._pol_check()
