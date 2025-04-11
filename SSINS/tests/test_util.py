@@ -34,7 +34,7 @@ def test_event_count():
 
     assert util.event_count(event_list, time_range) == 10
 
-
+@pytest.mark.filterwarnings("ignore: sig_array")
 def test_calc_occ(tmp_path):
 
     obs = "1061313128_99bl_1pol_half_time_SSINS"
