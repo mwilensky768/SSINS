@@ -34,7 +34,7 @@ def test_event_count():
 
     assert util.event_count(event_list, time_range) == 10
 
-
+@pytest.mark.filterwarnings("ignore: sig_array")
 def test_calc_occ(tmp_path):
 
     obs = "1061313128_99bl_1pol_half_time_SSINS"
@@ -227,10 +227,10 @@ def test_write_meta(tmp_path):
     testfile = os.path.join(DATA_PATH, f"{obs}.uvfits")
     prefix = os.path.join(tmp_path, f"{obs}_test")
 
-    uvd = UVData.from_file(testfile, freq_chans=np.arange(32), use_future_array_shapes=True)
+    uvd = UVData.from_file(testfile, freq_chans=np.arange(32))
     ss = SS()
     ss.read(testfile, freq_chans=np.arange(32), diff=True)
-    uvf = UVFlag(uvd, mode="flag", waterfall=True, use_future_array_shapes=True)
+    uvf = UVFlag(uvd, mode="flag", waterfall=True)
     ins = INS(ss)
 
     ins.metric_array[:] = 1
