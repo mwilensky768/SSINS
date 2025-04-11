@@ -16,7 +16,7 @@ description = "RFI flagging package for radio arrays"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    "pyuvdata>=2.4.1",
+    "pyuvdata>=3.1.4",
 ]
 requires-python = ">=3.9"
 keywords = ["radio frequency interference"]
