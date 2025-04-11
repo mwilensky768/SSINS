@@ -1,6 +1,6 @@
 # SSINS Change Log
 
-## Unreleased
+## 1.4.7
 - Added handling for negative `sig_thresh` such that when set, the associated shape will only trigger
 on a negative sig smaller than `sig_thresh`. Behavior for positive `sig_thresh` is unchanged;
 this will continue to use the absolute value of sig. Setting a negative `sig_thresh` for the
