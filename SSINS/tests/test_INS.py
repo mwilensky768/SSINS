@@ -137,22 +137,22 @@ def test_mask_to_flags(tmp_path, tv_obs, tv_testfile):
     ss.read(tv_testfile, diff=True)
 
     uvd = UVData()
-    uvd.read(tv_testfile, use_future_array_shapes=True)
+    uvd.read(tv_testfile)
 
-    uvf = UVFlag(uvd, mode='flag', waterfall=True, use_future_array_shapes=True)
+    uvf = UVFlag(uvd, mode='flag', waterfall=True)
     # start with some flags so that we can test the intended OR operation
     uvf.flag_array[6, :] = True
     ins = INS(ss)
 
     # Check error handling
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True, use_future_array_shapes=True)
+        bad_uvf = UVFlag(uvd, mode='metric', waterfall=True)
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False, use_future_array_shapes=True)
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=False)
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
     with pytest.raises(ValueError):
-        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True, use_future_array_shapes=True)
+        bad_uvf = UVFlag(uvd, mode='flag', waterfall=True)
         # Pretend the data is off by 1 day
         bad_uvf.time_array += 1
         err_uvf = ins.flag_uvf(uvf=bad_uvf)
@@ -191,7 +191,7 @@ def test_mask_to_flags(tmp_path, tv_obs, tv_testfile):
 
     # Test write/read
     ins.write(prefix, output_type='flags', uvf=uvf)
-    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True, use_future_array_shapes=True)
+    read_uvf = UVFlag(flags_outfile, mode='flag', waterfall=True)
     # Check equality
     assert read_uvf == uvf, "UVFlag object differs after read"
 
@@ -336,7 +336,7 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
     del ins
     ins = INS(auto_testfile, spectrum_type="auto")
 
-
+@pytest.mark.filterwarnings("ignore:channel_width", "ignore:telescope_name", "ignore:Antenna", "ignore:telescope_location")
 def test_old_file():
     old_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
     try:
