@@ -336,7 +336,7 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
     del ins
     ins = INS(auto_testfile, spectrum_type="auto")
 
-
+@pytest.mark.filterwarnings("ignore:channel_width", "ignore:telescope_name", "ignore:Antenna", "ignore:telescope_location")
 def test_old_file():
     old_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
     try:
