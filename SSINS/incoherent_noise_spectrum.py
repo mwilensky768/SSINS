@@ -139,7 +139,7 @@ class INS(UVFlag):
             self.metric_array.mask = self.weights_array == 0
         else:
             # Read in the flag array
-            flag_uvf = UVFlag(self.mask_file)
+            flag_uvf = UVFlag(self.mask_file, telescope_name='MWA') #Add telescope name here
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 
