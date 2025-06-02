@@ -339,8 +339,8 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
 @pytest.mark.filterwarnings("ignore:channel_width", "ignore:telescope_name", "ignore:Antenna", "ignore:telescope_location")
 def test_old_file():
     
-    old_ins_file = os.path.join(DATA_PATH, "109086_p1_SSINS_data.h5")
-    old_mask_file = os.path.join(DATA_PATH, "109086_p1_SSINS_mask.h5")
+    old_ins_file = os.path.join(DATA_PATH, "1090867840_SSINS_data.h5")
+    old_mask_file = os.path.join(DATA_PATH, "1090867840_SSINS_mask.h5")
     
     try:
         # this works with pyuvdata>=3.0
