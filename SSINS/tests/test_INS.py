@@ -358,7 +358,7 @@ def test_old_file():
 
 
     with pytest.raises(ValueError, 
-                       match="spectrum_type is set to auto, but file input is a cross spectrum from an old file."):
+                       match="Requested spectrum type disagrees with saved spectrum. Make opposite choice on initialization."):
         ins = INS(old_ins_file, telescope_name="mwa", spectrum_type="auto")
     
     # Just check that it reads
