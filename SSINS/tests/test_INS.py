@@ -338,19 +338,23 @@ def test_spectrum_type_file_init(cross_testfile, tv_ins_testfile):
 
 @pytest.mark.filterwarnings("ignore:channel_width", "ignore:telescope_name", "ignore:Antenna", "ignore:telescope_location")
 def test_old_file():
-    old_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
+    
+    old_ins_file = os.path.join(DATA_PATH, "109086_p1_SSINS_data.h5")
+    old_mask_file = os.path.join(DATA_PATH, "109086_p1_SSINS_mask.h5")
+    
     try:
         # this works with pyuvdata>=3.0
         with pytest.raises(
             ValueError, match="Required UVParameter _Nants has not been set."
         ):
-            ins = INS(old_ins_file)
+            ins = INS(old_ins_file, mask_file=old_mask_file)
+    
     except AssertionError:
         # this works with pyuvdata<3.0
         with pytest.raises(
             ValueError, match="Required UVParameter _antenna_names has not been set."
         ):
-            ins = INS(old_ins_file)
+            ins = INS(old_ins_file, mask_file=old_mask_file)
 
 
     with pytest.raises(ValueError, 
@@ -358,7 +362,8 @@ def test_old_file():
         ins = INS(old_ins_file, telescope_name="mwa", spectrum_type="auto")
     
     # Just check that it reads
-    ins = INS(old_ins_file, telescope_name="mwa")
+    ins = INS(old_ins_file, telescope_name="mwa", mask_file=old_mask_file)
+    assert ins is not None
     
 
 
