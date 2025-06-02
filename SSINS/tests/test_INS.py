@@ -341,7 +341,6 @@ def test_old_file():
     old_ins_file = os.path.join(DATA_PATH, "109086_p1_SSINS_data.h5")
     old_mask_file = os.path.join(DATA_PATH, "109086_p1_SSINS_mask.h5")
     
-    # Test for missing UVParameters - handle version differences
     with pytest.raises(ValueError) as err:
         ins = INS(old_ins_file, mask_file=old_mask_file)
     assert any(msg in str(err.value) for msg in [
@@ -349,12 +348,11 @@ def test_old_file():
         "Required UVParameter _antenna_names has not been set"
     ])
     
-    # Test spectrum_type validation
     with pytest.raises(ValueError, 
                        match="spectrum_type is set to auto, but file input is a cross spectrum from an old file"):
         ins = INS(old_ins_file, telescope_name="mwa", spectrum_type="auto")
     
-    # Verify successful read
+    # Check that it reads
     ins = INS(old_ins_file, telescope_name="mwa", mask_file=old_mask_file)
     assert ins is not None
     
