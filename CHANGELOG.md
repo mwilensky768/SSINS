@@ -3,6 +3,7 @@
 ## Unrealeased
 - Updates pyuvdata requirements to 3.1.3, which always uses future_array_shapes.
 - Updates python requirement to 3.10
+- Adds a ci job that errors on deprecation warnings
 - Fixed a bug where the telescope_name was not being piped when reading in old mask files.
 
 ## 1.4.7
