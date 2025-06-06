@@ -138,8 +138,10 @@ class INS(UVFlag):
              # Only mask elements initially if no baselines contributed
             self.metric_array.mask = self.weights_array == 0
         else:
-            # Read in the flag array
-            flag_uvf = UVFlag(self.mask_file)
+            # Read in the flag array.
+            # If you're working with an old UVFlags file, it may not contain Nants_data and you need to input telescope_name into kwargs
+            telescope_name = kwargs['telescope_name'] if 'telescope_name' in kwargs else None
+            flag_uvf = UVFlag(self.mask_file, telescope_name=telescope_name) 
             self.metric_array.mask = np.copy(flag_uvf.flag_array)
             del flag_uvf
 

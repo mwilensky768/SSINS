@@ -3,6 +3,7 @@
 ## Unrealeased
 - Updates pyuvdata requirements to 3.1.3, which always uses future_array_shapes.
 - Updates python requirement to 3.10
+- Fixed a bug where the telescope_name was not being piped when reading in old mask files.
 
 ## 1.4.7
 - Added handling for negative `sig_thresh` such that when set, the associated shape will only trigger
