@@ -18,6 +18,11 @@ class INS(UVFlag):
     """
     Defines the incoherent noise spectrum (INS) class, which is a subclass of
     the UVFlag class, a member of the pyuvdata software package.
+
+    Attributes:
+        metric_ms (array):
+            An array containing the z-scores of the data in the incoherent 
+            noise spectrum.
     """
 
     def __init__(self, indata=None, history="", label="", run_check=True,
