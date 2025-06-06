@@ -17,12 +17,56 @@ from copy import deepcopy
 class INS(UVFlag):
     """
     Defines the incoherent noise spectrum (INS) class, which is a subclass of
-    the UVFlag class, a member of the pyuvdata software package.
+    the UVFlag class, a member of the pyuvdata software package. Below is a list
+    of attributes that are either specific to the INS object, or attributes that
+    also exist on UVFlag objects but have special meaning for this subclass. See
+    the pyuvdata documentation for other UVFlag attributes that may be useful
+    for data analysis.
 
     Attributes:
-        metric_ms (array):
-            An array containing the z-scores of the data in the incoherent 
-            noise spectrum.
+        metric_array (masked_array):
+            Array that contains the raw incoherently averaged noise spectrum 
+            data. Shape (Ntimes, Nfreqs, Npols).
+        metric_ms (masked_array):
+            An array containing the z-scores of the data in the metric_array.
+            Shape (Ntimes, Nfreqs, Npols).
+        match_events (list):
+            A list of tuples that contain information about events caught during 
+            match filtering.
+        weights_array (array):
+            Array containing the sum of the weights down the baseline axis of
+            the original SS object. Shape (Ntimes, Nfreqs, Npols).
+        weights_square_array (array):
+            Array containing the sum of the squares of the weights down the
+            baseline axis of the original SS object (for variance normalization). 
+            Shape (Ntimes, Nfreqs, Npols).
+        history (str):
+            String containing the history of the data.
+        sig_array (array):
+            An array that is initially equal to the z-score of each data point. 
+            During flagging, the entries are assigned according to their 
+            z-score at the time of their flagging.
+        spectrum_type (str):
+            'cross' or 'auto', indicating the type of visibilities the spectrum
+            was made from.
+        order (int):
+            The order of polynomial fit for each frequency channel during 
+            mean-subtraction. Default is 0, which just calculates the mean.
+        use_integration_weights (bool):
+            Whether the product of the integration_array and nsample_array of 
+            the SS object were used as weights. If False (default), just use
+            uniform weights based on the mask of the SS object's data array.
+        nsample_default (float): 
+            The default nsample value to fill zeros in the nsample_array with 
+            when there are some nsample=0. Important when working with data from
+            uvfits files, which combine information from the flag_array and 
+            nsample_array in the weights field of the uvfits file.
+        mask_file (str):
+            Path to a mask_file for filling out the initial mask of the 
+            metric_array.
+        match_events_file (str):
+            Path to yaml file to fill out match_events attribute with previously
+            found RFI events.
     """
 
     def __init__(self, indata=None, history="", label="", run_check=True,
@@ -152,7 +196,6 @@ class INS(UVFlag):
 
         if self.match_events_file is None:
             self.match_events = []
-            """A list of tuples that contain information about events caught during match filtering"""
         else:
             self.match_events = self.match_events_read(self.match_events_file)
         
@@ -189,10 +232,7 @@ class INS(UVFlag):
         if self.weights_square_array is None:
             self.weights_square_array = np.copy(self.weights_array)
         self.metric_ms = self.mean_subtract()
-        """An array containing the z-scores of the data in the incoherent noise spectrum."""
         self.sig_array = np.ma.copy(self.metric_ms)
-        """An array that is initially equal to the z-score of each data point. During flagging,
-            the entries are assigned according to their z-score at the time of their flagging."""
 
 
     def set_extra_params(self, order=0, spectrum_type="cross", use_integration_weights=False, nsample_default=1,
@@ -217,14 +257,12 @@ class INS(UVFlag):
         """
 
         self.spectrum_type = spectrum_type
-        """The type of visibilities the spectrum was made from."""
         if self.spectrum_type not in ['cross', 'auto']:
             raise ValueError("Requested spectrum_type is invalid. Choose 'cross' or 'auto'.")
 
         self.spec_type_str = f"Initialized spectrum_type:{self.spectrum_type} from visibility data. "
 
         self.order = order
-        """The order of polynomial fit for each frequency channel during mean-subtraction. Default is 0, which just calculates the mean."""
         
         self.use_integration_weights = use_integration_weights
         self.nsample_default = nsample_default
