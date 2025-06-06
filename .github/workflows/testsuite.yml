@@ -91,3 +91,44 @@ jobs:
         run: pip install --no-deps .
       - name: Doc Tests
         run: python -m pytest docs/tutorial.rst
+  
+  warnings_test:
+    env:
+      ENV_NAME: SSINS_tests
+      PYTHON: "3.12"
+    name: Warning Testing
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # Adding -l {0} helps ensure conda can be found properly.
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 1
+
+      - name: Setup Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          miniconda-version: "latest"
+          python-version: ${{ env.PYTHON }}
+          environment-file: ci/${{ env.ENV_NAME }}.yml
+          activate-environment: ${{ env.ENV_NAME }}
+
+      - name: Conda Info
+        run: |
+          conda info -a
+          conda list
+          PYVER=`python -c "import sys; print('{:d}.{:d}'.format(sys.version_info.major, sys.version_info.minor))"`
+          if [[ $PYVER != ${{ env.PYTHON }} ]]; then
+            exit 1;
+          fi
+      - name: Install
+        run: pip install --no-deps .
+      - name: Run Tests
+        run: |
+          python -m pytest -W "error::DeprecationWarning" SSINS/tests/
+
