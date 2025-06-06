@@ -341,6 +341,7 @@ def test_old_file():
     
     old_ins_file = os.path.join(DATA_PATH, "1090867840_SSINS_data.h5")
     old_mask_file = os.path.join(DATA_PATH, "1090867840_SSINS_mask.h5")
+    older_ins_file = os.path.join(DATA_PATH, "1061313128_99bl_1pol_half_time_old_SSINS.h5")
     
     try:
         # this works with pyuvdata>=3.0
@@ -360,6 +361,10 @@ def test_old_file():
     with pytest.raises(ValueError, 
                        match="Requested spectrum type disagrees with saved spectrum. Make opposite choice on initialization."):
         ins = INS(old_ins_file, telescope_name="mwa", spectrum_type="auto")
+
+    with pytest.raises(ValueError, 
+                       match="Requested spectrum type disagrees with saved spectrum. Make opposite choice on initialization."):
+        ins = INS(older_ins_file, telescope_name="mwa", spectrum_type="auto")
     
     # Just check that it reads
     ins = INS(old_ins_file, telescope_name="mwa", mask_file=old_mask_file)
