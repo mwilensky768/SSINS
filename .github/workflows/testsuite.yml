@@ -96,7 +96,7 @@ jobs:
     env:
       ENV_NAME: SSINS_tests
       PYTHON: "3.12"
-    name: Doc Testing
+    name: Warning Testing
     runs-on: ubuntu-latest
     defaults:
       run:
