@@ -264,7 +264,7 @@ Flagging an INS using a match_filter (MF)
 
   >>> # We can write these out to an h5 file as well, but we need to make a UVFlag object from the original data
   >>> uvd = UVData()
-  >>> uvd.read(filepath, times=times, use_future_array_shapes=True)
+  >>> uvd.read(filepath, times=times)
   >>> uvf = UVFlag(uvd, waterfall=True, mode='flag')
   >>> ins.write(prefix, output_type='flags', clobber=True, uvf=uvf)
   >>> print(os.path.exists('%s_SSINS_flags.h5' % prefix))
