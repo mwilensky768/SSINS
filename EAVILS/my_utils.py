@@ -183,16 +183,11 @@ def uvfits_reader(
     options={},
     use_ss_as_uvd=False,
     metafits_ant_check=True,
-    experimental_ant_check=False,
     antenna_position_flags_csv="",
+    detect_time_cuts=True
 ):
-    """
-    Note: there are 3 ways to check for bad antennas.
-    The preferred method is to use the metafits file.
-    An alternate method is to use an antenna_position_flags_csv file for the closest available date,
-    which flags based on antenna location.
-    The experimental_ant_check method is unreliable and should not be used.
-    """
+
+    time_cuts=None
     obs_id = str(obs_id)
     fits_file = obs_id + ".uvfits"
     read_file = os.path.join(uvfits_folder, fits_file)
@@ -205,9 +200,21 @@ def uvfits_reader(
         # Note: we are calling this object 'uvd' for code functionality, but it is in fact a ss object!
         uvd = SS()
         uvd.read(read_file, diff=False)
-
+        
+    if detect_time_cuts:
+        flag_reshaped = uvd.flag_array.reshape((uvd.Ntimes,uvd.Nbls,uvd.Nfreqs,uvd.Npols))
+        bad_time_flags = np.all(flag_reshaped,axis=(1,2,3))
+        good_times = np.arange(len(bad_time_flags))[~bad_time_flags]
+        time_cuts = (min(good_times),max(good_times+1))
+        if not time_cuts[1]-time_cuts[0] ==len(good_times):
+            raise Exception(f'Unreliable time flags found for {read_file}. Expecting only beginning and ending times to be flagged, not middle times. Total number of time indices: {uvd.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}')
+        else:
+            print(f'Total number of time indices: {uvd.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}. time_cuts set to {time_cuts}')
     if "time_cuts" in options.keys():
         time_cuts = options["time_cuts"]
+        print(f'Options given. Overriding any existing time_cuts with {time_cuts}')
+        
+    if time_cuts is not None:
         print(f"trimming times to include indices between: {time_cuts}")
         # fmt: off
         uvd.select(times=np.unique(uvd.time_array)[time_cuts[0]:time_cuts[1]])
@@ -216,6 +223,7 @@ def uvfits_reader(
         print("conjugating bls")
         uvd.conjugate_bls(convention="v>0")
 
+    cut_antennas = []
     if metafits_ant_check:
         metafits_file_name = os.path.join(uvfits_folder, f"{obs_id}.metafits")
         metafits = fits.open(metafits_file_name)
@@ -223,7 +231,7 @@ def uvfits_reader(
         bad_tiles = []
         # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
         for ind in range(len(metafits["TILEDATA"].data.field("flag")) // 2):
-            # fmt: off
+            
             if sum(metafits["TILEDATA"].data.field("flag")[(ind * 2):(ind * 2 + 2)]) > 0:
                 bad_tiles.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
 
@@ -236,29 +244,11 @@ def uvfits_reader(
             ant_num = uvd.antenna_numbers[i]
             ant_name_num_dict[name] = ant_num
 
-        cut_antennas = []
         for tile in bad_tiles:
             cut_antennas.append(ant_name_num_dict[tile])
         print(f"Antennas found bad via {metafits_file_name}:", cut_antennas)
 
-    if antenna_position_flags_csv != "" and not metafits_ant_check:
-        with open(antenna_position_flags_csv, "r", encoding="utf-8") as csvfile:
-            antenna_position_flags = list(csv.reader(csvfile))[1:]
-
-        for ind, row in enumerate(antenna_position_flags):
-            antenna_position_flags[ind] = [float(item) for item in row[:3]] + [
-                ast.literal_eval(row[3])
-            ]
-
-        cut_antennas = []
-        for uvd_ind, uvd_entry in enumerate(uvd.get_ENU_antpos()[0]):
-            for csv_ind, csv_entry in enumerate(antenna_position_flags):
-                if np.abs(np.sum(uvd_entry - csv_entry[:3])) < 10**-6:
-                    # print(uvd.get_ENU_antpos()[1][uvd_ind],csv_entry[3])
-                    if csv_entry[3]:
-                        cut_antennas.append(uvd.get_ENU_antpos()[1][uvd_ind])
-
-        print(f"Antennas found bad via {antenna_position_flags_csv}:", cut_antennas)
+    
     if len(cut_antennas) > 0:
 
         keep_antennas = uvd.antenna_numbers
@@ -273,39 +263,7 @@ def uvfits_reader(
         uvd_autos.select(ant_str="auto")
         uvd.select(ant_str="cross")
 
-        # Note: this method is deprecated and unreliable.
-        if experimental_ant_check and antenna_position_flags_csv == "":
-            print(
-                "Warning: using experimental antenna checking. "
-                "This method is unreliable and should not be used except for debuggging purposes."
-            )
-            cut_antennas = []
-            baseline_power = np.mean(np.abs(data(uvd)), axis=(0, 2, 3))
-            baseline_power = baseline_power / np.median(baseline_power)
-            baseline_check = np.array(baseline_power > 10) | np.array(
-                baseline_power < 0.1
-            )
-            cut_antennas = list(
-                np.unique(
-                    uvd.ant_1_array.reshape(uvd.Ntimes, uvd.Nbls)[0, :][baseline_check]
-                )
-            ) + list(
-                np.unique(
-                    uvd.ant_2_array.reshape(uvd.Ntimes, uvd.Nbls)[0, :][baseline_check]
-                )
-            )
-            cut_antennas = np.unique(cut_antennas)
-            if len(cut_antennas) > 0:
-                print(
-                    "Experimental antenna checking identified the following antenna numbers as bad:",
-                    cut_antennas,
-                )
-                keep_antennas = uvd.antenna_numbers
-                keep_antennas = [
-                    ant for ant in keep_antennas if ant not in cut_antennas
-                ]
-                uvd.select(antenna_nums=keep_antennas)
-                uvd_autos.select(antenna_nums=keep_antennas)
+        
 
         return uvd, uvd_autos
 

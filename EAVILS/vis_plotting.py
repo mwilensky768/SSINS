@@ -29,399 +29,6 @@ from SSINS import MF
 from SSINS import util
 
 
-##############################################################################################
-# Note! This function is not used for EAVILS at all, it's used to make "movies" of visibilities.
-
-
-'''
-import cv2
-def uv_movie_maker(obs_id, uvfits_folder, output_path, uvd=None, autoscale=True):
-
-    if not os.path.exists(output_path):
-        os.makedirs(output_path, mode=0o777)
-
-    obs_id = str(obs_id)
-    if int(obs_id) < 1156551320:  # Checcks if is phase I or phase II observation
-        extent = 2000  # Approximate extent of the array in meters
-    else:
-        extent = 500
-
-    if type(uvd) is None:
-        uvd, _ = my_utils.uvfits_reader(
-            obs_id, uvfits_folder, conjugate_baselines=True, experimental_ant_check=True
-        )
-
-    else:
-        print(
-            "UVData object given in function argument, "
-            "please ensure it has had the conjugate_bls method applied with v>0 for proper display"
-        )
-
-    freq_ranges = ["TV6", "TV7", "TV8", "TV9"]
-    middle_indices = {}
-    for tv in freq_ranges:
-        middle_indices[tv] = int(
-            np.average(
-                np.arange(len(uvd.freq_array))[
-                    my_utils.make_freq_mask(uvd.freq_array, tv)
-                ]
-            )
-        )
-
-    data = uvd.data_array.reshape(uvd.Ntimes, uvd.Nbls, uvd.Nfreqs, uvd.Npols)
-    uvw = uvd.uvw_array.reshape(uvd.Ntimes, uvd.Nbls, 3)
-
-    time_interval = round(
-        ((np.unique(uvd.time_array)[1] - np.unique(uvd.time_array[0])) * 86400)[0], 2
-    )
-
-    # Loop through pols and tv bandS
-    for pol in ["XX", "YY"]:
-        for tv in freq_ranges:
-            if pol == "XX":
-                pol_ind = 0
-            elif pol == "YY":
-                pol_ind = 1
-
-            f_ind = middle_indices[tv]
-            freq = uvd.freq_array[f_ind]
-            freq_string = str(round(freq / 10**6, 2)).replace(".", ",")
-
-            # Images from previous runs to be cleaned up. Note this means if you want to save anything from a
-            # previous run you should run this in a new folder
-            clean_up_images = [
-                img
-                for img in os.listdir(output_path)
-                if img.endswith(".png")
-                and img.startswith(str(obs_id) + "_p" + pol + "_f" + freq_string)
-            ]
-            for image in clean_up_images:
-                os.remove(os.path.join(output_path, image))
-
-            horizontal_line = [
-                np.arange(-extent, extent),
-                np.zeros(2 * extent),
-            ]  # plots lines representing directions in the uv plane
-            vertical_line = [np.zeros(extent), np.arange(0, extent)]
-
-            # loop through tickers and axes
-            print(f"producing individual plots for {pol} freq {freq_string} MHz")
-            datasets = []
-            for t_ind1 in range(uvd.Ntimes - 1):
-                t_ind2 = t_ind1 + 1
-                datasets.append(
-                    [
-                        np.abs(data[t_ind1, :, f_ind, pol_ind]),
-                        np.abs(
-                            data[t_ind1, :, f_ind, pol_ind]
-                            - data[t_ind2, :, f_ind, pol_ind]
-                        ),
-                        # This is a little confusing looking,
-                        # but all it's doing is modifying the subtracted angles
-                        # so insted of spanning from -2pi to 2pi,
-                        # it wraps the values so they go  from -pi to pi.
-                        # So e.g. 5/3 pi becomes -1/3 pi, -4/3 pi becomes 2/3 pi, etc
-                        (
-                            np.angle(data[t_ind1, :, f_ind, pol_ind])
-                            - np.angle(data[t_ind2, :, f_ind, pol_ind]) % (2 * np.pi)
-                            - np.pi
-                        )
-                        % (2 * np.pi)
-                        - np.pi,
-                        np.abs(data[t_ind1, :, f_ind, pol_ind])
-                        - np.abs(data[t_ind2, :, f_ind, pol_ind]),
-                    ]
-                )
-
-            # Should have shape of Ntimes-1, number of data types (e.g. diff of abs, abs of diff, etc),
-            # number of baselines
-            datasets = np.array(datasets)
-
-            # Order should match that of associated dataset
-            cmaps = ("viridis", "plasma", my_utils.cust_cmap("smoothbow"), "coolwarm")
-
-            plot_types = (
-                "scatter",
-                "scatter",
-                "scatter",
-                "scatter",
-                "hist",
-                "hist",
-                "hist",
-                "hist",
-            )
-            plot_count = len(plot_types)
-
-            data_indices = (
-                0,
-                1,
-                2,
-                3,
-                0,
-                1,
-                2,
-                3,
-            )  # Picks out which data type in datasets we want to use
-
-            titles = (
-                "|V_a|",
-                "|V_a - V_b|",
-                "ang(V_a) - ang(V_b)",
-                "|V_a|-|V_b|",
-                "|V_a|",
-                "|V_a - V_b|",
-                "ang(V_a) - ang(V_b)",
-                "|V_a|-|V_b|",
-            )
-
-            vlim_defaults = [
-                (0, 10000),
-                (0, 1000),
-                (-np.pi, np.pi),
-                (-500, 500),
-                (),
-                (),
-                (),
-                (),
-            ]
-            if autoscale:
-                t_ind = 0
-                vlims = vlim_defaults
-                # Automatically sccales the vlims based on the initial state of the data
-
-                data_index = 0
-                values = datasets[t_ind, data_index, :]
-                mean = np.mean(values)
-                std_dev = np.std(values)
-                lim = max(np.abs(mean + std_dev), np.abs(mean - std_dev))
-                vlims[data_index] = (0, lim)
-
-                data_index = 1
-                values = datasets[t_ind, data_index, :]
-                mean = np.mean(values)
-                std_dev = np.std(values)
-                lim = max(np.abs(mean + std_dev), np.abs(mean - std_dev))
-                vlims[data_index] = (0, lim)
-
-                data_index = 3
-                values = datasets[t_ind, data_index, :]
-                mean = np.mean(values)
-                std_dev = np.std(values)
-                lim = max(np.abs(mean + std_dev), np.abs(mean - std_dev))
-                vlims[data_index] = (-lim, lim)
-
-            else:
-                vlims = vlim_defaults
-
-            data_lims = [
-                [np.min(datasets[:, data_index, :]), np.max(datasets[:, data_index, :])]
-                for data_index in data_indices
-            ]
-
-            symmetric = (None, None, None, None, False, False, False, True)
-
-            circular = (False, False, True, False, False, False, True, False)
-
-            for t_ind1 in range(uvd.Ntimes - 1):
-                t_ind2 = t_ind1 + 1
-                row_count = 2
-                col_count = len(data_indices) // 2
-
-                fig, axs = plt.subplots(
-                    nrows=row_count,
-                    ncols=col_count,
-                    figsize=(col_count * 4, row_count * 3),
-                    dpi=300,
-                )
-
-                fig.suptitle(
-                    "ObsId: "
-                    + obs_id
-                    + ", pol: "
-                    + pol
-                    + ", times: "
-                    + str(round(time_interval * t_ind1, 1))
-                    + "s - "
-                    + str(round(time_interval * t_ind2, 1))
-                    + "s, freq: "
-                    + str(round(freq / 10**6, 2))
-                    + " MHz"
-                )
-                fig.subplots_adjust(top=0.95)
-
-                u = uvw[t_ind1, :, 0]
-                v = uvw[t_ind1, :, 1]
-
-                for i, ax in enumerate(axs.ravel()):
-                    data_index = data_indices[i]
-                    values = datasets[t_ind1, data_index, :]
-                    if i < plot_count:
-                        if plot_types[i] == "scatter":
-                            # mag = np.abs(data[t_ind1,:,f_ind,0]-data[t_ind2,:,f_ind,0])
-                            # mag_save.append(mag)
-                            # ax.scatter(u,v,c=mag,alpha=1,s=.01,norm=colors.PowerNorm(3,vmin=0,vmax=1000),cmap='hot_r')
-
-                            active_scatter = ax.scatter(
-                                u,
-                                v,
-                                c=values,
-                                alpha=0.25,
-                                s=1,
-                                vmin=vlims[i][0],
-                                vmax=vlims[i][1],
-                                cmap=cmaps[data_index],
-                            )
-                            # ax.scatter(u,v,c=mag,alpha=1,s=.01,vmin=0,vmax=2000)
-                            ax.set_title(titles[i], fontsize=10)
-                            # o = mpl.patches.Circle((0,0), 10, facecolor='black', edgecolor='black')
-                            # ax.add_patch(o)
-                            divider = make_axes_locatable(ax)
-                            cax = divider.append_axes("right", size="5%", pad=0.05)
-                            cbar = fig.colorbar(
-                                active_scatter, cax=cax, orientation="vertical"
-                            )
-                            cbar.solids.set(alpha=1)
-                            ax.plot(
-                                horizontal_line[0],
-                                horizontal_line[1],
-                                color="black",
-                                linewidth=0.5,
-                                alpha=0.5,
-                            )
-                            ax.plot(
-                                vertical_line[0],
-                                vertical_line[1],
-                                color="black",
-                                linewidth=0.5,
-                                alpha=0.5,
-                            )
-                            ax.text(
-                                extent * (1 - 0.075),
-                                extent * -0.025,
-                                "%g" % (extent / 1000) + "km",
-                                size=5,
-                            )  # Placing distance label just below and to the left of right edge of distance axis
-
-                            ax.get_xaxis().set_visible(False)
-                            ax.get_yaxis().set_visible(False)
-
-                            ax.tick_params(
-                                axis="x",  # changes apply to the x-axis
-                                which="both",  # both major and minor ticks are affected
-                                bottom=False,  # ticks along the bottom edge are off
-                                top=False,  # ticks along the top edge are off
-                                labelbottom=False,
-                            )
-
-                            ax.tick_params(
-                                axis="y",  # changes apply to the y-axis
-                                which="both",  # both major and minor ticks are affected
-                                bottom=False,  # ticks along the bottom edge are off
-                                top=False,  # ticks along the top edge are off
-                                labelbottom=False,
-                            )
-                            ax.axis("equal")
-
-                        elif plot_types[i] == "hist":
-                            ax.hist(values, bins=50)
-                            ax.set_yscale("log")
-                            if not symmetric[i]:
-                                ax.set_xlim(data_lims[i])
-                            else:
-                                max_bound = np.max(np.abs(data_lims[i]))
-                                ax.set_xlim([-max_bound, max_bound])
-                            ax.set_ylim([0.5, uvd.Nbls / 2])
-
-                            # Calculate mean, median, and standard deviation
-                            if not circular[i]:
-                                mean = np.mean(values)
-                                median = np.median(values)
-                                std_dev = np.std(values)
-
-                            else:
-                                mean = stats.circmean(values, low=-np.pi, high=np.pi)
-                                std_dev = stats.circstd(values, low=-np.pi, high=np.pi)
-
-                            # Add lines for mean, median, and standard deviation
-                            ax.axvline(
-                                mean,
-                                color="r",
-                                linestyle="dashed",
-                                linewidth=2,
-                                label=f"Mean: {mean:.2f}",
-                            )
-
-                            if not circular[i]:
-                                ax.axvline(
-                                    median,
-                                    color="g",
-                                    linestyle="dashed",
-                                    linewidth=2,
-                                    label=f"Median: {median:.2f}",
-                                )
-
-                            ax.axvline(
-                                mean - std_dev,
-                                color="orange",
-                                linestyle="dotted",
-                                linewidth=2,
-                                label=f"Std Dev: {std_dev:.2f}",
-                            )
-                            ax.axvline(
-                                mean + std_dev,
-                                color="orange",
-                                linestyle="dotted",
-                                linewidth=2,
-                            )
-                            ax.legend(fontsize="x-small", markerscale=0.25)
-
-                save_name = os.path.join(
-                    output_path,
-                    str(obs_id)
-                    + "_p"
-                    + pol
-                    + "_f"
-                    + freq_string
-                    + "_t"
-                    + str(t_ind1)
-                    + ".png",
-                )
-                fig.savefig(save_name)
-
-                plt.close(fig)
-
-            print("sorting images")
-
-            video_name = os.path.join(
-                output_path, str(obs_id) + "_" + pol + "_" + freq_string + "_video.avi"
-            )
-
-            images = [
-                img
-                for img in os.listdir(output_path)
-                if img.endswith(".png")
-                and img.startswith(str(obs_id) + "_p" + pol + "_f" + freq_string)
-            ]
-
-            image_index = [
-                (int(images[i].split("_t")[1].split(".")[0]), i)
-                for i, img in enumerate(images)
-            ]
-            image_index = sorted(image_index, key=tuple[1])
-            images = [images[image_index[i][1]] for i in range(len(images))]
-
-            print("generating movie")
-            frame = cv2.imread(os.path.join(output_path, images[0]))
-            height, width, layers = frame.shape
-
-            video = cv2.VideoWriter(video_name, 0, 1, (width, height))
-
-            for image in images:
-                video.write(cv2.imread(os.path.join(output_path, image)))
-
-            cv2.destroyAllWindows()
-            video.release()'''
-
 
 #############################################################################################
 
@@ -443,7 +50,7 @@ The options dict is meant to allow for obs_id specific options (for example cutt
 
 def spectra_maker(
     obs_id,
-    uvfits_folder,
+    input_data_folder,
     output_path,
     uvd_cross=None,
     uvd_autos=None,
@@ -471,11 +78,11 @@ def spectra_maker(
     # Simply checks if uvd_cross was given as input,
     # if not then reads it and uvd_autos in from a file in the given folder
     if uvd_cross is None:
+        #update this to be able to handle other types of files
         uvd_cross, uvd_autos = my_utils.uvfits_reader(
             obs_id,
-            uvfits_folder,
+            uvfits_folder=input_data_folder,
             split_autos=True,
-            experimental_ant_check=True,
             use_ss_as_uvd=True,
         )
 
@@ -619,34 +226,40 @@ def spectra_maker(
             )
 
             h5_path = os.path.join(output_path, "h5_files")
-
-            #########################################################
-            # Constructs the SSINS mask
-            if add_SSINS and not auto_bool:
-                ins_copy, occ_dict = SSINS_mask_maker(ins, flag_centers=not mwax_bool)
-
+            if not os.path.exists(h5_path):
+                os.makedirs(h5_path, mode=0o777)
+                #########################################################
+            if add_SSINS:
                 channel_width = f"{int(uvd.channel_width[0]/1000)}khz"
-                occupancy_yaml = os.path.join(
-                    output_path, f"{channel_width}_occupancy.yml"
-                )
-
-                if os.path.exists(occupancy_yaml):
-                    with open(occupancy_yaml, "r") as yamlfile:
-                        cur_yaml = yaml.safe_load(yamlfile)  # Note the safe_load
-                else:
-                    cur_yaml = {}
-
-                cur_yaml[str(obs_id)] = {"SSINS": occ_dict}
-                with open(occupancy_yaml, "w") as yamlfile:
-                    yaml.safe_dump(cur_yaml, yamlfile)  # Also note the safe_dump
-
-                mask_h5_prefix = os.path.join(h5_path, f"{str(obs_id)}_{channel_width}")
-                ins_copy.write(mask_h5_prefix, output_type="mask", clobber=True)
+                ssins_h5_prefix = os.path.join(h5_path, f"{str(obs_id)}_{channel_width}")
+                ins.write(ssins_h5_prefix, clobber=True)
+                
+            
+                #########################################################
+                # Constructs the SSINS mask
+                if not auto_bool:
+                    ins_copy, occ_dict = SSINS_mask_maker(ins, flag_centers=not mwax_bool)
+    
+                    
+                    occupancy_yaml = os.path.join(
+                        output_path, f"{channel_width}_occupancy.yml"
+                    )
+    
+                    if os.path.exists(occupancy_yaml):
+                        with open(occupancy_yaml, "r") as yamlfile:
+                            cur_yaml = yaml.safe_load(yamlfile)  
+                    else:
+                        cur_yaml = {}
+    
+                    cur_yaml[str(obs_id)] = {"SSINS": occ_dict}
+                    with open(occupancy_yaml, "w") as yamlfile:
+                        yaml.safe_dump(cur_yaml, yamlfile)  
+    
+                    ins_copy.write(ssins_h5_prefix, output_type="mask", clobber=True)
             ######################################################################
 
             # Saves important data to an h5 file.
-            if not os.path.exists(h5_path):
-                os.makedirs(h5_path, mode=0o777)
+            
 
             h5_name = os.path.join(
                 h5_path, f"{str(obs_id)}_spectra_data_{bl_type_tag}.h5"
@@ -681,7 +294,7 @@ def spectra_maker(
             # It can be ignored unless you're specifically working on something
             # related to the receivers.
             if per_receiver:
-                metafits_path = os.path.join(uvfits_folder, obs_id + ".metafits")
+                metafits_path = os.path.join(input_data_folder, obs_id + ".metafits")
                 rec_mask_dict, ant_names_included_dict = receiver_identify(
                     metafits_location=metafits_path, uvd=uvd, return_names=True
                 )
@@ -1036,7 +649,7 @@ def receiver_identify(metafits_location, uvd, return_names=False):
 # Deals with making the SSINS from a variety of input choices
 def make_ssins_wrapper(
     obs_id=None,
-    uvfits_folder="",
+    input_data_folder="",
     ss=None,
     output_path=None,
     return_ins_only=False,
@@ -1052,8 +665,8 @@ def make_ssins_wrapper(
     load_from_file_bool = False
 
     if ss is None:
-        if obs_id is None or uvfits_folder == "":
-            raise Exception("Must include obs_id and uvfits_folder if ss is empty")
+        if obs_id is None or input_data_folder == "":
+            raise Exception("Must include obs_id and input_data_folder if ss is empty")
         else:
             load_from_file_bool = True
 
@@ -1061,7 +674,7 @@ def make_ssins_wrapper(
         if not isinstance(obs_id, str):
             obs_id = str(obs_id)
         ss = SS()
-        full_uvfits_path = os.path.join(uvfits_folder, obs_id + ".uvfits")
+        full_uvfits_path = os.path.join(input_data_folder, obs_id + ".uvfits")
 
         ss.read(full_uvfits_path, diff=True)
 
@@ -1095,25 +708,6 @@ def make_ssins_wrapper(
     if return_ins_only:
         return ins_dict
 
-    # IGNORE THE REMAINDER
-    # Isn't really used unless making seperate SSINS plots
-    fig = plt.figure(figsize=(12, 7), dpi=300)
-    ax_SSINS_XX = fig.add_subplot()
-
-    make_ssins_plot(
-        fig, ax_SSINS_XX, ins, "XX", title=str(obs_id) + " SSINS: XX z-scores"
-    )
-    out_folder = os.path.join(output_path, str(obs_id) + "_XX_ssins.pdf")
-    fig.savefig(out_folder)
-
-    fig = plt.figure(figsize=(12, 7), dpi=300)
-    ax_SSINS_YY = fig.add_subplot()
-
-    make_ssins_plot(
-        fig, ax_SSINS_YY, ins, "YY", title=str(obs_id) + " SSINS: YY z-scores"
-    )
-    out_folder = os.path.join(output_path, str(obs_id) + "_YY_ssins.pdf")
-    fig.savefig(out_folder)
 
 
 def SSINS_mask_maker(ins, flag_centers=True):
@@ -1205,7 +799,7 @@ def make_ssins_plot(fig, ax, ins, pol, title=""):
     )
 
 
-def EAVILS(uvd_or_data, compute_cross=False):
+def EAVILS(uvd_or_data, compute_cross=True):
     """
     Expected Amplitude of VisibILities Spectra
     Expects data with the format of a numpy array with the following axes order: (bltime, freq, pol)
@@ -1216,11 +810,10 @@ def EAVILS(uvd_or_data, compute_cross=False):
     if isinstance(uvd_or_data, np.ndarray):
         pass
     else:
-        """Ntimes = uvd_or_data.Ntimes
-        Nbls = uvd_or_data.Nbls
-        Nfreqs = uvd_or_data.Nfreqs
-        Npols = uvd_or_data.Npols"""
+
         uvd_or_data = data(uvd_or_data)
+
+    
 
     Ntimes, Nbls, Nfreqs, Npols = uvd_or_data.shape
 
@@ -1249,18 +842,44 @@ def EAVILS(uvd_or_data, compute_cross=False):
 
     return blmean_data, blmean_data_sub, stdv_array, z_score, mean_cross_array
 
+def pad_by(bool_array,pad_by_count,axis=0,pad_beginning_bool=True,spread_flags_count=1):
 
+    empty_pad = np.array([[0,0] for dim in range(len(bool_array.shape))])
+    end_pad = copy.deepcopy(empty_pad)
+    begin_pad = copy.deepcopy(empty_pad)
+    
+    end_pad[axis,1] = 1
+    begin_pad[axis,0] = 1
+
+    for iterations in range(pad_by_count):
+        if iterations<spread_flags_count:
+            bool_array = np.logical_or(
+                        np.pad(bool_array, pad_width=begin_pad, 
+                            mode='constant', constant_values=False),
+                        np.pad(bool_array, pad_width=end_pad, 
+                            mode='constant', constant_values=False)
+                        )
+        else:
+            if pad_beginning_bool:
+                bool_array = np.pad(bool_array, pad_width=begin_pad, 
+                            mode='edge')
+            else:
+                bool_array = np.pad(bool_array, pad_width=end_pad, 
+                            mode='edge')
+    return bool_array
+    
 def EAVILS_variance(
     mean_cross_array,
-    remove_times=None,
+    mask_array=None,
     output_stdv=False,
-    maintain_time_dimension=False,
+    maintain_time_dimension=False
 ):
     """
-    remove_times should be a 1-d boolean array of length Ntimes which will have True for masks and False for no mask.
-    This function allows the calculation of the variance using the mean_cross_array.
-    The output can be changed to be more like a "standard deviation" array by taking the square root.
-    It can also be expanded along its time dimension which can be helpful for shape compatibility
+    This function allows the calculation of the variance using the "mean_cross_array", which records products of visibility magnitudes averaged across baselines.
+    -mean_cross_array should have shape (Ntimes,Ntimes,Nfreqs,Npols).
+    -mask_array should be a boolean array of shape (Ntimes,Nfreqs,Npols) which will have True for masks and False for no mask.
+    -The output can be changed to be more like a "standard deviation" array by taking the square root.
+    -It can also be expanded along its time dimension which can be helpful for shape compatibility
     with other arrays using the maintain_time_dimension=True option
     """
     Ntimes, Ntimes_check, Nfreqs, Npols = mean_cross_array.shape
@@ -1269,26 +888,38 @@ def EAVILS_variance(
             f"Input array has shape {mean_cross_array.shape}, "
             "first two indices should have same length and be the number of included times."
         )
-    if remove_times is None:
-        remove_times = np.zeros(Ntimes, dtype=bool)
-    if len(remove_times) != Ntimes:
+    if mask_array is None:
+        mask_array = np.zeros((Ntimes, Nfreqs, Npols), dtype=bool)
+        
+    
+    if mask_array.shape != (Ntimes,Nfreqs,Npols):
         raise Exception(
-            f"remove_times has length {len(remove_times)} which differs from value of Ntimes, {Ntimes}"
+            f"mask_array has dimensions {mask_array.shape} which differs from expected dimensions, {(Ntimes,Nfreqs,Npols)}"
         )
+    
+    mask_i = mask_array[:, None, :, :]  # Shape: (N_t, 1, N_f, N_p)
+    mask_j = mask_array[None, :, :, :]  # Shape: (1, N_t, N_f, N_p)
+    mask_array = np.logical_or(mask_i, mask_j)  # Shape: (N_t, N_t, N_f, N_p)
 
-    used_Ntimes = Ntimes - sum(remove_times)
+    
+    used_Ntimes = Ntimes - np.trace(mask_array,axis1=0,axis2=1)
 
-    dim1_ind, dim2_ind = np.diag_indices(Ntimes, ndim=2)
-    keep_times = ~remove_times
+    
+    mean_cross_array = np.ma.masked_array(data = mean_cross_array, mask = mask_array)
+    #dim1_ind, dim2_ind = np.diag_indices(Ntimes, ndim=2)
+    #keep_times = ~mask_array
 
     output = (
-        np.sum(
-            mean_cross_array[dim1_ind[keep_times], dim2_ind[keep_times], :, :], axis=0
+        np.trace(
+            mean_cross_array, axis1=0,axis2=1
         )
         / used_Ntimes
-        - np.sum(mean_cross_array[np.ix_(keep_times, keep_times)], axis=(0, 1))
+        - np.sum(mean_cross_array, axis=(0, 1))
         / used_Ntimes**2
     ) * (used_Ntimes / (used_Ntimes - 1))
+    
+    output = output.data
+
     if output_stdv:
         output = np.sqrt(output)
     if maintain_time_dimension:
@@ -1296,16 +927,16 @@ def EAVILS_variance(
     return output
 
 
-# Reads in an options.yml file from the uvfits folder
+# Reads in an options.yml file from the input data folder
 def options_load(
-    uvfits_folder, obs_id, quiet_mode=False, post=False, default_cut_times=(0, -1)
+    input_data_folder, obs_id, quiet_mode=False, post=False, default_cut_times=(1, -1)
 ):
     options_name = "options.yml"
     if post:
         options_name = "options_post.yml"
     try:
         with open(
-            os.path.join(uvfits_folder, options_name), "r"
+            os.path.join(input_data_folder, options_name), "r"
         ) as options_reference_file:
             options_reference = yaml.safe_load(options_reference_file)
 
@@ -1336,97 +967,88 @@ def options_load(
 # Main function which checks for existing outputs before running the script
 def vis_plotting(
     obs_id,
-    plot_types,
-    uvfits_folder="",
+    input_data_folder="",
     output_path="",
     uvd=None,
-    load_options=True,
-    experimental_output_check=True,
-    skip_autos=False,
+    load_options=False,
+    output_check=True,
+    skip_autos=True,
 ):
 
-    print(type(uvd))
-    plot_types = copy.deepcopy(plot_types)
-    if experimental_output_check:
+    
+    
+    if output_check:
         check_path = os.path.join(output_path, "h5_files")
         check_path = os.path.join(check_path, f"{obs_id}_spectra_data_cross.h5")
         if os.path.isfile(check_path):
-            plot_types.remove("spectra")
+            
             print(
-                f"[EXPERIMENTAL OUTPUT CHECKING]; found {check_path}, bypassing spectra outputs"
+                f"[OUTPUT CHECKING]; found {check_path}, bypassing spectra outputs"
             )
+            return 0
 
-    # In general this
-    if plot_types != []:
 
-        obs_id = str(obs_id)
 
-        if load_options:
 
-            options = options_load(uvfits_folder, obs_id)
-        else:
-            print("load_options set to False, options.yml being ignored")
-            options = {}
-        '''
-        # This will cause the positions of the visibilities in the uv plane to be more organized,
-        # takes a long time so avoids unless making movie plots
-        if "movie" in plot_types:
-            conjugate_bool = True
-        else:
-            conjugate_bool = False
-        '''
-        
-        # Reads in the object. Note that this uses the use_ss_as_uvd options,
-        # which reads in as an undiffed ss object,
-        # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
-        # The uvfits_reader will attempt to find a metafits file in the same folder
-        # which it will extract antenna flags from, so try to ensure that uvfits and metafits are in the same folder.
-        if uvd is None:
-            uvd_cross, uvd_autos = my_utils.uvfits_reader(
-                obs_id,
-                uvfits_folder,
-                conjugate_baselines=conjugate_bool,
-                split_autos=True,
-                use_ss_as_uvd=True,
-            )
+    obs_id = str(obs_id)
 
-        if not os.path.exists(output_path):
-            os.makedirs(output_path, mode=0o777)
+    if load_options:
 
-        # This chunk runs the spectra_maker function which generates SSINS and EAVILS outputs
-        ################################################
-        if "spectra" in plot_types:
-            if not skip_autos:
-                spectra_maker(
-                    obs_id=obs_id,
-                    uvfits_folder=uvfits_folder,
-                    output_path=output_path,
-                    uvd_cross=uvd_cross,
-                    uvd_autos=uvd_autos,
-                    options=options,
-                )
-            else:
-                spectra_maker(
-                    obs_id=obs_id,
-                    uvfits_folder=uvfits_folder,
-                    output_path=output_path,
-                    uvd_cross=uvd_cross,
-                    uvd_autos=None,
-                    options=options,
-                )
-        ################################################
-
-        '''if "movie" in plot_types:
-            movie_output_path = os.path.join(output_path, "vis_movies")
-            uv_movie_maker(
-                obs_id=obs_id,
-                uvfits_folder=uvfits_folder,
-                output_path=movie_output_path,
-                uvd=uvd_cross,
-            )'''
-
-        del uvd_cross
-        del uvd_autos
-        return 0
+        options = options_load(input_data_folder, obs_id)
     else:
-        return "already made"
+        print("load_options set to False, options.yml being ignored if it exists")
+        options = {}
+    
+    # This will cause the positions of the visibilities to all be in the same half of the uv-plane along some dividing line. SLow and unnecessary for EAVILS so disabled.
+
+    conjugate_bool = False
+    
+    
+    
+    # Reads in the object. Note that this uses the use_ss_as_uvd options,
+    # which reads in as an undiffed ss object,
+    # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
+    # The uvfits_reader will attempt to find a metafits file in the same folder
+    # which it will extract antenna flags from, so try to ensure that uvfits and metafits are in the same folder.
+    #Update this to handle other file types
+    if uvd is None:
+        uvd_cross, uvd_autos = my_utils.uvfits_reader(
+            obs_id,
+            uvfits_folder=input_data_folder,
+            conjugate_baselines=conjugate_bool,
+            split_autos=True,
+            use_ss_as_uvd=True,
+        )
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, mode=0o777)
+
+    # This chunk runs the spectra_maker function which generates SSINS and EAVILS outputs
+    ################################################
+    
+    #update this to handle other data formats
+    if not skip_autos:
+        spectra_maker(
+            obs_id=obs_id,
+            uvfits_folder=input_data_folder,
+            output_path=output_path,
+            uvd_cross=uvd_cross,
+            uvd_autos=uvd_autos,
+            options=options
+        )
+    else:
+        spectra_maker(
+            obs_id=obs_id,
+            uvfits_folder=input_data_folder,
+            output_path=output_path,
+            uvd_cross=uvd_cross,
+            uvd_autos=None,
+            options=options,
+        )
+    ################################################
+
+    #Being careful with memory hygiene
+    del uvd_cross
+    del uvd_autos
+    return 0
+
