@@ -58,6 +58,7 @@ def spectra_maker(
     old_spectra_type=False,
     options={},
     per_receiver=True,
+    extension='uvfits'
 ):
     obs_id = str(obs_id)
     mwax_switch_obs_id = 1318021528
@@ -79,11 +80,11 @@ def spectra_maker(
     # if not then reads it and uvd_autos in from a file in the given folder
     if uvd_cross is None:
         #update this to be able to handle other types of files
-        uvd_cross, uvd_autos = my_utils.uvfits_reader(
+        uvd_cross, uvd_autos = my_utils.reader(
             obs_id,
-            uvfits_folder=input_data_folder,
+            input_folder=input_data_folder,
             split_autos=True,
-            use_ss_as_uvd=True,
+            use_ss_as_uvd=True,extension=extension
         )
 
     print("Preparing data")
@@ -136,6 +137,7 @@ def spectra_maker(
                 mask_bool=False,
                 time_cuts=time_cuts,
                 flag_centers=not mwax_bool,
+                extension=extension
             )
             ins = ins_dict[bl_type_tag]
 
@@ -645,7 +647,6 @@ def receiver_identify(metafits_location, uvd, return_names=False):
         return rec_mask_dict
 
 
-# WIP
 # Deals with making the SSINS from a variety of input choices
 def make_ssins_wrapper(
     obs_id=None,
@@ -659,8 +660,9 @@ def make_ssins_wrapper(
     override_time_cuts=False,
     assume_already_diffed=False,
     flag_centers=True,
+    extension = "uvfits"
 ):
-    # Either an obs_id and uvfits folder must be provided or an ss object must be provided
+    # Either an obs_id and input file folder must be provided or an ss object must be provided
     print(spectrum_types)
     load_from_file_bool = False
 
@@ -674,9 +676,9 @@ def make_ssins_wrapper(
         if not isinstance(obs_id, str):
             obs_id = str(obs_id)
         ss = SS()
-        full_uvfits_path = os.path.join(input_data_folder, obs_id + ".uvfits")
+        full_input_path = os.path.join(input_data_folder, obs_id + '.'+extension)
 
-        ss.read(full_uvfits_path, diff=True)
+        ss.read(full_input_path, diff=True)
 
     else:
         ss = copy.deepcopy(ss)
@@ -747,56 +749,6 @@ def SSINS_mask_maker(ins, flag_centers=True):
     occ_dict = util.calc_occ(ins_copy, mf, init_flag_occ, lump_narrowband=True)
     return ins_copy, occ_dict
 
-
-# IGNORE THIS
-# Only necessary for saving out seperate SSINS plots
-def make_ssins_plot(fig, ax, ins, pol, title=""):
-    if pol == "XX" or pol == "xx":
-        pol = "XX"
-        pol_ind = 0
-    elif pol == "YY" or pol == "yy":
-        pol = "YY"
-        pol_ind = 1
-    elif pol == "XY" or pol == "xy":
-        pol = "XY"
-        pol_ind = 2
-    elif pol == "YX" or pol == "yx":
-        pol = "YX"
-        pol_ind = 3
-    else:
-        print("polarization given:", pol)
-        print("Not supported!")
-        return -1
-    if title == "":
-        title = pol + " z-scores"
-
-    xticks = np.arange(12, len(ins.freq_array), 50)
-    xticklabels = ["%.0f" % (ins.freq_array[tick] * 10 ** (-6)) for tick in xticks]
-
-    time_interval = round((ins.time_array[1] - ins.time_array[0]) * 86400, 3)
-    yticks = np.arange(0, len(ins.time_array), 5)
-    time_names = np.arange(0, len(ins.time_array) * time_interval, time_interval)
-    yticklabels = ["%.1f" % (time_names[tick]) for tick in yticks]
-
-    # The z-scores are stored in the metric_ms parameter.
-
-    image_plot(
-        fig,
-        ax,
-        ins.metric_ms[:, :, pol_ind],
-        title=title,
-        xticks=xticks,
-        xlabel="Freq (MHz)",
-        xticklabels=xticklabels,
-        yticks=yticks,
-        yticklabels=yticklabels,
-        ylabel="Time (sec)",
-        cmap="coolwarm",
-        midpoint=True,
-        mask_color="black",
-        vmin=-4,
-        vmax=4,
-    )
 
 
 def EAVILS(uvd_or_data, compute_cross=True):
@@ -973,6 +925,7 @@ def vis_plotting(
     load_options=False,
     output_check=True,
     skip_autos=True,
+    extension='uvfits'
 ):
 
     
@@ -983,7 +936,7 @@ def vis_plotting(
         if os.path.isfile(check_path):
             
             print(
-                f"[OUTPUT CHECKING]; found {check_path}, bypassing spectra outputs"
+                f"OUTPUT CHECKING; found {check_path}, bypassing spectra outputs"
             )
             return 0
 
@@ -1008,13 +961,13 @@ def vis_plotting(
     # Reads in the object. Note that this uses the use_ss_as_uvd options,
     # which reads in as an undiffed ss object,
     # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
-    # The uvfits_reader will attempt to find a metafits file in the same folder
+    # The reader will attempt to find a metafits file in the same folder
     # which it will extract antenna flags from, so try to ensure that uvfits and metafits are in the same folder.
-    #Update this to handle other file types
+    # This may not to be updated to better handle other file types (non uvfits files)
     if uvd is None:
-        uvd_cross, uvd_autos = my_utils.uvfits_reader(
+        uvd_cross, uvd_autos = my_utils.reader(
             obs_id,
-            uvfits_folder=input_data_folder,
+            input_folder=input_data_folder,
             conjugate_baselines=conjugate_bool,
             split_autos=True,
             use_ss_as_uvd=True,
@@ -1030,20 +983,22 @@ def vis_plotting(
     if not skip_autos:
         spectra_maker(
             obs_id=obs_id,
-            uvfits_folder=input_data_folder,
+            input_data_folder=input_data_folder,
             output_path=output_path,
             uvd_cross=uvd_cross,
             uvd_autos=uvd_autos,
-            options=options
+            options=options,
+            extension=extension
         )
     else:
         spectra_maker(
             obs_id=obs_id,
-            uvfits_folder=input_data_folder,
+            input_data_folder=input_data_folder,
             output_path=output_path,
             uvd_cross=uvd_cross,
             uvd_autos=None,
             options=options,
+            extension=extension
         )
     ################################################
 

@@ -12,6 +12,7 @@ import yaml
 import copy
 import pandas as pd
 import bidict
+import itertools
 
 import astropy.io.fits as fits
 from astropy.coordinates import Angle
@@ -35,10 +36,12 @@ def freq_range_sort(shape_dict):
 #Expects files to be in a <obs_id>_<suffix> format. 
 #Compares obs_id of these files to a .txt list file with \n as the seperator
 #Returns a bidict that can translate between obs_id and file name.
-def get_filenames(input_directory,list_file,suffix='spectra_data_cross.h5'):
+def get_filenames(input_directory,list_file,suffix='spectra_data_cross.h5',allowed_missing_fraction=0):
 
     with open(list_file,'r') as file:
         obs_id_check_list = file.read().split('\n')
+    obs_id_check_list = [obs_id for obs_id in obs_id_check_list if obs_id.rstrip()!='']
+    
     full_file_list = os.listdir(input_directory)
     full_file_list = [entry for entry in full_file_list if suffix in entry]
     full_file_list = sorted(full_file_list)
@@ -55,6 +58,14 @@ def get_filenames(input_directory,list_file,suffix='spectra_data_cross.h5'):
         
         
         filename_dict[obs_id] = filename
+    missing_list = []
+    missing_list = [obs_id for obs_id in obs_id_check_list if obs_id not in filename_dict.keys()]
+                    
+    if len(missing_list)>0:
+        if len(missing_list)/len(obs_id_check_list) > allowed_missing_fraction:
+            raise Exception(f'missing h5 files in {input_directory}; expected:{len(obs_id_check_list)}, found {len(filename_dict)}. Missing: {missing_list}')
+        else: 
+            print(f'WARNING: missing h5 files in {input_directory}; expected:{len(obs_id_check_list)}, found {len(filename_dict)}. Missing: {missing_list}')
     return bidict.bidict(filename_dict)
 
 #Generates the 'title' which references the number of times and frequencies in a coarse-grain block
@@ -77,7 +88,7 @@ def title_gen(time_dim,freq_dim):
 #clobber overwrites existing processed h5 files where they exist if True.
 #suffix determines which suffix the EAVILS h5 files are expected to have. This shouldn't be changed unless previous steps in the pipeline have been changed
 
-def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,pol_bidict,shape_dict,permanent_flags,bad_first_time=True,pre_flag_on_SSINS_masks=True,clobber=False,suffix='spectra_data_cross.h5',return_output=False):
+def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,pol_bidict,shape_dict,permanent_flags,metafits_folder,bad_first_time=True,pre_flag_on_SSINS_masks=True,clobber=False,suffix='spectra_data_cross.h5',return_output=False,allowed_missing_fraction=0):
     #This chunk sets up several variables based on inputs
     list_title = list_file.split('/')[-1].split('.')[0]
     output_sub_directory = os.path.join(output_directory,list_title)
@@ -91,10 +102,10 @@ def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,po
         else:
             print('Exiting function. Change clobber to True to overwrite existing file.')
             return
-
+    
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
-
-    filename_bidict = get_filenames(input_directory,list_file,suffix=suffix)
+    
+    filename_bidict = get_filenames(input_directory,list_file,suffix=suffix,allowed_missing_fraction=allowed_missing_fraction)
     first_iteration_bool=True
     per_channel_abs_means_dict = {'times':[]}
     for freq_range in sorted_freq_ranges:
@@ -117,7 +128,7 @@ def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,po
             
             freq_array = np.array(hf['blmean'].attrs['freq_array'])
             #Establishes the frequency information used throughout the funbction
-            if  first_iteration_bool:
+            if first_iteration_bool:
                 first_filename = filename
                 freq_array_default = freq_array
                 range_ind_dict = {}
@@ -202,9 +213,10 @@ def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,po
     
             
     if not os.path.exists(output_sub_directory):
-        os.makedirs(output_sub_directory, mode=0o777)     
+        os.makedirs(output_sub_directory, mode=0o777)
     
-    
+    #Generate a pointing info dict to save per obs_id pointing info
+    pointing_info_dict = pointing_identification([metafits_folder], obs_id_list = list(filename_bidict.keys()))
 
     #Saves out processed data to h5 file
     with h5py.File(h5_name, "w") as hf:
@@ -214,14 +226,17 @@ def process_data(list_file,input_directory,output_directory,time_dim,freq_dim,po
             
             save_data = [(freq_range,statistics_dict[freq_range]) for freq_range in statistics_dict.keys()]
             group = hf.create_group(obs_id)
-            
+
+            for pointing_info_key in pointing_info_dict[obs_id]:
+                group.attrs[pointing_info_key] = pointing_info_dict[obs_id][pointing_info_key]
             for (freq_range, dct) in save_data:
                 subgroup = group.create_group(freq_range)
                 subgroup.attrs['df'] = dct['df']
+                
                 for key in dct.keys():
                     if key!='df':
                         dset = subgroup.create_dataset(key,data=dct[key])
-                    
+    print(f'saving {h5_name}, {len(filename_bidict)} observations processed')  
     
     if return_output==True:
         return output_data
@@ -321,14 +336,20 @@ def coarse_grain(arr, block_rows, block_cols, return_same_shape=False, scale_by_
             block_means *= np.sqrt(block_counts)
         block_values = block_means
     if not return_same_shape:
-        return block_means
+        return block_values
 
     # Expand and trim to original shape
     expanded = np.repeat(
-        np.repeat(block_means, block_rows, axis=0),
+        np.repeat(block_values, block_rows, axis=0),
         block_cols, axis=1
     )
     return expanded[:rows, :cols]
+
+def add_1D_mask(array, mask):
+    mask= mask[np.newaxis,:,np.newaxis]
+    mask = mask*np.ones(array.shape)
+    return np.ma.masked_array(data = array, mask = mask)
+
 
 #Extracts EAVILS spectrum data and SSINS mask from an already opened h5 file. 
 #pre_flag_on_SSINS_masks uses the previously generated SSINS mask for each EAVILS spectrum to exclude that data from calculations of the mean and estimated standard deviation. It assumes the SSINS masks have been propagated in polarization which is generally the case.
@@ -339,7 +360,6 @@ def extract_from_h5(hf,pre_flag_on_SSINS_masks,start_time_index=0):
 
         
     SSINS_mask = vis_plt.pad_by(SSINS_mask,1)
-
     if pre_flag_on_SSINS_masks:
         mask_array=SSINS_mask
     else:
@@ -350,6 +370,7 @@ def extract_from_h5(hf,pre_flag_on_SSINS_masks,start_time_index=0):
                         output_stdv=True,
                         maintain_time_dimension=True
                     )
+    corrected_stdv_array = corrected_stdv_array/np.sqrt(hf['blmean'].attrs['Nbls'])
     
 
     
@@ -357,13 +378,18 @@ def extract_from_h5(hf,pre_flag_on_SSINS_masks,start_time_index=0):
     if pre_flag_on_SSINS_masks:
         blmean = np.ma.masked_array(data=blmean,mask=SSINS_mask)
     EAVILS = (blmean.data-np.mean(blmean,axis=0)
-             )/(corrected_stdv_array/np.sqrt(hf['blmean'].attrs['Nbls']))
+             )/(corrected_stdv_array)
     EAVILS = EAVILS.data
-    return {'EAVILS':EAVILS,'SSINS_mask':SSINS_mask}
+
+    SSINS = np.array(hf['metric_ms'][start_time_index:,:,:])
+    freq_array = np.array( hf['blmean'].attrs['freq_array'])
+    extracted_dict = {'EAVILS':EAVILS,'SSINS_mask':SSINS_mask,'SSINS':SSINS,'blmean':blmean.data,'stdv':corrected_stdv_array,'freq_array':freq_array}
+    extracted_dict = {key:np.array(extracted_dict[key]) for key in extracted_dict.keys()}
+    return extracted_dict
 
 
 
-#Turns relevant data in the processed data h5 files into per-obs_id arrays, calculates the pol_sub values.
+#Turns data in the processed data h5 files into per-obs_id arrays, calculates the pol_sub values.
 #processed_data_directory is the parent directory for the processed data
 #list_titles is the set of list_titles associated with each combination of night and field of observation
 #time_dim and freq_dim are as described above, size of coarse-graining blocks, here are just important for selecting the correct processed file
@@ -385,6 +411,7 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
     
     sky_field_dict = {}
     source_list_dict = {}
+    pointing_info_dict = {}
     print('creating data arrays')
     first_time_bool=True
     for list_title in list_titles:
@@ -392,7 +419,6 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
         sky_field = sky_field_list_association[list_title]
         print(list_title)
         h5_name = f'{processed_data_directory}/{list_title}/{title}_EAVILS_processed.h5'
-        
         with h5py.File(h5_name, "r") as hf:
             obs_id_sub_list = list(hf.keys())
 
@@ -400,6 +426,7 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
             for obs_id in obs_id_sub_list:
                 sky_field_dict[obs_id] = sky_field
                 source_list_dict[obs_id] = list_title
+                pointing_info_dict[obs_id] = {attr_key:hf[obs_id].attrs[attr_key] for attr_key in hf[obs_id].attrs.keys()}
                 #Expected shape should hold for different frequencies
                 Ntime_blocks, Npols = hf[obs_id][sorted_freq_ranges[0]]['variance'].shape
                 Nfreq_ranges = len(hf[obs_id].keys())
@@ -433,7 +460,7 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
                 array_dict['variance'][obs_id] = var_plot_array
                 array_dict['pol_sub'][obs_id]  = pol_sub_array
                 array_dict['reshaped_SSINS_mask'][obs_id] = reshaped_mask_array
-    return array_dict, dof_ref_dict,sky_field_dict,source_list_dict
+    return array_dict, dof_ref_dict,sky_field_dict,source_list_dict,pointing_info_dict
             
     
     ##########################################################################
@@ -442,14 +469,12 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
 #shape_dict gives the frequency channels where we expect our DTV type RFI
 #array_dict is the result of the create_array_dict function explicated above
 #sky_field_dict and source_list_dict are similarly explicated above
-#metafits_folders is used for extracting pointing information. 
 
-#Returns a pandas dataframe which collects the important data for each measurement into a single pandas dataframe. In other words, for each frequency and time, their is a row with all the input data.
-def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_list_dict,metafits_folders):
+#Returns a pandas dataframe which collects the important data for each measurement into a single pandas dataframe. In other words, for each frequency and time, there is a row with all the input data.
+def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_list_dict,pointing_info_dict):
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     obs_id_list = list(array_dict['variance'].keys())
-    pointing_info_dict = pointing_identification([metafits_folders],obs_id_list)
-    datafr_dict={'obs_id':[],'sky_field':[],'t_block_ind':[],'pointing':[],'pol_sub':[],'SSINS_flagged':[],'pol_sub_flagged':[],'pointing_flagged':[],'source_list':[]}
+    datafr_dict={'obs_id':[],'sky_field':[],'t_block_ind':[],'pointing':[],'pol_sub':[],'SSINS_flagged':[],'pointing_flagged':[],'source_list':[]}
     for pol in pol_bidict.inverse.keys():
         datafr_dict[f'variance_{pol}']=[]
     for freq_range in sorted_freq_ranges:
@@ -477,7 +502,6 @@ def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_lis
             pol_sub_mini_list = (array_dict['pol_sub'][obs_id][:,freq_range_ind,0])
             
             datafr_dict['pol_sub']+=list(pol_sub_mini_list)
-            datafr_dict['pol_sub_flagged']+=[False for i in range(Ntime_blocks)]
             datafr_dict['pointing_flagged']+=[False for i in range(Ntime_blocks)]
         
         
@@ -487,8 +511,8 @@ def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_lis
     return datafr
 
 
-#This adds the column for the estimated pol_sub standard deviation, necessary for scaling thresholds. This must be calculated independently for each sky field and array configuration. Its critical that this is done correctly for expected results.
-def add_pol_sub_stdv(datafr,estimated_pol_sub_stdv):
+#This adds the column for the estimated pol_sub standard deviation, necessary for scaling thresholds. This must be calculated independently for each sky field and array configuration. Its critical that this is done correctly for good results.
+def add_pol_sub_stdv(datafr,estimated_pol_sub_stdv,threshold):
     datafr=copy.deepcopy(datafr)
     datafr['pol_sub_stdv'] = np.nan
     
@@ -500,13 +524,15 @@ def add_pol_sub_stdv(datafr,estimated_pol_sub_stdv):
     missing_values = np.sum(pd.isna(datafr['pol_sub_stdv']))
     if missing_values>0:
         raise Exception(f'Missing {missing_values} values. Please ensure that estimated_pol_sub_stdv input contains all sky_fields and freq_ranges included in the datafr')
+
+    datafr['pol_sub_flagged'] = np.abs(datafr['pol_sub'])>(datafr['pol_sub_stdv']*threshold)
     return datafr
 
 
-#This calculates per pointing stats for each list_title, including how many pol_sub measurements crossed the thrshold set, as well as the scaled absolute mean (scaled according to the expected mean and variance for a folded normal distribution, and then the same calculation with threshold crossing measurements removed.
+#This calculates per pointing stats for each list_title, including how many pol_sub measurements crossed the thrshold set, as well as the scaled absolute mean (scaled according to the expected mean and variance for a folded normal distribution), and then the same calculation with threshold crossing measurements removed.
 def find_per_pointing_stats(datafr,shape_dict,list_titles,threshold):
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
-    datafr['pol_sub_flagged'] = np.abs(datafr['pol_sub'])>(datafr['pol_sub_stdv']*threshold)
+
     all_pointings = np.unique(datafr['pointing'])
 
     
@@ -545,20 +571,24 @@ def find_per_pointing_stats(datafr,shape_dict,list_titles,threshold):
     ###################################
 
 #Creates a long, detailed plot showing much of the data calculated in functions above.
-#The inputs have mostly been previously documented, with the exception of:
-#time_buffer, which provides 
-def create_plots(list_file,array_dict,per_pointing_stats,dof_ref_dict,input_directory,processed_data_directory,time_dim,freq_dim,shape_dict,sky_field_list_association,metafits_folders,pol_bidict,threshold,estimated_pol_sub_stdv,permanent_flags,time_buffer, bad_first_time=True,pre_flag_on_SSINS_masks=True,abs_mean_per_obs_id_threshold = 5, abs_mean_per_pt_threshold = 5,integration_time=2,suffix='spectra_data_cross.h5'):
+#This function could use more documentation
+def create_plots(list_file,array_dict,dof_ref_dict,input_directory,processed_data_directory,time_dim,freq_dim,shape_dict,sky_field_list_association,pointing_info_dict,pol_bidict,permanent_flags,time_buffer,prelim_mode=True,threshold=None,estimated_pol_sub_stdv=None,per_pointing_stats=None, output_directory=None, bad_first_time=True,pre_flag_on_SSINS_masks=True,abs_mean_per_obs_id_threshold = 5, abs_mean_per_pt_threshold = 5,integration_time=2,suffix='spectra_data_cross.h5',plot_instructions=None,display_pointing_changes=True,split_on_pointings=False,allowed_missing_fraction=0.1,display_stats=True,restricted_list=None, line_plot_freq_ranges = None,raster_num_labels=False,show=False):
+    if prelim_mode==False:
+        if threshold is None:
+            raise Exception('When not run in preliminary mode create_plots expects an argument for threshold.')
+        if estimated_pol_sub_stdv is None:
+            raise Exception('When not run in preliminary mode create_plots expects an argument for estimated_pol_sub_stdv.')
+    if per_pointing_stats is None:
+        display_stats=False
     title = title_gen(time_dim,freq_dim)
     list_title = list_file.split('/')[-1].split('.')[0]
-    
-    output_sub_directory = os.path.join(processed_data_directory,list_title)
-    filename_bidict = get_filenames(input_directory, list_file,suffix=suffix)
+    if output_directory is None:
+        output_directory = os.path.join(processed_data_directory,list_title)
+    if not restricted_list is None:
+        allowed_missing_fraction=1
+    filename_bidict = get_filenames(input_directory, list_file,suffix=suffix,allowed_missing_fraction=allowed_missing_fraction)
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
-    
-
-
-    #obs_id_list = []
-    
+  
     sky_field_dict = {}
     source_list_dict = {}
     
@@ -569,30 +599,28 @@ def create_plots(list_file,array_dict,per_pointing_stats,dof_ref_dict,input_dire
     h5_name = f'{processed_data_directory}/{list_title}/{title}_EAVILS_processed.h5'
     plot_arrays_dict = {}
     
-    with h5py.File(h5_name, "r") as hf:
-        obs_id_list = list(hf.keys())
+    
+    obs_id_list = list(filename_bidict.keys())
     obs_id_list = sorted(obs_id_list)
-    pointing_info_dict = pointing_identification([metafits_folders],obs_id_list)
+    if not restricted_list is None:
+        obs_id_list = [obs_id for obs_id in obs_id_list if obs_id in restricted_list]
+        restricted_tag = 'restricted'
+    else:
+        restricted_tag=''
     
     #Update: this chunk should instead be saved as an attribute for the processed h5 file
     
 
-    for filename in os.listdir(input_directory):
-        if 'spectra_data_cross.h5' in filename and obs_id_list[0] in filename:
+    freq_array = None
+    for obs_id,filename in filename_bidict.items():
+        if freq_array is None:
+            if 'spectra_data_cross.h5' in filename and obs_id_list[0] in filename:
+                
+                with h5py.File(os.path.join(input_directory,filename), "r") as hf:
+                    freq_array = hf['blmean'].attrs['freq_array']
 
-            with h5py.File(os.path.join(input_directory,filename), "r") as hf:
-                freq_array = hf['blmean'].attrs['freq_array']
     
-    #This chunk creates a list of positions in figure coordinates determining where to plot each subfigure based on obs_id number
-    positions = [int(obs_id)-int(obs_id_list[0]) for obs_id in obs_id_list]
-    full_t_length = positions[-1]+time_buffer
-    positions.append(full_t_length)
-    positions = 1-np.array(positions)/full_t_length
-    
-    goal_aspect = .65
-    
-    
-    
+  
     
     xticks = my_utils.freq_ind_finder(freq_array,sorted_freq_mins)
     
@@ -602,404 +630,639 @@ def create_plots(list_file,array_dict,per_pointing_stats,dof_ref_dict,input_dire
                     ]
     
     
+    if plot_instructions is None:
+        if prelim_mode:
+            plot_instructions =  [('EAVILS','XX','raster',1), 
+                                  ('SSINS','XX','raster',1),
+                                  ('EAVILS','YY','raster',1),
+                                  ('SSINS','YY','raster',1),
+                                  ('SSINS mask','XX','raster',1)
+                                 ]
+        else:
+            plot_instructions =  [
+                                  ('variance','XX','raster',1),
+                                  ('SSINS','XX','raster',1),
+                                  ('EAVILS','XX','raster',1), 
+                                  ('pol_sub','XX-YY','line_plot',2),
+                                  ('SSINS mask','XX','raster',1),
+                                  ('EAVILS','YY','raster',1),
+                                  ('SSINS','YY','raster',1),
+                                  ('variance','YY','raster',1)
+                                 ]
+        
+        print(f'Using default plot_instructions:{plot_instructions}')
+
     
-    
-    data_pol_order = [('variance','XX'),
-                      ('SSINS','XX'),
-                      ('EAVILS','XX'), 
-                      ('pol_sub','XX-YY'),
-                      ('SSINS mask','XX'),
-                      ('EAVILS','YY'),
-                      ('SSINS','YY'),
-                      ('variance','YY')
-                     ]
-    
-    plot_types = ['raster',
-                  'raster',
-                  'raster',
-                  'line_plot',
-                  'raster',
-                  'raster',
-                  'raster',
-                  'raster']
-    
-    col_width_multipliers = [ 1,
-                              1,
-                              1,
-                              2,
-                              1,
-                              1,
-                              1,
-                              1]
+    col_width_multipliers = [entry[3] for entry in  plot_instructions]
                   
     
-    #default_cmap = plt.cm.coolwarm
-    #default_cmap.set_bad('red')
-    color_dict = {'EAVILS':'coolwarm','EAVILS_coarse':'coolwarm', 'SSINS':'coolwarm', 
-                  'sigma':'coolwarm', 'probability':'viridis_r', 'variance':'use_sigma',
+
+    color_dict = {'EAVILS':'coolwarm', 'SSINS':'coolwarm', 
+                  'sigma':'coolwarm', 'probability':'viridis_r', 'variance':'coolwarm',
                   'SSINS mask':'Greens','pol_sub':'coolwarm'}
     
-    vlims_dict = {'EAVILS':(-5,5),'EAVILS_coarse':(-5,5), 'SSINS':(-5,5), 
+    vlims_dict = {'EAVILS':(-5,5), 'SSINS':(-5,5), 
                   'sigma':(-5,5), 'probability':(0,1), 'variance':(0,2),
                   'SSINS mask':(0,1),'pol_sub':(-5,5)}
     
     
-        
-        
-    
-    
-    row_count = (int(obs_id_list[-1])-int(obs_id_list[0]))/time_buffer
-    col_count = sum(col_width_multipliers)
-    size_factor=2
-    fig_height = row_count*size_factor
-    fig_width = col_count*size_factor/goal_aspect
+    pointing_change_dict={}
 
-    fig = plt.figure(
-        figsize=(
-            fig_width,
-            fig_height),dpi=300)
-    
-    fig_width, fig_height = fig.get_size_inches()
-    title_y = 1 + (0.7 / fig_height) 
-    plt.suptitle(f'{list_title}, time averaging={time_dim*integration_time} sec',y=title_y,fontsize=10*size_factor)
-    column_width = 1/col_count
-    
-    prev_pointing = -10**6
-    for ind, obs_id in enumerate(obs_id_list):
+    obs_id_list_split_dict = {}
+    for obs_id in obs_id_list:
+        pointing = pointing_info_dict[obs_id]['pointing']
+        try:
+
+            obs_id_list_split_dict[pointing].append(obs_id)
+        except KeyError:
+            obs_id_list_split_dict[pointing]=[obs_id]
+
+    obs_id_list_split = []
+    for pointing,sub_list in obs_id_list_split_dict.items():
+        obs_id_list_split.append(sub_list)
+        pointing_change_dict[pointing] = min(sub_list)
         
-        current_pointing = pointing_info_dict[obs_id]['pointing']
-        if current_pointing!=prev_pointing:
-            print(f'pointing = {current_pointing}')
-            pointing_change_bool=True
-        else:
-            pointing_change_bool=False
+    if split_on_pointings:
+        obs_id_list_collection = obs_id_list_split
+    else:
+        obs_id_list_collection = [obs_id_list]
+
+    
+    for obs_id_sub_list in obs_id_list_collection:
+
+
+
+        #This chunk creates a list of positions in figure coordinates determining where to plot each subfigure based on obs_id number
+        positions = [int(obs_id)-int(obs_id_sub_list[0]) for obs_id in obs_id_sub_list]
+        full_t_length = positions[-1]+time_buffer
+        positions.append(full_t_length)
+        positions = 1-np.array(positions)/full_t_length
+        
+        goal_aspect = .65
+        
+        row_count = (int(obs_id_sub_list[-1])-int(obs_id_sub_list[0]))/time_buffer
+
+        col_count = sum(col_width_multipliers)
+        size_factor=2
+        fig_height = row_count*size_factor
+        fig_width = col_count*size_factor/goal_aspect
+    
+        fig = plt.figure(
+            figsize=(
+                fig_width,
+                fig_height),dpi=300)
+        
+        fig_width, fig_height = fig.get_size_inches()
+        title_y = 1 + (0.7 / fig_height) 
+
+
+        column_width = 1/col_count
+        
+        prev_pointing = -1 # setting to an arbitrary number that will never be an obs_id
+        
+        for ind, obs_id in enumerate(obs_id_sub_list):
             
-        print(obs_id)
-        
-        current_arrays_dict = {}
-        
-        filename = filename_bidict[obs_id]
-        #with h5py.File(f'/Volumes/Data3/elillesk/data_and_analysis/vis_plt_outputs/nichole_list/h5_files/{obs_id}_spectra_data_cross.h5', "r") as hf:
-        
-        with h5py.File(os.path.join(input_directory,filename), "r") as hf:
-            dataset_names = list(hf.keys())
-            #update
-            if bad_first_time:
-                start_time_index=1
+            current_pointing = pointing_info_dict[obs_id]['pointing']
+            if current_pointing!=prev_pointing:
+                print(f'pointing = {current_pointing}')
+                pointing_change_bool=True
             else:
-                start_time_index=0
-            freq_array = hf['blmean'].attrs['freq_array']
-            
-            
-    
-    
-            extracted_dict = extract_from_h5(hf,pre_flag_on_SSINS_masks=pre_flag_on_SSINS_masks,start_time_index=start_time_index)
-            EAVILS = extracted_dict['EAVILS']
-            SSINS_mask = extracted_dict['SSINS_mask']
-            
-            
-            
-    
-    
-            current_arrays_dict['EAVILS'] = EAVILS  
-            
-            '''EAVILS_coarse = np.full(EAVILS.shape,np.nan)
-            for pol_ind in range(4):
-                EAVILS_coarse[:,:,pol_ind] = coarse_grain(EAVILS[:,:,pol_ind],time_dim,1,return_same_shape=True,scale_by_sqrt_n=True)
-                                                      
-            current_arrays_dict['EAVILS_coarse'] = EAVILS_coarse'''
-            current_arrays_dict['SSINS'] = np.array(hf['metric_ms'][start_time_index:,:,:])
-            current_arrays_dict['SSINS mask'] = np.array(hf['mask'][start_time_index:,:,:])
-            
-    
-        for stat_type in array_dict.keys():
-            current_arrays_dict[stat_type] = array_dict[stat_type][obs_id]
-        
-    
-        #update
-        var_array =  array_dict['variance'][obs_id]
-                   
-        means_array = np.full(var_array.shape,np.nan)
-    
-    
-        current_arrays_dict['probability'] = np.full(var_array.shape,np.nan)
-        for f_range_ind, freq_range in enumerate(sorted_freq_ranges):
-            dof = dof_ref_dict[freq_range]
-            
-            current_arrays_dict['probability'][:,f_range_ind,:] =  scipy.stats.chi2.sf(var_array[:,f_range_ind,:]*dof, df=dof)
-    
-        current_arrays_dict['sigma'] = scipy.stats.norm.isf(current_arrays_dict['probability'])
-        
-        
-        current_arrays_dict['variance'] = np.ma.masked_array(data=current_arrays_dict['variance'],mask=current_arrays_dict['reshaped_SSINS_mask'])
-
-
-        pol_sub = array_dict['pol_sub'][obs_id]
-        current_arrays_dict['pol_sub'] = np.ma.masked_array(data=pol_sub,mask=current_arrays_dict['reshaped_SSINS_mask'])
-        
-        plot_arrays_dict[obs_id] = current_arrays_dict
-        
-        col_ind = 0
-        for data_pol,plot_type,col_width_multiplier in zip(data_pol_order,plot_types,col_width_multipliers):
-            data_title, pol = data_pol
-            current_array = current_arrays_dict[data_title] 
-            Ntime_blocks,Nfreq_channels,Npols = current_array.shape
-            if data_title in ['sigma','variance','probability','pol_sub']:
-                blocked_bool = True
+                pointing_change_bool=False
                 
-            elif data_title in ['SSINS','EAVILS','SSINS mask','EAVILS_coarse']:
-                blocked_bool = False
-        
-            else:
-                raise Exception(f'Unrecognized data title{data_title}')    
-    
-    
-                
-            if blocked_bool:
-                height = size_factor*Ntime_blocks*time_dim/full_t_length
-            else:
-                height = size_factor*Ntime_blocks/full_t_length
-                if data_title!='SSINS mask':
+            print(obs_id)
+            
+            current_arrays_dict = {}
+            
+            filename = filename_bidict[obs_id]
 
-                    permanent_flags_extended = permanent_flags[np.newaxis,:,np.newaxis]
-                    permanent_flags_extended = permanent_flags_extended*np.ones(current_array.shape)
-                    current_array = np.ma.array(
-                        current_array,
-                        mask=permanent_flags_extended
-                        )
+            with h5py.File(os.path.join(input_directory,filename), "r") as hf:
+                dataset_names = list(hf.keys())
+
+                if bad_first_time:
+                    start_time_index=1
+                else:
+                    start_time_index=0
+                freq_array = hf['blmean'].attrs['freq_array']
+                
+                
+        
+        
+                extracted_dict = extract_from_h5(hf,pre_flag_on_SSINS_masks=pre_flag_on_SSINS_masks,start_time_index=start_time_index)
+                EAVILS = extracted_dict['EAVILS']
+                SSINS_mask = extracted_dict['SSINS_mask']
+                
+                
+                
+        
+        
+                current_arrays_dict['EAVILS'] = EAVILS  
+                
+
+                current_arrays_dict['SSINS'] = np.array(hf['metric_ms'][start_time_index:,:,:])
+                current_arrays_dict['SSINS mask'] = np.array(hf['mask'][start_time_index:,:,:])
+                
+        
+            for stat_type in array_dict.keys():
+                current_arrays_dict[stat_type] = array_dict[stat_type][obs_id]
+            
+        
+
+            var_array =  array_dict['variance'][obs_id]
+                       
+            means_array = np.full(var_array.shape,np.nan)
+        
+        
+            current_arrays_dict['probability'] = np.full(var_array.shape,np.nan)
+            for f_range_ind, freq_range in enumerate(sorted_freq_ranges):
+                dof = dof_ref_dict[freq_range]
+                
+                current_arrays_dict['probability'][:,f_range_ind,:] =  scipy.stats.chi2.sf(var_array[:,f_range_ind,:]*dof, df=dof)
+        
+            current_arrays_dict['sigma'] = scipy.stats.norm.isf(current_arrays_dict['probability'])
+            
+            
+            current_arrays_dict['variance'] = np.ma.masked_array(data=current_arrays_dict['variance'],mask=current_arrays_dict['reshaped_SSINS_mask'])
     
     
-            top = positions[ind]
+            pol_sub = array_dict['pol_sub'][obs_id]
+            current_arrays_dict['pol_sub'] = np.ma.masked_array(data=pol_sub,mask=current_arrays_dict['reshaped_SSINS_mask'])
             
-            bottom = top - height  # convert top position to bottom for `add_axes`
+            plot_arrays_dict[obs_id] = current_arrays_dict
             
-            if col_ind==0:
-                width = height
-            if pol in pol_bidict.inverse.keys():
-                pol_ind = pol_bidict.inverse[pol]
-            else:
-                polA, polB, = pol.split('-')
-                pol_ind = pol_bidict.inverse[polA]
+            col_ind = 0
+            for data_title, pol,plot_type,col_width_multiplier in plot_instructions:
+                
+                current_array = current_arrays_dict[data_title] 
+                Ntime_blocks,Nfreq_channels,Npols = current_array.shape
+                if data_title in ['sigma','variance','probability','pol_sub']:
+                    blocked_bool = True
+                    
+                elif data_title in ['SSINS','EAVILS','SSINS mask']:
+                    blocked_bool = False
             
-            ax = fig.add_axes([column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height])  # [left, bottom, width, height]
-            default_aspect = Ntime_blocks/Nfreq_channels
-            aspect = goal_aspect/default_aspect
-            
-            if type(color_dict[data_title])==str:
-                if 'use' in color_dict[data_title]:
-                    color_data_title = color_dict[data_title].split('_')[-1]
+                else:
+                    raise Exception(f'Unrecognized data title{data_title}')    
+        
+        
+                    
+                if blocked_bool:
+                    height = size_factor*Ntime_blocks*time_dim/full_t_length
+                else:
+                    height = size_factor*Ntime_blocks/full_t_length
+                    if data_title!='SSINS mask':
+    
+                        permanent_flags_extended = permanent_flags[np.newaxis,:,np.newaxis]
+                        permanent_flags_extended = permanent_flags_extended*np.ones(current_array.shape)
+                        current_array = np.ma.array(
+                            current_array,
+                            mask=permanent_flags_extended
+                            )
+        
+        
+                top = positions[ind]
+                
+                bottom = top - height  # convert top position to bottom for `add_axes`
+                
+                if col_ind==0:
+                    width = height
+                if pol in pol_bidict.inverse.keys():
+                    pol_ind = pol_bidict.inverse[pol]
+                else:
+                    polA, polB, = pol.split('-')
+                    pol_ind = pol_bidict.inverse[polA]
+                
+                ax = fig.add_axes([column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height])  # [left, bottom, width, height]
+                default_aspect = Ntime_blocks/Nfreq_channels
+                aspect = goal_aspect/default_aspect
+                
+                if type(color_dict[data_title])==str:
+                    if 'use' in color_dict[data_title]:
+                        color_data_title = color_dict[data_title].split('_')[-1]
+                    else:
+                        color_data_title = data_title
                 else:
                     color_data_title = data_title
-            else:
-                color_data_title = data_title
+                    
+                cmap = color_dict[color_data_title]
                 
-            cmap = color_dict[color_data_title]
-            
-            vmin,vmax = vlims_dict[color_data_title]
-            if color_data_title==data_title:
-                color_array = copy.deepcopy(current_array)
-            else:
-                color_array = current_arrays_dict[color_data_title] 
-                
-            #Deals with infs in color array
-            color_array[color_array>=vmax]=vmax
-            color_array[color_array<=vmin]=vmin
-            if plot_type=='raster':
-                ax.imshow(color_array[:,:,pol_ind],cmap=cmap,vmin=vmin,vmax=vmax,aspect=aspect)
+                vmin,vmax = vlims_dict[color_data_title]
+                if color_data_title==data_title:
+                    color_array = copy.deepcopy(current_array)
+                else:
+                    color_array = current_arrays_dict[color_data_title] 
+                    
+                #Deals with infs in color array
+                color_array[color_array>=vmax]=vmax
+                color_array[color_array<=vmin]=vmin
                 if blocked_bool:
-                    for (i, j), z in np.ndenumerate(current_array[:,:,pol_ind]):
-                        ax.text(j, i, '{:0.1f}'.format(z), ha='center', va='center',size=1*size_factor)
-
-            
-            elif plot_type=='line_plot':
-                max_range = 7.5
-                offsets=[]
-                
-                for f_range_ind,freq_range in enumerate(sorted_freq_ranges):
-                    offset = f_range_ind*max_range*2
-                    offsets.append(offset)
-                    t_spots = np.arange(Ntime_blocks,0,-1)
-                    
-                    ax.axvline(x=offset-threshold,color='black',linewidth=.5,linestyle='--')
-                    ax.axvline(x=offset,linewidth=.35,color='black')
-                    ax.axvline(x=offset+threshold,color='black',linewidth=.5,linestyle='--')
-                    
-                    if data_title=='pol_sub':
-                        values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*current_array[:,f_range_ind,pol_ind]
-                        
-                    else:
-                        raise Exception(f'{data_title} incompatible with {plot_type}')
-                    line, = ax.plot(-values+offset,t_spots,linewidth=2)
-                    color = line.get_color()
-                    ax.fill_betweenx(t_spots, offset, -values+offset, 
-                        facecolor=color, alpha=0.3)
-                    
-                    shading_selection = vis_plt.pad_by(np.abs(values)>=threshold,1)[:-1]
-                    ax.fill_betweenx(t_spots, offset, -values+offset, 
-                        facecolor=color, alpha=0.6,where=shading_selection)
-                    
-                    meas_count = np.sum(~values.mask)
-                    folded_mean = np.sqrt(2/np.pi)
-                    folded_var = 1-2/np.pi
-                    abs_mean = np.sqrt(meas_count/folded_var)*(np.mean(np.abs(values))-folded_mean)
-
-
-                    text_size = 7
-                    height_adjustment = .08
-                    
-
-                    if abs_mean>=abs_mean_per_obs_id_threshold:
-                        obs_id_text_box_color = 'red'
-                    else:
-                        obs_id_text_box_color = 'white'
-
-                    
-                    ax.text(offset,0,
-                                ''+'{:0.1f}'.format(abs_mean), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
-                                        alpha=.6, color=obs_id_text_box_color, mutation_aspect=0.5
-                                    ))          
-                                        
-                    text_height = 1 - height_adjustment
-                    
-                    if pointing_change_bool:
-
-                        abs_mean_value_per_pt = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean']
-                        abs_mean_value_per_pt_limited = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean_limited']
-                        flag_count = per_pointing_stats[list_title][freq_range][current_pointing]['flagged_count']
-                        total_count = per_pointing_stats[list_title][freq_range][current_pointing]['total_count']
-
-                        
-                        if abs_mean_value_per_pt>=abs_mean_per_pt_threshold:
-                            text_box_color = 'red'
-                        else:
-                            text_box_color = 'white'
-    
-                        if abs_mean_value_per_pt_limited>=abs_mean_per_pt_threshold:
-                            text_box_color_limited = 'red'
-                        else:
-                            text_box_color_limited = 'white'    
-                            
-                        
-                        
-                        ax.text(offset,text_height,
-                                f'frc: {flag_count}/{total_count}', ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
-                                        alpha=.6, color='white', mutation_aspect=0.5
-                                    ))
-                        ax.text(offset,text_height-height_adjustment,
-                                'abs: '+'{:0.1f}'.format(abs_mean_value_per_pt), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
-                                        alpha=.6, color=text_box_color, mutation_aspect=0.5
-                                    ))
-                        ax.text(offset,text_height-2*height_adjustment,
-                                'abs_l: '+'{:0.1f}'.format(abs_mean_value_per_pt_limited), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
-                                        alpha=.6, color=text_box_color_limited, mutation_aspect=0.5
-                                    ))
-                    
-                ax.set_xlim(min(offsets)-max_range,max(offsets)+max_range)
-                ax.set_ylim(min(t_spots)-.5,max(t_spots)+.5)
-            else:
-                raise Exception(f'{plot_type} not recognized')
-            
-            
-
-            if obs_id == obs_id_list[-1]:
+                    color_array = color_array.data
                 if plot_type=='raster':
-                    if blocked_bool:
-                        ax.set_xticks(np.arange(len(sorted_freq_ranges)), sorted_freq_ranges,size=2.5*size_factor)
-                    else:
-                        
-                        ax.set_xticks(xticks )
-        
-                        ax.set_xlabel("freq (MHz)", fontsize=1 * size_factor)
-                        ax.set_xticklabels(xticklabels, fontsize=4 * size_factor)
-
+                    ax.imshow(color_array[:,:,pol_ind],cmap=cmap,vmin=vmin,vmax=vmax,aspect=aspect)
+                    if blocked_bool and raster_num_labels:
+                        for (i, j), z in np.ndenumerate(current_array[:,:,pol_ind]):
+                            ax.text(j, i, '{:0.1f}'.format(z), ha='center', va='center',size=6*size_factor)
+    
+                
                 elif plot_type=='line_plot':
-                    ax.set_xticks(offsets, sorted_freq_ranges,size=2.5*size_factor)
-            else:
-                ax.set_xticks([])
-    
-            if col_ind==0:
-                if pointing_change_bool:
+                    max_range = 7.5
+                    offsets=[]
                     
-                    fig.add_artist(
-                        lines.Line2D(
-                            [0, 1],
-                            [top, top],
-                            color="magenta",
+                    for f_range_ind,freq_range in enumerate(sorted_freq_ranges):
+                        
+                        if data_title=='pol_sub':
+                            values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*current_array[:,f_range_ind,pol_ind]
+                            values = np.ma.masked_array(data=values,mask=current_array[:,f_range_ind,pol_ind].mask)
+                            
+                        else:
+                            raise Exception(f'{data_title} incompatible with {plot_type}')
+
+                        
+                        
+
+
+                        plot_values=values.data
+                        plot_values = np.append(plot_values, plot_values[-1])
+                                                
+                        offset = f_range_ind*max_range*2
+                        offsets.append(offset)
+                        t_spots = np.arange(Ntime_blocks+1,0,-1)
+                        
+                        ax.axvline(x=offset-threshold,color='black',linewidth=.5,linestyle='--')
+                        ax.axvline(x=offset,linewidth=.35,color='black')
+                        ax.axvline(x=offset+threshold,color='black',linewidth=.5,linestyle='--')
+                        
+                        
+                        line, = ax.plot(-plot_values+offset,t_spots,linewidth=2, drawstyle="steps")
+                        color = line.get_color()
+                        ax.fill_betweenx(t_spots, offset, -plot_values+offset, 
+                            step="post",facecolor=color, alpha=0.15)
+                        
+                        
+                        '''shading_selection = np.abs(plot_values)>=threshold
+                        ax.fill_betweenx(t_spots, offset, -plot_values+offset, 
+                            step="post",facecolor=color, alpha=0.6,where=shading_selection)'''
+
+                        for i in range(len(values)):
+                            if np.abs(values.data[i]) > threshold:
+                                ax.fill_betweenx(
+                                    [t_spots[i], t_spots[i+1]],        
+                                    [-plot_values[i]+offset, -plot_values[i]+offset],          
+                                    [offset, offset],                         
+                                    step='post',
+                                    facecolor=color, 
+                                    alpha=0.4
+                                )
+                                
+                        for i in range(len(values)):
+
+                            if values.mask[i]:
+                                ax.fill_betweenx(
+                                    [t_spots[i], t_spots[i+1]],        
+                                    [-threshold+offset, -threshold+offset],          
+                                    [threshold+offset, threshold+offset],                         
+                                    step='post',
+                                    facecolor='gray', 
+                                    alpha=0.5
+                                )
+
+                        
+                        
+                        meas_count = np.sum(~values.mask)
+                        folded_mean = np.sqrt(2/np.pi)
+                        folded_var = 1-2/np.pi
+                        abs_mean = np.sqrt(meas_count/folded_var)*(np.mean(np.abs(values))-folded_mean)
+                        height_adjustment = .08
+                        if display_stats:
+                            text_size = 7
+                            
+                            
+        
+                            if abs_mean>=abs_mean_per_obs_id_threshold:
+                                obs_id_text_box_color = 'red'
+                            else:
+                                obs_id_text_box_color = 'white'
+        
+                            
+                            ax.text(offset,0,
+                                        ''+'{:0.1f}'.format(abs_mean), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
+                                                alpha=.6, color=obs_id_text_box_color, mutation_aspect=0.5
+                                            ))          
+                                                
+                            text_height = 1 - height_adjustment
+                            
+                            if pointing_change_bool:
+        
+                                abs_mean_value_per_pt = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean']
+                                abs_mean_value_per_pt_limited = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean_limited']
+                                flag_count = per_pointing_stats[list_title][freq_range][current_pointing]['flagged_count']
+                                total_count = per_pointing_stats[list_title][freq_range][current_pointing]['total_count']
+        
+                                
+                                if abs_mean_value_per_pt>=abs_mean_per_pt_threshold:
+                                    text_box_color = 'red'
+                                else:
+                                    text_box_color = 'white'
+            
+                                if abs_mean_value_per_pt_limited>=abs_mean_per_pt_threshold:
+                                    text_box_color_limited = 'red'
+                                else:
+                                    text_box_color_limited = 'white'    
+                                    
+                                
+                                
+                                ax.text(offset,text_height,
+                                        f'frc: {flag_count}/{total_count}', ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
+                                                alpha=.6, color='white', mutation_aspect=0.5
+                                            ))
+                                ax.text(offset,text_height-height_adjustment,
+                                        'abs: '+'{:0.1f}'.format(abs_mean_value_per_pt), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
+                                                alpha=.6, color=text_box_color, mutation_aspect=0.5
+                                            ))
+                                ax.text(offset,text_height-2*height_adjustment,
+                                        'abs_l: '+'{:0.1f}'.format(abs_mean_value_per_pt_limited), ha='center', va='bottom',size=text_size, transform=ax.get_xaxis_transform(),bbox=dict(
+                                                alpha=.6, color=text_box_color_limited, mutation_aspect=0.5
+                                            ))
+                        
+                    ax.set_xlim(min(offsets)-max_range,max(offsets)+max_range)
+                    ax.set_ylim(min(t_spots),max(t_spots))
+                else:
+                    raise Exception(f'{plot_type} not recognized')
+                
+                
+    
+                if obs_id == obs_id_sub_list[-1]:
+                    if plot_type=='raster':
+                        if blocked_bool:
+                            ax.set_xticks(np.arange(len(sorted_freq_ranges)), sorted_freq_ranges,rotation=90,size=10*size_factor)
+                        else:
+                            
+                            ax.set_xticks(xticks )
+            
+                            ax.set_xlabel("freq (MHz)", fontsize=10 * size_factor)
+                            ax.set_xticklabels(xticklabels, fontsize=8 * size_factor)
+    
+                    elif plot_type=='line_plot':
+                        ax.set_xticks(offsets, sorted_freq_ranges,size=16*size_factor)
+                else:
+                    ax.set_xticks([])
+        
+                if col_ind==0:
+                    if pointing_change_bool and display_pointing_changes:
+                        
+                        fig.add_artist(
+                            lines.Line2D(
+                                [0, 1],
+                                [top, top],
+                                color="magenta",
+                            )
                         )
-                    )
-                    mini_text = (
-                        f"PTNG:{round(pointing_info_dict[obs_id]['pointing'],2)},\n"
-                        f"RA:{round(pointing_info_dict[obs_id]['ra'],2)},\n"
-                        f"DEC:{round(pointing_info_dict[obs_id]['dec'],2)}\n"
-                        f"ALT:{round(pointing_info_dict[obs_id]['alt'],2)},\n"
-                        f"AZ:{round(pointing_info_dict[obs_id]['az'],2)}"
-                    )
-                    ax.text(
-                        1.05,
-                        top,
-                        mini_text,
-                        transform=fig.transFigure,
-                        fontsize=6 * size_factor,
-                        verticalalignment="top",
-                        bbox=dict(alpha=0.1, color="magenta"),
-                    )
-            if obs_id == obs_id_list[0]:
-                ax.set_title(f'{data_title}, {pol}')
-            if col_ind==0:
-                ax.set_yticks([0])
-                ax.set_yticklabels([obs_id], fontsize=6 * size_factor)
-                ax.tick_params(axis="y", labelrotation=90)
+                        mini_text = (
+                            f"PTNG:{round(pointing_info_dict[obs_id]['pointing'],2)},\n"
+                            f"RA:{round(pointing_info_dict[obs_id]['ra'],2)},\n"
+                            f"DEC:{round(pointing_info_dict[obs_id]['dec'],2)}\n"
+                            f"ALT:{round(pointing_info_dict[obs_id]['alt'],2)},\n"
+                            f"AZ:{round(pointing_info_dict[obs_id]['az'],2)}"
+                        )
+                        ax.text(
+                            1.05,
+                            top,
+                            mini_text,
+                            transform=fig.transFigure,
+                            fontsize=6 * size_factor,
+                            verticalalignment="top",
+                            bbox=dict(alpha=0.1, color="magenta"),
+                        )
+                if obs_id == obs_id_sub_list[0]:
+                    if data_title=='pol_sub':
+                        data_nice_title='Pol. sub.'
+                    else:
+                        data_nice_title=data_title
+                    ax.set_title(f'{data_nice_title}, {pol}',fontsize=14*size_factor)
+                if col_ind==0:
+                    ax.set_yticks([0])
+                    ax.set_yticklabels([obs_id], fontsize=7.5 * size_factor)
+                    ax.tick_params(axis="y", labelrotation=90)
+    
+                else:
+                    ax.set_yticks([])
+                
+                col_ind+=1
+                
+            prev_pointing = current_pointing
 
-            else:
-                ax.set_yticks([])
-            
-            col_ind+=1
-            
-        prev_pointing = current_pointing
-    
-    pdf_filename = f'{list_title}_{title}_EAVILS.pdf'
-    pdf_filename = os.path.join(output_sub_directory,pdf_filename)
-    print(f'saving {pdf_filename}')
-    plt.savefig(pdf_filename, bbox_inches="tight")
-    
-    plt.close()
-    
-    
-    
-    
-    
-    time_length = time_dim*integration_time
-    
-    fig,ax = plt.subplots(1,1,dpi=400,figsize=(12,4))
-    for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
-        plot_list = []
-        time_list = []
-        for obs_id in obs_id_list:
-            
-            values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*plot_arrays_dict[obs_id]['pol_sub'][:,freq_range_ind,0]
-            plot_list+=list(values)
-            time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
 
-        ax.axhline(y=-threshold,color='black',linewidth=.5,linestyle='--')
-        ax.axhline(y=0,linewidth=.35,color='black')
-        ax.axhline(y=threshold,color='black',linewidth=.5,linestyle='--')
-        line, = ax.plot(time_list,plot_list,linewidth=.5,label=freq_range)
-        color = line.get_color()
-        ax.fill_between(time_list, 0, plot_list, 
-            facecolor=color, alpha=0.3)
+        if split_on_pointings:
+            pointing_tag=current_pointing
+        else:
+            pointing_tag='all'
         
-        shading_selection = vis_plt.pad_by(np.abs(plot_list)>=threshold,1)[:-1]
-        ax.fill_between(time_list, 0, plot_list, 
-            facecolor=color, alpha=0.6,where=shading_selection)
+        plt.suptitle(f'{list_title}, pointing: {pointing_tag}',y=title_y,fontsize=10*size_factor)
+
+        pdf_filename = f'{list_title}_{title}{restricted_tag}_ptng_{pointing_tag}_EAVILS.pdf'
+        pdf_filename = os.path.join(output_directory,pdf_filename)
+        print(f'saving {pdf_filename}')
+        plt.savefig(pdf_filename, bbox_inches="tight")
+        if show:
+            plt.show()
+        plt.close()
+    
+    
+    
+    
+    
+    
+
+    if line_plot_freq_ranges is not None:
+        time_length = time_dim*integration_time
+    
+        fig,axes = plt.subplots(2,1,dpi=400,figsize=(12,4))
+        plotting_pols = ['XX','YY']
+        stretch_factor = 10**2
+        ax = axes[0]
+    
+        for pol in plotting_pols:
+            for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
         
+                if freq_range not in line_plot_freq_ranges:
+                    continue
+            
+    
+                pol_ind=pol_bidict.inverse[pol]
+                plot_list = []
+                time_list = []
+                for obs_id in obs_id_list:
+                    
+                    values = plot_arrays_dict[obs_id]['variance'][:,freq_range_ind,pol_ind]
+                    
+                    plot_list+=list(values)
+                    time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
+        
+    
+                
+                line, = ax.plot(time_list,plot_list,linewidth=.5,label=f'{freq_range}, {pol}')
+                color = line.get_color()
+    
+        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10 )
+        ax.ticklabel_format(useOffset=False, style='plain')
+        ax.set_ylabel("Variance", fontsize=10 )
         ax.set_aspect(200)
-        ax.set_ylim(-10,10)
-    plt.suptitle(f'Pol_sub rescaled')
-    plt.legend()
-    linePlot_filename = f'{list_title}_{title}_linePlot.pdf'
-    linePlot_filename = os.path.join(output_sub_directory,linePlot_filename)
-    plt.savefig(linePlot_filename,bbox_inches="tight")
-    plt.close()
+        ymax = 5
+        ymin = 0
+        yrange = ymax - ymin
+        ax.set_aspect(stretch_factor*20/yrange)
+        ax.set_ylim(ymin,ymax)
+        ax.legend(loc='upper left', prop={'size': 7},framealpha=0.5)
+    
+        for pointing,p_c_obs in pointing_change_dict.items():
+            ax.axvline((int(p_c_obs)), color='magenta', linewidth=1,alpha=.7, linestyle="dotted")
+            ax.text(int(p_c_obs)+4*60, 0, f'ptg: {pointing}', ha='left', va='bottom', transform=ax.get_xaxis_transform(),fontsize=8)
+        
+        ax = axes[1]
+        for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
+            if freq_range not in line_plot_freq_ranges:
+                continue
+            plot_list = []
+            time_list = []
+            for obs_id in obs_id_list:
+                
+                values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*plot_arrays_dict[obs_id]['pol_sub'][:,freq_range_ind,0]
+                
+                plot_list+=list(values)
+                time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
+                
+            
+            ax.axhline(y=-threshold,color='black',linewidth=.5,linestyle='--')
+            ax.axhline(y=0,linewidth=.35,color='black')
+            ax.axhline(y=threshold,color='black',linewidth=.5,linestyle='--')
+            line, = ax.plot(time_list,plot_list,linewidth=.5,label=freq_range)
+            color = line.get_color()
+            ax.fill_between(time_list, 0, plot_list, 
+                facecolor=color, alpha=0.3)
+            
+            shading_selection = vis_plt.pad_by(np.abs(plot_list)>=threshold,1)[:-1]
+            ax.fill_between(time_list, 0, plot_list, 
+                facecolor=color, alpha=0.6,where=shading_selection)
+    
+        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10 )
+        ax.ticklabel_format(useOffset=False, style='plain')
+        ax.set_ylabel("Pol. sub. metric", fontsize=10 )
+        ax.set_aspect(200)
+        ymax = 10
+        ymin = -10
+        yrange = ymax - ymin
+        ax.set_aspect(stretch_factor*20/yrange)
+        ax.set_ylim(ymin,ymax)
+        ax.legend(loc='upper left',framealpha=0.5)
+    
+        for pointing,p_c_obs in pointing_change_dict.items():
+            ax.axvline((int(p_c_obs)), color='magenta', linewidth=1,alpha=.7, linestyle="dotted")
+            ax.text(int(p_c_obs)+4*60, 0, f'ptg: {pointing}', ha='left', va='bottom', transform=ax.get_xaxis_transform(),fontsize=8)
+        
+        plt.suptitle(f'{list_title}')
+        fig.tight_layout() 
+        linePlot_filename = f'{list_title}_{title}{restricted_tag}_linePlot.pdf'
+        linePlot_filename = os.path.join(output_directory,linePlot_filename)
+        plt.savefig(linePlot_filename,bbox_inches="tight")
+        if show:
+            plt.show()
+        plt.close()
+
+def line_plots(list_file,array_dict,dof_ref_dict,processed_data_directory,time_dim,freq_dim,shape_dict,sky_field_list_association,pointing_info_dict,pol_bidict,permanent_flags,time_buffer,prelim_mode=True,threshold=None,estimated_pol_sub_stdv=None,per_pointing_stats=None, output_directory=None, bad_first_time=True,pre_flag_on_SSINS_masks=True,abs_mean_per_obs_id_threshold = 5, abs_mean_per_pt_threshold = 5,integration_time=2,suffix='spectra_data_cross.h5',plot_instructions=None,display_pointing_changes=True,split_on_pointings=False,allowed_missing_fraction=0.1,display_stats=True,restricted_list=None, line_plot_freq_ranges = None,raster_num_labels=False,show=False):
+
+    if line_plot_freq_ranges is not None:
+        time_length = time_dim*integration_time
+    
+        fig,axes = plt.subplots(2,1,dpi=400,figsize=(12,4))
+        plotting_pols = ['XX','YY']
+        stretch_factor = 10**2
+        ax = axes[0]
+    
+        for pol in plotting_pols:
+            for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
+        
+                if freq_range not in line_plot_freq_ranges:
+                    continue
+            
+    
+                pol_ind=pol_bidict.inverse[pol]
+                plot_list = []
+                time_list = []
+                for obs_id in obs_id_list:
+                    
+                    values = plot_arrays_dict[obs_id]['variance'][:,freq_range_ind,pol_ind]
+                    
+                    plot_list+=list(values)
+                    time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
+        
+    
+                
+                line, = ax.plot(time_list,plot_list,linewidth=.5,label=f'{freq_range}, {pol}')
+                color = line.get_color()
+    
+        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10 )
+        ax.ticklabel_format(useOffset=False, style='plain')
+        ax.set_ylabel("Variance", fontsize=10 )
+        ax.set_aspect(200)
+        ymax = 5
+        ymin = 0
+        yrange = ymax - ymin
+        ax.set_aspect(stretch_factor*20/yrange)
+        ax.set_ylim(ymin,ymax)
+        ax.legend(loc='upper left', prop={'size': 7},framealpha=0.5)
+    
+        for pointing,p_c_obs in pointing_change_dict.items():
+            ax.axvline((int(p_c_obs)), color='magenta', linewidth=1,alpha=.7, linestyle="dotted")
+            ax.text(int(p_c_obs)+4*60, 0, f'ptg: {pointing}', ha='left', va='bottom', transform=ax.get_xaxis_transform(),fontsize=8)
+        
+        ax = axes[1]
+        for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
+            if freq_range not in line_plot_freq_ranges:
+                continue
+            plot_list = []
+            time_list = []
+            for obs_id in obs_id_list:
+                
+                values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*plot_arrays_dict[obs_id]['pol_sub'][:,freq_range_ind,0]
+                
+                plot_list+=list(values)
+                time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
+                
+            
+            ax.axhline(y=-threshold,color='black',linewidth=.5,linestyle='--')
+            ax.axhline(y=0,linewidth=.35,color='black')
+            ax.axhline(y=threshold,color='black',linewidth=.5,linestyle='--')
+            line, = ax.plot(time_list,plot_list,linewidth=.5,label=freq_range)
+            color = line.get_color()
+            ax.fill_between(time_list, 0, plot_list, 
+                facecolor=color, alpha=0.3)
+            
+            shading_selection = vis_plt.pad_by(np.abs(plot_list)>=threshold,1)[:-1]
+            ax.fill_between(time_list, 0, plot_list, 
+                facecolor=color, alpha=0.6,where=shading_selection)
+    
+        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10 )
+        ax.ticklabel_format(useOffset=False, style='plain')
+        ax.set_ylabel("Pol. sub. metric", fontsize=10 )
+        ax.set_aspect(200)
+        ymax = 10
+        ymin = -10
+        yrange = ymax - ymin
+        ax.set_aspect(stretch_factor*20/yrange)
+        ax.set_ylim(ymin,ymax)
+        ax.legend(loc='upper left',framealpha=0.5)
+    
+        for pointing,p_c_obs in pointing_change_dict.items():
+            ax.axvline((int(p_c_obs)), color='magenta', linewidth=1,alpha=.7, linestyle="dotted")
+            ax.text(int(p_c_obs)+4*60, 0, f'ptg: {pointing}', ha='left', va='bottom', transform=ax.get_xaxis_transform(),fontsize=8)
+        
+        plt.suptitle(f'{list_title}')
+        fig.tight_layout() 
+        linePlot_filename = f'{list_title}_{title}{restricted_tag}_linePlot.pdf'
+        linePlot_filename = os.path.join(output_directory,linePlot_filename)
+        plt.savefig(linePlot_filename,bbox_inches="tight")
+        if show:
+            plt.show()
+        plt.close()
 
 
 
