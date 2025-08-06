@@ -39,93 +39,84 @@ def mwa_pointings(az, alt, tolerance=0.01):
 def reader(
     obs_id,
     input_folder="",
-    conjugate_baselines=False,
     split_autos=False,
-    options={},
-    use_ss_as_uvd=False,
     metafits_ant_check=True,
-    detect_time_cuts=True,extension='uvfits',input_cut_antennas=None
+    detect_time_cuts=True,
+    extension='uvfits'
 ):
 
     time_cuts=None
     obs_id = str(obs_id)
     fits_file = obs_id + "."+extension
     read_file = os.path.join(input_folder, fits_file)
-    print("reading ", read_file)
-    if not use_ss_as_uvd:
-        uvd = UVData.from_file(read_file, use_future_array_shapes=True)
 
-    else:
-        print("Reading in as a SSINS ss object")
-        # Note: we are calling this object 'uvd' for code functionality, but it is in fact a ss object!
-        uvd = SS()
-        uvd.read(read_file, diff=False,flag_init=True)
+    
+    print("Reading in ", read_file," as an undiffed SSINS ss object")
+    ss = SS()
+    ss.read(read_file, diff=False,flag_init=True)
         
     if detect_time_cuts:
-        flag_reshaped = uvd.flag_array.reshape((uvd.Ntimes,uvd.Nbls,uvd.Nfreqs,uvd.Npols))
+        #Detects times flagged as bad. Will error if these are not the beginning and/or end times
+        flag_reshaped = ss.flag_array.reshape((ss.Ntimes,ss.Nbls,ss.Nfreqs,ss.Npols))
         bad_time_flags = np.all(flag_reshaped,axis=(1,2,3))
         good_times = np.arange(len(bad_time_flags))[~bad_time_flags]
         time_cuts = (min(good_times),max(good_times+1))
         if not time_cuts[1]-time_cuts[0] ==len(good_times):
-            raise Exception(f'Unreliable time flags found for {read_file}. Expecting only beginning and ending times to be flagged, not middle times. Total number of time indices: {uvd.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}')
+            raise Exception(f'Unreliable time flags found for {read_file}. Expecting only beginning and ending times to be flagged, not middle times. Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}')
         else:
-            print(f'Total number of time indices: {uvd.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}. time_cuts set to {time_cuts}')
-    if "time_cuts" in options.keys():
-        time_cuts = options["time_cuts"]
-        print(f'Options given. Overriding any existing time_cuts with {time_cuts}')
+            print(f'Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}. time_cuts set to {time_cuts}')
+
         
     if time_cuts is not None:
         print(f"trimming times to include indices between: {time_cuts}")
         # fmt: off
-        uvd.select(times=np.unique(uvd.time_array)[time_cuts[0]:time_cuts[1]])
+        ss.select(times=np.unique(ss.time_array)[time_cuts[0]:time_cuts[1]])
 
-    if conjugate_baselines:
-        print("conjugating bls")
-        uvd.conjugate_bls(convention="v>0")
-    if input_cut_antennas is None:
-        cut_antennas = []
-        if metafits_ant_check:
-            metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
-            metafits = fits.open(metafits_file_name)
     
-            bad_tiles = []
-            # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
-            for ind in range(len(metafits["TILEDATA"].data.field("flag")) // 2):
-                
-                if sum(metafits["TILEDATA"].data.field("flag")[(ind * 2):(ind * 2 + 2)]) > 0:
-                    bad_tiles.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
-    
-            antenna_names_fix = [
-                ant_name.rstrip() for ant_name in uvd.antenna_names
-            ]  # Gets rid of unnecessary whitespace
-    
-            ant_name_num_dict = {}
-            for i, name in enumerate(antenna_names_fix):
-                ant_num = uvd.antenna_numbers[i]
-                ant_name_num_dict[name] = ant_num
-    
-            for tile in bad_tiles:
-                cut_antennas.append(ant_name_num_dict[tile])
-            print(f"Antennas found bad via {metafits_file_name}:", cut_antennas)
+
+    cut_antennas = []
+    if metafits_ant_check:
+        metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
+        metafits = fits.open(metafits_file_name)
+
+        bad_tiles = []
+        # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
+        for ind in range(len(metafits["TILEDATA"].data.field("flag")) // 2):
+            
+            if sum(metafits["TILEDATA"].data.field("flag")[(ind * 2):(ind * 2 + 2)]) > 0:
+                bad_tiles.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
+
+        antenna_names_fix = [
+            ant_name.rstrip() for ant_name in ss.antenna_names
+        ]  # Gets rid of unnecessary whitespace
+
+        ant_name_num_dict = {}
+        for i, name in enumerate(antenna_names_fix):
+            ant_num = ss.antenna_numbers[i]
+            ant_name_num_dict[name] = ant_num
+
+        for tile in bad_tiles:
+            cut_antennas.append(ant_name_num_dict[tile])
+        print(f"Antennas found bad via {metafits_file_name}:", cut_antennas)
 
     
     if len(cut_antennas) > 0:
 
-        keep_antennas = uvd.antenna_numbers
+        keep_antennas = ss.antenna_numbers
         keep_antennas = [ant for ant in keep_antennas if ant not in cut_antennas]
-        uvd.select(antenna_nums=keep_antennas)
+        ss.select(antenna_nums=keep_antennas)
 
     if not split_autos:
-        return uvd
+        return ss
     else:
 
-        uvd_autos = uvd.copy()
-        uvd_autos.select(ant_str="auto")
-        uvd.select(ant_str="cross")
+        ss_autos = ss.copy()
+        ss_autos.select(ant_str="auto")
+        ss.select(ant_str="cross")
 
         
 
-        return uvd, uvd_autos
+        return ss, ss_autos
 
 
 def get_shape_dict(shape_name, add_subTV=False):

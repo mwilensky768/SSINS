@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(1, '/Users/elillesk/repos/SSINS/EAVILS/')
+
 
 import eavils_waterfalls as wtrf
 from SSINS import INS
@@ -42,7 +42,7 @@ def get_filenames(input_directory,suffix_dict,list_or_file=None,allowed_missing_
     
     Expects files to be in a <obs_tag>_<suffix> format. 
     Compares obs_tag's of these files to a .txt list file with \n as the seperator
-    Returns a bidict that can translate between obs_tag and file name.'''
+    Returns a dict that can translate from obs_tag to different file names.'''
     
     full_file_list = os.listdir(input_directory)
     if type(list_or_file) is str:
@@ -392,10 +392,11 @@ def mwa_pointing_identification(
     for metafits_folder in metafits_folders:
         for file in os.listdir(metafits_folder):
             if ".metafits" in file:
-                metafits = fits.open(os.path.join(metafits_folder, file))
+                
                 obs_id = file.split(".")[0]
 
                 if obs_id in obs_id_list:
+                    metafits = fits.open(os.path.join(metafits_folder, file))
                     ra = metafits["primary"].header["RA"]
                     dec = metafits["primary"].header["DEC"]
                     alt = metafits["primary"].header["ALTITUDE"]
@@ -421,11 +422,12 @@ def mwa_pointing_identification(
 
 
 
-#Block averages a 2-dimensional array into blocks of specified size. Default behavior is to average. 
-#return_same_shape allows you to choose to return the array with average values recast to original shape.
-#scale_by_sqrt_n allows you to multiply each average by the number of included data points to scale noise correctly (only applies if treat_as_boolean is False)
-#treat_as_boolean is used for a boolean array, if enabled will just return True if any value in a given block is True
+
 def block_average(arr, block_rows, block_cols, return_same_shape=False, scale_by_sqrt_n=False,treat_as_boolean=False):
+    #Block averages a 2-dimensional array into blocks of specified size. Default behavior is to average. 
+    #return_same_shape allows you to choose to return the array with average values recast to original shape.
+    #scale_by_sqrt_n allows you to multiply each average by the number of included data points to scale noise correctly (only applies if treat_as_boolean is False)
+    #treat_as_boolean is used for a boolean array, if enabled will just return True if any value in a given block is True
     rows, cols = arr.shape
 
     # Compute padding
@@ -481,21 +483,22 @@ def add_1D_mask(array, mask):
 
 
 
-#Turns data in the processed data h5 files into per-obs_id arrays, calculates the pol_sub values.
-#processed_data_directory is the parent directory for the processed data
-#list_titles is the set of list_titles associated with each combination of night and field of observation
-#time_dim and freq_dim are as described above, size of averaging blocks, here are just important for selecting the correct processed file
-#shape_dict gives the frequency channels where we expect our DTV type RFI
-#sky_field_association associates list_titles with sky_fields. This is important for getting statistics right down the road.
-#pol_subtraction_order gives the order in which polarizations are subtracted. For consistency, the pol_sub arrays are kept in the same shape as the other arrays despite only the first polarization subtraction combination being used. In general, it is only sensible to subtract polarizations with similar underlying statistics from each other, so e.g. EE-NN or EN-NE, which is why we don't include combinations such as (0,2).
 
-#The function returns:
-#an array_dict, which contains the following, all given per time block, per frequency channel, and, in the first two cases, per polarization: variance, the SSINS mask (True if any flagged data in block), and the pol_sub values (the difference of the variance between sets of polarization). 
-#a dof_ref_dict or degrees of freedom reference dict, just giving the number of blocks where variances is taken over per frequency channel
-#a sky_field_dict which associates each obs_id with its sky_field
-#a source_list_dict which associates each obs_id with its source_list
-###################################
 def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,shape_dict,sky_field_list_association,pol_subtraction_order,add_pointing_dict):
+    #Turns data in the processed data h5 files into per-obs_id arrays, calculates the pol_sub values.
+    #processed_data_directory is the parent directory for the processed data
+    #list_titles is the set of list_titles associated with each combination of night and field of observation
+    #time_dim and freq_dim are as described above, size of averaging blocks, here are just important for selecting the correct processed file
+    #shape_dict gives the frequency channels where we expect our DTV type RFI
+    #sky_field_association associates list_titles with sky_fields. This is important for getting statistics right down the road.
+    #pol_subtraction_order gives the order in which polarizations are subtracted. For consistency, the pol_sub arrays are kept in the same shape as the other arrays despite only the first polarization subtraction combination being used. In general, it is only sensible to subtract polarizations with similar underlying statistics from each other, so e.g. EE-NN or EN-NE, which is why we don't include combinations such as (0,2).
+    
+    #The function returns:
+    #an array_dict, which contains the following, all given per time block, per frequency channel, and, in the first two cases, per polarization: variance, the SSINS mask (True if any flagged data in block), and the pol_sub values (the difference of the variance between sets of polarization). 
+    #a dof_ref_dict or degrees of freedom reference dict, just giving the number of blocks where variances is taken over per frequency channel
+    #a sky_field_dict which associates each obs_id with its sky_field
+    #a source_list_dict which associates each obs_id with its source_list
+    ###################################
     title=title_gen(time_dim,freq_dim)
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     array_dict = {'variance':{},'reshaped_SSINS_mask':{},'pol_sub':{}}
@@ -556,13 +559,14 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
     
     ##########################################################################
 
-#pol_bidict associates the polarizations with their indices
-#shape_dict gives the frequency channels where we expect our DTV type RFI
-#array_dict is the result of the create_array_dict function explicated above
-#sky_field_dict and source_list_dict are similarly explicated above
 
-#Returns a pandas dataframe which collects the important data for each measurement into a single pandas dataframe. In other words, for each frequency and time, there is a row with all the input data.
 def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_list_dict,pointing_info_dict):
+    #pol_bidict associates the polarizations with their indices
+    #shape_dict gives the frequency channels where we expect our DTV type RFI
+    #array_dict is the result of the create_array_dict function explicated above
+    #sky_field_dict and source_list_dict are similarly explicated above
+    
+    #Returns a pandas dataframe which collects the important data for each measurement into a single pandas dataframe. In other words, for each frequency and time, there is a row with all the input data.
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     obs_tag_list = list(array_dict['variance'].keys())
     datafr_dict={'obs_tag':[],'sky_field':[],'t_block_ind':[],'pointing':[],'pol_sub':[],'SSINS_flagged':[],'pointing_flagged':[],'source_list':[]}
@@ -602,8 +606,9 @@ def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_lis
     return datafr
 
 
-#This adds the column for the estimated pol_sub standard deviation, necessary for scaling thresholds. This must be calculated independently for each sky field and array configuration. Its critical that this is done correctly for good results.
+
 def add_pol_sub_stdv(datafr,estimated_pol_sub_stdv,threshold):
+    #This adds the column for the estimated pol_sub standard deviation, necessary for scaling thresholds. This must be calculated independently for each sky field and array configuration. Its critical that this is done correctly for good results.
     datafr=deepcopy(datafr)
     datafr['pol_sub_stdv'] = np.nan
     
@@ -620,8 +625,9 @@ def add_pol_sub_stdv(datafr,estimated_pol_sub_stdv,threshold):
     return datafr
 
 
-#This calculates per pointing stats for each list_title, including how many pol_sub measurements crossed the thrshold set, as well as the scaled absolute mean (scaled according to the expected mean and variance for a folded normal distribution), and then the same calculation with threshold crossing measurements removed.
+
 def find_per_pointing_stats(datafr,shape_dict,list_titles,threshold):
+    # This calculates per pointing stats for each list_title, including how many pol_sub measurements crossed the thrshold set, as well as the scaled absolute mean (scaled according to the expected mean and variance for a folded normal distribution), and then the same calculation with threshold crossing measurements removed.
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
 
     all_pointings = np.unique(datafr['pointing'])
@@ -661,8 +667,7 @@ def find_per_pointing_stats(datafr,shape_dict,list_titles,threshold):
     return per_pointing_stats
     ###################################
 
-#Creates a long, detailed plot showing much of the data calculated in functions above.
-#This function could use more documentation
+
 def create_plots(
     list_file,
     array_dict,
@@ -694,7 +699,8 @@ def create_plots(
     show=False,
     ssins_sig_thresh=None
 ):
-    
+    #Creates a long, detailed plot showing much of the data calculated in functions above.
+    #This function could use more documentation
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     if prelim_mode==False:
         if threshold is None:

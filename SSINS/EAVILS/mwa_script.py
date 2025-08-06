@@ -210,10 +210,9 @@ def vis_plotting(
     
     
     
-    # Reads in the object. Note that this uses the use_ss_as_uvd option,
-    # which reads in as an undiffed ss object,
+    # Reads in the object. Note that data reads in as an undiffed ss object,
     # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
-    # The reader will attempt to find a metafits file in the same folder
+    # eavils_utils.reader will attempt to find a metafits file in the same folder
     # which it will extract antenna flags from, so try to ensure that uvfits and metafits are in the same folder.
     if ss is None:
         ss_cross, ss_autos = eavils_utils.reader(
@@ -221,7 +220,6 @@ def vis_plotting(
             input_folder=input_data_folder,
             conjugate_baselines=conjugate_bool,
             split_autos=True,
-            use_ss_as_uvd=True,
         )
 
     if not os.path.exists(output_path):
