@@ -102,7 +102,7 @@ class EAVILS(INS):
             
         combined_mask = np.logical_or(ssins_flags,self.initial_flags)
 
-        #Builds divisor with any missing
+        #Builds divisor with any flagged times removed from calculation
         self.divisor = construct_divisor(
             divisor_storage_array,
             mask_array = combined_mask,
@@ -125,8 +125,23 @@ class EAVILS(INS):
 
 
 def build_divisor_storage_array(ss,save_prefix=None):
-    #Note: as written this needs a rectangular data array ss (or more properly a hyper-rectangular array). 
-    #It will take some rewriting to be compatible with other array shapes where the number of baselines varies in time.
+    '''
+    Builds an array for recalculation of EAVILS denominator when part of the data is flagged
+
+    Inputs:
+    -ss; an undiffed ss object
+    -save_prefix; If given a save_prefix will save out a file with the prefix. 
+        Prefix can contain a save directory.
+    Outputs:
+    -divisor_storage_array; <|V(t,b,f,p)|*|V(t',b,f,p)|>_b ; 
+        where V=visiblity, t and t'=time, b=baseline, f=frequency, p=polarization.
+        In other words, the average over baseline of the product of visibility magnitudes for
+        each pair of times.
+    -Note: as written this needs the number of baselines to remain the same for all times 
+        in an observation. It will take some rewriting to be compatible with other array shapes
+        where the number of baselines varies in time.
+    '''
+    
     divisor_storage_array = (
         np.einsum("ijkl,pjkl->ipkl", np.abs(reshape_data(ss)), np.abs(reshape_data(ss)))
         / ss.Nbls
@@ -145,15 +160,21 @@ def construct_divisor(
     output_time_dimension=True
 ):
     """
-    This function allows the calculation of the EAVILS divisor (mean across baselines of time variance of vis mags).
-    
-    -Uses the "divisor_storage_array", which records products of visibility magnitudes averaged across baselines.
-        >This function, as opposed to a traditional variance calculation, allows for remaking the divisor when some times are excluded
-    -divisor_storage_array should have shape (Ntimes,Ntimes,Nfreqs,Npols).
-    -mask_array should be a boolean array of shape (Ntimes,Nfreqs,Npols) which will have True for masks and False for no mask.
-    -The output can be changed to be more like a "standard deviation" array by taking the square root.
-    -It can also be expanded along its time dimension which can be helpful for shape compatibility
-    with other arrays using the output_time_dimension=True option
+    Allows the calculation of the EAVILS divisor
+
+    Inputs:
+    -divisor_storage_array; records products of visibility magnitudes averaged across baselines.
+        >This function, as opposed to a traditional variance calculation, allows for remaking
+            the divisor when some times are excluded
+        >divisor_storage_array should have shape (Ntimes,Ntimes,Nfreqs,Npols).
+    -mask_array; should be a boolean array of shape (Ntimes,Nfreqs,Npols) which will have True
+        for masks and False for no mask.
+    -output_sqrt; This should always be used to calculate the correct divisor, included
+        as an option for testing purposes
+    -output_time_dimension; expanded along its time dimension which can be helpful for 
+        shape compatibility with other arrays using the output_time_dimension=True option
+    Outputs:
+    -divisor_output; the divisor array, i.e. sqrt( < Var[ V(t,b,f,p) ]_t >_b )
     """
     Ntimes, Ntimes_check, Nfreqs, Npols = divisor_storage_array.shape
     if Ntimes != Ntimes_check:
@@ -181,9 +202,9 @@ def construct_divisor(
     divisor_storage_array = np.ma.masked_array(data = divisor_storage_array, mask = mask_array)
 
     
-    #This calculates the average variance using the divisor storage array. 
-    #We do this using the 
-    output = (
+    # This calculates the average variance using the divisor storage array. 
+    # In essence, for a given 
+    divisor_output = (
         np.trace(
             divisor_storage_array, axis1=0,axis2=1
         )
@@ -192,23 +213,38 @@ def construct_divisor(
         / used_Ntimes**2
     ) * (used_Ntimes / (used_Ntimes - 1))
     
-    output = output.data
+    divisor_output = divisor_output.data
 
     if output_sqrt:
-        output = np.sqrt(output)
+        divisor_output = np.sqrt(divisor_output)
     if output_time_dimension:
-        output = output * np.full((Ntimes, Nfreqs, Npols), 1)
-    return output
+        divisor_output = divisor_output * np.full((Ntimes, Nfreqs, Npols), 1)
+    return divisor_output
 
 
 
 def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
     '''
-     Plotting function for individual observation
+    Plotting function for an individual observation
     
-    For each section of the plot, there are a few parameters we need,
-    which we save as lists to allow some modularity.
-    The datasets deals with the actual data we want to plot for each section'''
+    Inputs:
+    -eavils; an EAVILS object as defined in this module
+    -ins; a SSINS INS object for comparison with EAVILS
+    -pols; the labels of each polarization, should be in same order as
+     the arrays in the EAVILS/INS objects
+    -output_path; the folder to save the output pdf to
+    -name_prefix; the prefix for the plot, useful to put some identifying information
+        about the source observation 
+    -bl_type_tag; the type of baselines (cross or auto) that were used, useful for labelling
+
+    Outputs:
+    -saves out a pdf file in output_path
+    '''
+    
+    # For each section of the plot, there are a few parameters we need,
+    # which we save as lists to allow some modularity.
+    
+    # The datasets deals with the actual data we want to plot for each section
     datasets = [
         eavils.metric_array,
         eavils.spectrum*eavils.divisor,
@@ -217,6 +253,7 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
         eavils.spectrum,
         ins.metric_ms
     ]
+    
     # Titles just gives titles to each section
     titles = [
         "<|V|;bl>",
@@ -226,11 +263,14 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
         "spectrum histogram",
         "SSINS"
     ]
+    
     # cmaps gives color schemes for relevant plots, otherwise just leaves blank as ''
     cmaps = ["viridis", "coolwarm", "coolwarm", "", "","coolwarm"]
+    
     # Vlims deals with defined limits for plot scale when desired
     vlims = [None, None, (-5, 5), None, None, (-5, 5)]
-    # This is just the plot types. ALlowed options for now are 'im' for image plot,
+    
+    # This is just the plot types. ALlowed options are 'im' for image plot,
     # 'line' for a simple line plot, and 'hist' for histogram plots
     plot_types = ["im", "im", "im", "line", "hist", "im"]
 
@@ -249,6 +289,7 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
     fig.subplots_adjust(top=0.95)
     fig.tight_layout()
 
+    # Loops through each polarization and row as defined by the datasets list, adding subplots
     for pol_ind in range(len(pols)):
         for ind in range(row_count):
             ax = axs[ind, pol_ind]

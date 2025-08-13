@@ -25,7 +25,17 @@ import astropy.io.fits as fits
 
 
 def freq_range_sort(shape_dict):
-    '''This function simply sorts the frequency ranges defined in a shape_dict to be ordered in order of their minimum frequency. Should be used in all instances where iterating through frequency ranges is necessary.'''
+    '''Sorts the frequency ranges defined in a shape_dict in order by minimum frequency.
+
+    Inputs:
+    -shape_dict; a shape_dict as used elsewhere in SSINS, a dictionary of frequency range names
+        and corresponding frequencies. For desired functionality, it is best to insure that these
+        frequency ranges do not overlap.
+    Outputs:
+    -sorted_freq_ranges; a list of frequency range names ordered by minimum frequency for consistency.
+        Should be used in all instances where iterating through frequency ranges is necessary.
+    -sorted_freq_mins; a list of the minimum frequency in each range
+    '''
     sorted_freq_ranges = []
     sorted_freq_mins = [shape_dict[freq_range][0] for freq_range in shape_dict.keys()]
     sorted_freq_mins = sorted(sorted_freq_mins)
@@ -37,18 +47,37 @@ def freq_range_sort(shape_dict):
 
 
 
-def get_filenames(input_directory,suffix_dict,list_or_file=None,allowed_missing_fraction=0,return_missing_list=False):
-    '''Takes an input directory and identifies all files which have end with the given suffixes that are in a check list. 
-    
-    Expects files to be in a <obs_tag>_<suffix> format. 
-    Compares obs_tag's of these files to a .txt list file with \n as the seperator
-    Returns a dict that can translate from obs_tag to different file names.'''
+def get_filenames(
+    input_directory,
+    suffix_dict,
+    list_or_file=None,
+    allowed_missing_fraction=0,
+    return_missing_list=False
+):
+    '''Generates a filename_dict for easy reference of a range of desired files
+
+    Inputs:
+    -input_directory; a directory which contains all files to be cataloged
+        Files must be in a <obs_tag>_<suffix> format. 
+    -suffix_dict; a dictionary between a data title and the corresponding suffix.
+        e.g. {'EAVILS':'EAVILS_data.h5'} would be used for data we'd like to title
+        EAVILS with suffix EAVILS_data.h5
+    -list_or_file; restricts which files are added to output dictionary based on 
+        a list of obs_tags or an \n seperated txt file that lists obs_tags. Can 
+        also be None if you want to include all files with chosen suffixes in the folder.
+    -allowed_missing_fraction; determines what fraction of the list can be missing before
+        throwing an error
+    '''
     
     full_file_list = os.listdir(input_directory)
     if type(list_or_file) is str:
-        with open(list_or_file,'r') as file:
-            observation_check_list = file.read().split('\n')
-        observation_check_list = [obs_tag for obs_tag in observation_check_list if obs_tag.rstrip()!='']
+        if list_or_file.endswith('.txt'):
+            
+            with open(list_or_file,'r') as file:
+                observation_check_list = file.read().split('\n')
+            observation_check_list = [obs_tag for obs_tag in observation_check_list if obs_tag.rstrip()!='']
+        else:
+            raise Exception(f'{list_or_file} must be a list or a txt')
     elif type(list_or_file) is list:
         observation_check_list = list_or_file
     elif list_or_file is None:
@@ -697,7 +726,9 @@ def create_plots(
     restricted_list=None,
     raster_num_labels=False,
     show=False,
-    ssins_sig_thresh=None
+    ssins_sig_thresh=None,
+    time_spacing=120,
+    integration_time=2
 ):
     #Creates a long, detailed plot showing much of the data calculated in functions above.
     #This function could use more documentation
@@ -739,7 +770,7 @@ def create_plots(
 
     sky_field = sky_field_list_association[list_title]
     
-    plot_arrays_dict = {}
+
     
     
     obs_tag_list = list(filename_dict.keys())
@@ -750,16 +781,17 @@ def create_plots(
     else:
         restricted_tag=''
     
-    # Just pulling telescope name, freq_array and typical time dimensions for plotting
-    for obs_tag in filename_dict.keys():
-        eavils = wtrf.EAVILS(filename_dict[obs_tag]['EAVILS'])
-        freq_array = eavils.freq_array
-        time_buffer = 24*3600*(eavils.time_array[-1] - eavils.time_array[0])
-        integration_time = 24*3600*(eavils.time_array[1] - eavils.time_array[0])
-        instrument_name = eavils.telescope.instrument
-        break
+    # Just pulling telescope name, freq_array and typical time dimensions
 
-    
+    for obs_tag in filename_dict.keys():
+        
+        eavils = wtrf.EAVILS(filename_dict[obs_tag]['EAVILS'])
+        
+        
+        if obs_tag == list(filename_dict.keys())[0]:
+            freq_array = eavils.freq_array
+            instrument_name = eavils.telescope.instrument
+
   
     
     xticks = eavils_utils.freq_ind_finder(freq_array,sorted_freq_mins)
@@ -834,13 +866,12 @@ def create_plots(
         #This chunk creates a list of positions in figure coordinates determining where to plot each subfigure based on obs_tag number
         if instrument_name=='MWA':
             positions = [int(obs_tag)-int(obs_tag_sub_list[0]) for obs_tag in obs_tag_sub_list]
-        full_vertical_length = positions[-1]+time_buffer
+        full_vertical_length = positions[-1]+time_spacing
         positions.append(full_vertical_length)
         positions = 1-np.array(positions)/full_vertical_length
-        
         goal_aspect = .65
         
-        row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_buffer
+        row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_spacing
 
         col_count = sum(col_width_multipliers)
         size_factor=2
@@ -910,23 +941,25 @@ def create_plots(
     
             pol_sub = array_dict['pol_sub'][obs_tag]
             current_arrays_dict['pol_sub'] = np.ma.masked_array(data=pol_sub,mask=current_arrays_dict['reshaped_SSINS_mask'])
-            
-            plot_arrays_dict[obs_tag] = current_arrays_dict
+
+
             
             col_ind = 0
             for data_title, pol,plot_type,col_width_multiplier in plot_instructions:
                 
                 current_array = current_arrays_dict[data_title] 
+
                 Ntime_blocks,Nfreq_ranges,Npols = current_array.shape
                 if data_title in ['variance','pol_sub']:
                     blocked_bool = True
-                    
+                    aspect_multiplier = Ntime_blocks*integration_time/(time_spacing/time_dim)
                 elif data_title in ['SSINS','EAVILS','SSINS_flags']:
                     blocked_bool = False
+                    aspect_multiplier = Ntime_blocks*integration_time/(time_spacing)
             
                 else:
                     raise Exception(f'Unrecognized data title{data_title}')    
-        
+
         
                     
                 if blocked_bool:
@@ -941,24 +974,24 @@ def create_plots(
                             current_array,
                             mask=initial_flags_extended
                             )
-        
+
         
                 top = positions[ind]
                 
                 bottom = top - height  # convert top position to bottom for `add_axes`
                 
-                if col_ind==0:
-                    width = height
+
                 if pol in pol_bidict.inverse.keys():
                     pol_ind = pol_bidict.inverse[pol]
                 else:
                     polA, polB, = pol.split('-')
                     pol_ind = pol_bidict.inverse[polA]
+
                 
                 ax = fig.add_axes([column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height])  # [left, bottom, width, height]
                 default_aspect = Ntime_blocks/Nfreq_ranges
-                aspect = goal_aspect/default_aspect
-                
+
+                aspect = aspect_multiplier*goal_aspect/default_aspect
                 if type(color_dict[data_title])==str:
                     if 'use' in color_dict[data_title]:
                         color_data_title = color_dict[data_title].split('_')[-1]
@@ -973,7 +1006,7 @@ def create_plots(
                 if color_data_title==data_title:
                     color_array = deepcopy(current_array)
                 else:
-                    color_array = current_arrays_dict[color_data_title] 
+                    color_array = deepcopy(current_arrays_dict[color_data_title])
                     
                 #Deals with infs in color array
                 color_array[color_array>=vmax]=vmax
@@ -994,9 +1027,11 @@ def create_plots(
                     for f_range_ind,freq_range in enumerate(sorted_freq_ranges):
                         
                         if data_title=='pol_sub':
-                            values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*current_array[:,f_range_ind,pol_ind]
+
+                            values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*current_array[:,f_range_ind,pol_ind].data
+
                             values = np.ma.masked_array(data=values,mask=current_array[:,f_range_ind,pol_ind].mask)
-                            
+
                         else:
                             raise Exception(f'{data_title} incompatible with {plot_type}')
 
@@ -1254,7 +1289,7 @@ def line_plots(list_file,array_dict,processed_data_directory,time_dim,freq_dim,s
             for obs_id in obs_id_list:
                 
                 values = ((1/estimated_pol_sub_stdv[sky_field][freq_range]))*plot_arrays_dict[obs_id]['pol_sub'][:,freq_range_ind,0]
-                
+
                 plot_list+=list(values)
                 time_list+=list(np.arange(int(obs_id),int(obs_id)+time_length*len(values),time_length))
                 
