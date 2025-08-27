@@ -705,7 +705,7 @@ def create_plots(
     time_dim,
     freq_dim,
     shape_dict,
-    sky_field_list_association,
+    sky_field_dict,
     pointing_info_dict,
     pol_bidict,
     initial_freq_flags,
@@ -728,10 +728,18 @@ def create_plots(
     show=False,
     ssins_sig_thresh=None,
     time_spacing=120,
-    integration_time=2
+    integration_time=2,
+    time_free_list=False,
+    additional_labels=None
 ):
     #Creates a long, detailed plot showing much of the data calculated in functions above.
     #This function could use more documentation
+
+    if time_free_list:
+        if split_on_pointings:
+            split_on_pointings = False
+            print('split_on_pointings = True incompatible with time_free_list, setting to False')
+
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     if prelim_mode==False:
         if threshold is None:
@@ -762,13 +770,10 @@ def create_plots(
         list_or_file=list_file,
         allowed_missing_fraction=allowed_missing_fraction
     )
-  
-    sky_field_dict = {}
-    source_list_dict = {}
+    
     
     
 
-    sky_field = sky_field_list_association[list_title]
     
 
     
@@ -837,26 +842,30 @@ def create_plots(
                     'variance':(0,2*.95*1.4),
                   'SSINS_flags':(0,1),'pol_sub':(-5,5)}
     
-    if instrument_name=='MWA':
-        pointing_change_dict={}
 
-    obs_tag_list_split_dict = {}
-    for obs_tag in obs_tag_list:
-        pointing = pointing_info_dict[obs_tag]['pointing']
-        try:
-            obs_tag_list_split_dict[pointing].append(obs_tag)
-        except KeyError:
-            obs_tag_list_split_dict[pointing]=[obs_tag]
-
-    obs_tag_list_split = []
-    for pointing,sub_list in obs_tag_list_split_dict.items():
-        obs_tag_list_split.append(sub_list)
-        pointing_change_dict[pointing] = min(sub_list)
-        
-    if split_on_pointings:
-        obs_tag_list_collection = obs_tag_list_split
-    else:
+    if time_free_list:
         obs_tag_list_collection = [obs_tag_list]
+    else:
+        obs_tag_list_split_dict = {}
+        for obs_tag in obs_tag_list:
+            pointing = pointing_info_dict[obs_tag]['pointing']
+            try:
+                obs_tag_list_split_dict[pointing].append(obs_tag)
+            except KeyError:
+                obs_tag_list_split_dict[pointing]=[obs_tag]
+    
+        obs_tag_list_split = []
+        
+        #if instrument_name=='MWA':
+        #    pointing_change_dict={}
+        for pointing,sub_list in obs_tag_list_split_dict.items():
+            obs_tag_list_split.append(sub_list)
+        #    pointing_change_dict[pointing] = min(sub_list)
+            
+        if split_on_pointings:
+            obs_tag_list_collection = obs_tag_list_split
+        else:
+            obs_tag_list_collection = [obs_tag_list]
 
     
     for obs_tag_sub_list in obs_tag_list_collection:
@@ -865,19 +874,22 @@ def create_plots(
 
         #This chunk creates a list of positions in figure coordinates determining where to plot each subfigure based on obs_tag number
         if instrument_name=='MWA':
-            positions = [int(obs_tag)-int(obs_tag_sub_list[0]) for obs_tag in obs_tag_sub_list]
+            if time_free_list:
+                positions =  [time_spacing*n for n in range(len(obs_tag_sub_list))]
+                row_count = len(obs_tag_sub_list)+1
+            else:
+                positions = [int(obs_tag)-int(obs_tag_sub_list[0]) for obs_tag in obs_tag_sub_list]
+                row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_spacing
         full_vertical_length = positions[-1]+time_spacing
         positions.append(full_vertical_length)
         positions = 1-np.array(positions)/full_vertical_length
         goal_aspect = .65
-        
-        row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_spacing
-
+        text_size = 7
         col_count = sum(col_width_multipliers)
         size_factor=2
-        fig_height = row_count*size_factor
+        fig_height = row_count*size_factor*1.2
         fig_width = col_count*size_factor/goal_aspect
-    
+        
         fig = plt.figure(
             figsize=(
                 fig_width,
@@ -889,14 +901,17 @@ def create_plots(
 
         column_width = 1/col_count
         
-        prev_pointing = -1 # setting to an arbitrary number that will never be an obs_tag
+        prev_pointing = 0.1 # setting to an arbitrary number that will never be an obs_tag
         
         for ind, obs_tag in enumerate(obs_tag_sub_list):
-            
-            current_pointing = pointing_info_dict[obs_tag]['pointing']
-            if current_pointing!=prev_pointing:
-                print(f'pointing = {current_pointing}')
-                pointing_change_bool=True
+            sky_field = sky_field_dict[obs_tag]
+            if not time_free_list:
+                current_pointing = pointing_info_dict[obs_tag]['pointing']
+                if current_pointing!=prev_pointing:
+                    print(f'pointing = {current_pointing}')
+                    pointing_change_bool=True
+                else:
+                    pointing_change_bool=False
             else:
                 pointing_change_bool=False
                 
@@ -1022,7 +1037,11 @@ def create_plots(
                 
                 elif plot_type=='line_plot':
                     max_range = 7.5
+                    
                     offsets=[]
+
+
+                    
                     
                     for f_range_ind,freq_range in enumerate(sorted_freq_ranges):
                         
@@ -1092,7 +1111,7 @@ def create_plots(
                         abs_mean = np.sqrt(meas_count/folded_var)*(np.mean(np.abs(values))-folded_mean)
                         height_adjustment = .08
                         if display_stats:
-                            text_size = 7
+                            
                             
                             
         
@@ -1109,8 +1128,8 @@ def create_plots(
                                                 
                             text_height = 1 - height_adjustment
                             
-                            if pointing_change_bool:
-        
+                            if pointing_change_bool and not time_free_list:
+                                
                                 abs_mean_value_per_pt = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean']
                                 abs_mean_value_per_pt_limited = per_pointing_stats[list_title][freq_range][current_pointing]['abs_mean_limited']
                                 flag_count = per_pointing_stats[list_title][freq_range][current_pointing]['flagged_count']
@@ -1166,6 +1185,13 @@ def create_plots(
                     ax.set_xticks([])
         
                 if col_ind==0:
+                    try:
+                        local_label = additional_labels[obs_tag]
+                        ax.text(-.1,1,
+                            local_label, ha='right', va='bottom',size=text_size*3, transform=ax.get_xaxis_transform()
+                        )
+                    except:
+                        pass
                     if pointing_change_bool and display_pointing_changes:
                         
                         fig.add_artist(
@@ -1206,8 +1232,8 @@ def create_plots(
                     ax.set_yticks([])
                 
                 col_ind+=1
-                
-            prev_pointing = current_pointing
+            if not time_free_list:
+                prev_pointing = current_pointing
 
 
         if split_on_pointings:

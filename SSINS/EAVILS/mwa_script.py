@@ -206,7 +206,7 @@ def vis_plotting(
     
     # This will cause the positions of the visibilities to all be in the same half of the uv-plane along some dividing line. SLow and unnecessary for EAVILS so disabled.
 
-    conjugate_bool = False
+
     
     
     
@@ -218,7 +218,6 @@ def vis_plotting(
         ss_cross, ss_autos = eavils_utils.reader(
             obs_id,
             input_folder=input_data_folder,
-            conjugate_baselines=conjugate_bool,
             split_autos=True,
         )
 
