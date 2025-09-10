@@ -831,8 +831,7 @@ def create_plots(
 
     
     col_width_multipliers = [entry[3] for entry in  plot_instructions]
-                  
-    
+
 
     color_dict = {'EAVILS':'coolwarm', 'SSINS':'coolwarm', 
                    'variance':'coolwarm',
@@ -882,13 +881,17 @@ def create_plots(
                 row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_spacing
         full_vertical_length = positions[-1]+time_spacing
         positions.append(full_vertical_length)
+
         positions = 1-np.array(positions)/full_vertical_length
+
         goal_aspect = .65
         text_size = 7
         col_count = sum(col_width_multipliers)
         size_factor=2
-        fig_height = row_count*size_factor*1.2
+        fig_height = row_count*size_factor
         fig_width = col_count*size_factor/goal_aspect
+        #fig_height = row_count
+        #fig_width = col_count/goal_aspect
         
         fig = plt.figure(
             figsize=(
@@ -959,8 +962,8 @@ def create_plots(
 
 
             
-            col_ind = 0
-            for data_title, pol,plot_type,col_width_multiplier in plot_instructions:
+            #col_ind = 0
+            for col_ind,(data_title, pol,plot_type,col_width_multiplier) in enumerate(plot_instructions):
                 
                 current_array = current_arrays_dict[data_title] 
 
@@ -989,8 +992,8 @@ def create_plots(
                             current_array,
                             mask=initial_flags_extended
                             )
+                
 
-        
                 top = positions[ind]
                 
                 bottom = top - height  # convert top position to bottom for `add_axes`
@@ -1001,12 +1004,19 @@ def create_plots(
                 else:
                     polA, polB, = pol.split('-')
                     pol_ind = pol_bidict.inverse[polA]
+                #print(data_title)
+                #print(size_factor,Ntime_blocks,full_vertical_length)
 
+
+                #print(top,height,bottom)
+                #print(column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height)
                 
                 ax = fig.add_axes([column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height])  # [left, bottom, width, height]
                 default_aspect = Ntime_blocks/Nfreq_ranges
 
-                aspect = aspect_multiplier*goal_aspect/default_aspect
+                aspect = aspect_multiplier*goal_aspect/(col_width_multiplier*default_aspect)
+
+                
                 if type(color_dict[data_title])==str:
                     if 'use' in color_dict[data_title]:
                         color_data_title = color_dict[data_title].split('_')[-1]
@@ -1064,7 +1074,7 @@ def create_plots(
                         offset = f_range_ind*max_range*2
                         offsets.append(offset)
                         t_spots = np.arange(Ntime_blocks+1,0,-1)
-                        
+                        #ax.set_aspect(2)
                         ax.axvline(x=offset-threshold,color='black',linewidth=.5,linestyle='--')
                         ax.axvline(x=offset,linewidth=.35,color='black')
                         ax.axvline(x=offset+threshold,color='black',linewidth=.5,linestyle='--')
@@ -1187,8 +1197,8 @@ def create_plots(
                 if col_ind==0:
                     try:
                         local_label = additional_labels[obs_tag]
-                        ax.text(-.1,1,
-                            local_label, ha='right', va='bottom',size=text_size*3, transform=ax.get_xaxis_transform()
+                        ax.text(-2.5,1,
+                            local_label, ha='right', va='top',size=text_size*3, transform=ax.get_xaxis_transform()
                         )
                     except:
                         pass
@@ -1231,7 +1241,7 @@ def create_plots(
                 else:
                     ax.set_yticks([])
                 
-                col_ind+=1
+                #col_ind+=1
             if not time_free_list:
                 prev_pointing = current_pointing
 
