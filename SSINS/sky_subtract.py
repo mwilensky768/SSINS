@@ -345,7 +345,8 @@ class SS(UVData):
         if UV is None:
             UV = UVData()
             read_kwargs.pop("use_future_array_shapes", None)
-            UV.read(filename_in, **read_kwargs)
+            UV.read(filename_in,  **read_kwargs)
+
 
         # Option to keep old flags
         if not combine:
