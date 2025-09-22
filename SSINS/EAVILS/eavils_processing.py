@@ -1,6 +1,3 @@
-import sys
-
-
 import eavils_waterfalls as wtrf
 from SSINS import INS
 from SSINS import MF
@@ -168,8 +165,9 @@ def process_data(
 
     if not os.path.exists(output_sub_directory):
         os.makedirs(output_sub_directory, mode=0o777)
- 
- 
+
+    #Initializing variable that can otherwise be referenced without being assigned if no data is processed
+    instrument_name = None
 
 
     existing_output_files_dict = get_filenames(
@@ -386,7 +384,7 @@ def process_data(
         
     pointing_yaml_name = f'{title}_ptng_info.yml'
     pointing_yaml_name = os.path.join(output_sub_directory,pointing_yaml_name)
-    if not os.path.exists(pointing_yaml_name) or clobber==True:
+    if (not os.path.exists(pointing_yaml_name) or clobber==True):
         if instrument_name=='MWA':
             #Generate a pointing info dict to save per obs_id pointing info for MWA data
             pointing_info_dict = mwa_pointing_identification([metafits_folder], obs_id_list = list(filename_dict.keys()))
@@ -504,6 +502,9 @@ def block_average(arr, block_rows, block_cols, return_same_shape=False, scale_by
     )
     return expanded[:rows, :cols]
 
+
+
+
 def add_1D_mask(array, mask):
     mask= mask[np.newaxis,:,np.newaxis]
     mask = mask*np.ones(array.shape)
@@ -513,7 +514,7 @@ def add_1D_mask(array, mask):
 
 
 
-def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,shape_dict,sky_field_list_association,pol_subtraction_order,add_pointing_dict):
+def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,shape_dict,sky_field_list_association,pol_subtraction_order,add_pointing_dict=True):
     #Turns data in the processed data h5 files into per-obs_id arrays, calculates the pol_sub values.
     #processed_data_directory is the parent directory for the processed data
     #list_titles is the set of list_titles associated with each combination of night and field of observation
@@ -1402,3 +1403,42 @@ def run_ssins(
     
     return ins
 
+
+def make_condensed_flag_array(datafr,obs_tag,sorted_freq_ranges):
+    #Generates a flag array for each dimension of the 
+    minifr = deepcopy(datafr.query(f'obs_tag==\'{obs_tag}\''))
+    Ntime_blocks = np.max(minifr.t_block_ind)+1
+    Nfreq_ranges = len(sorted_freq_ranges)
+    condensed_flag_array = np.full((Ntime_blocks,Nfreq_ranges),np.nan)
+    for t_block_ind in range(Ntime_blocks):
+        for freq_range_ind,freq_range in enumerate(sorted_freq_ranges):
+            item = minifr.query(f't_block_ind == {t_block_ind} and freq_range == \'{freq_range}\'')['pol_sub_flagged']
+            if len(item)>1:
+                raise Exeption('Duplicate entries found')
+            item = list(item)[0]
+            condensed_flag_array[t_block_ind,freq_range_ind] = item
+
+    return condensed_flag_array
+
+def flag_expander(datafr,obs_tag,time_dim,Ntimes_total,shape_dict,freq_array,initial_freq_flags,Npols):
+    #Casts flags to the original array shape
+    
+    sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
+    condensed_flag_array = make_condensed_flag_array(datafr,obs_tag,sorted_freq_ranges)
+
+    
+    expanded_flag_array = np.zeros((Ntimes_total, len(freq_array), Npols))
+    Ntime_blocks = len(condensed_flag_array)
+    for time_block_ind in range(Ntime_blocks):
+        for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
+            if condensed_flag_array[time_block_ind,freq_range_ind]==1:
+                
+                min_time_ind=time_dim*time_block_ind
+                max_time_ind=min((min_time_ind+time_dim,Ntimes_total))
+                all_possible_freq_inds = eavils_utils.freq_ind_finder(freqs=freq_array,ranges=[shape_dict[freq_range]])
+                min_freq_ind = min(all_possible_freq_inds)
+                max_freq_ind = max(all_possible_freq_inds)
+                
+                expanded_flag_array[min_time_ind:max_time_ind,min_freq_ind:max_freq_ind,:] = 1
+
+    return expanded_flag_array
