@@ -87,12 +87,12 @@ def reader(
                 bad_tiles.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
 
         antenna_names_fix = [
-            ant_name.rstrip() for ant_name in ss.antenna_names
+            ant_name.rstrip() for ant_name in ss.telescope.antenna_names
         ]  # Gets rid of unnecessary whitespace
 
         ant_name_num_dict = {}
         for i, name in enumerate(antenna_names_fix):
-            ant_num = ss.antenna_numbers[i]
+            ant_num = ss.telescope.antenna_numbers[i]
             ant_name_num_dict[name] = ant_num
 
         for tile in bad_tiles:

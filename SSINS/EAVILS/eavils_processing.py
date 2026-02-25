@@ -3,7 +3,6 @@ from SSINS import INS
 from SSINS import MF
 from pyuvdata import UVFlag
 
-import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
@@ -13,8 +12,6 @@ import os
 import yaml
 from copy import deepcopy
 import pandas as pd
-import bidict
-import itertools
 import astropy.io.fits as fits
 
 
@@ -51,12 +48,13 @@ def get_filenames(
     allowed_missing_fraction=0,
     return_missing_list=False
 ):
-    '''Generates a filename_dict for easy reference of a range of desired files
+    '''Generates a filename_dict for easy reference of a set of desired file suffices
 
     Inputs:
     -input_directory; a directory which contains all files to be cataloged
         Files must be in a <obs_tag>_<suffix> format. 
-    -suffix_dict; a dictionary between a data title and the corresponding suffix.
+    -suffix_dict; a dictionary between a data title (a string used in the filename_dict)
+        and the corresponding suffix.
         e.g. {'EAVILS':'EAVILS_data.h5'} would be used for data we'd like to title
         EAVILS with suffix EAVILS_data.h5
     -list_or_file; restricts which files are added to output dictionary based on 
@@ -78,6 +76,8 @@ def get_filenames(
     elif type(list_or_file) is list:
         observation_check_list = list_or_file
     elif list_or_file is None:
+        #Picking arbitrary suffix to generate a list of obs_tags when its not supplied
+        #This gets used to check files with other suffixes
         arbitrary_suffix = next(suffix_dict[x] for x in suffix_dict)
         observation_check_list = []
         for filename in full_file_list:
@@ -126,12 +126,12 @@ def process_data(
     input_directory,
     output_directory,
     time_dim,
-    freq_dim,
-    pol_bidict,
+    pol_dict,
     shape_dict,
     initial_freq_flags,
-    metafits_folder,
     suffix_add,
+    freq_dim=1,
+    metafits_folder=None,
     pre_flag_on_SSINS_masks=True,
     clobber=False,
     return_output=False,
@@ -139,16 +139,44 @@ def process_data(
     ssins_sig_thresh=None,
     remove_edges_of_ranges=True
 ):
-    '''The primary function for processing raw data (individual observation EAVILS h5 files) into a larger set. Averages the data in blocks and calculates the frequency across channels. Should be run seperately for each combinations of night and sky field, each of which should be associated with a seperate list_file
+    '''Processes individual observation EAVILS h5 files into a larger set. 
     
-    list_file is an \n seperated text file with a list of obs_tag's associated with a particular night and sky field observation
-    input_directory defines where to find the EAVILS uvflag files and divisor storage files. They will be compared to obs_tag's in the list_file
-    output_directory defines where to output the processed data.
-    time_dim defines the number of time steps averaged across. However, if the time dimension of a given spectrum doesn't divide evenly by the time_dim the remainder is averaged over. In other words, if there are 52 time indices, and the time_dim is 8, there will be 6 blocks of dimension 8 to be averaged over, and one remainder block of dimension 4 which will be averaged over.
-    freq_dim defines the frequencies to be averaged across in blocks. As it stands, the averaging skips over any initially flagged channels (such as the coarse-band lines of the MWA). Works similarly to the time_dim but is contained within a frequency channel defined by shape_dict
-    pol_bidict just defines the relationship between the names of the polarizations and their indices, (e.g. 'XX' is associated with an index of 0)
-    shape_dict defines the possible channels for RFI. In the MWA context this equates to digital TV channels. It's also helpful to include a "clean" channel, where we don't expect digital TV RFI, which can serve as a control for the other channels. However, it's important to note that it's possible to have other types of RFI in this channel, such as narrow-band.
-    initial_freq_flags should be a frequency mask, which has True for flagged channels and False for unflagged channels. This should have the same dimensions as eavils.freq_array or ins.freq_array
+    Averages the data in blocks and calculates the frequency across channels. 
+        Should be run seperately for each combinations of night and sky field,
+        each of which should be associated with a seperate list_file
+        
+    Inputs:
+    -list_file: an \\n seperated text file with a list of obs_tag's associated 
+        with a particular night and sky field observation
+    -input_directory: defines where to find the EAVILS uvflag files and 
+        divisor storage files. They will be compared to obs_tag's in the list_file
+    -output_directory: defines where to output the processed data.
+    -time_dim: defines the number of time steps averaged across. 
+        However, if the time dimension of a given spectrum doesn't divide 
+        evenly by the time_dim, the remainder is averaged over. In other words,
+        if there are 52 time indices, and the time_dim is 8, there will be 6 
+        blocks of dimension 8 to be averaged over, and one remainder block of 
+        dimension 4 which will be averaged over.
+    -pol_dict: defines the relationship between the names of the polarizations
+        and their indices in arrays, (e.g. 'XX' is associated with an index of 0).
+        Should use polarization name as key (e.g. 'XX') and index as entry.
+    -shape_dict: defines the possible channels for RFI. In the MWA context this 
+        equates to digital TV channels. It's also helpful to include a "clean"
+        channel, where we don't expect digital TV RFI, which can serve as a 
+        control for the other channels. However, it's important to note that
+        it's possible to have other types of RFI in this "clean" channel, such
+        as narrow-band or broad-band.
+    -initial_freq_flags: should be a frequency mask, which has True for flagged
+        channels and False for unflagged channels. This should have the same 
+        dimensions as eavils.freq_array or ins.freq_array. For the MWA this can
+        be used for the coarse-band line flagging.
+    -suffix_add: used
+    -freq_dim: CURRENTLY NOT WELL SUPPORTED for values other than 1. Can be 
+        used to define a number of frequencies to be averaged across in blocks.
+        As currently implemented, the averaging skips over any initially flagged
+        channels that are input (such as the coarse-band lines of the MWA) and
+        cuts off at the edges of frequency ranges defined by shape_dict. Otherwise
+        works similarly to time_dim.
     pre_flag_on_SSINS_masks uses the previously generated SSINS mask for each EAVILS spectrum to exclude that data from calculations of the mean and estimated standard deviation. It assumes the SSINS masks have been propagated in polarization which is generally the case.
     clobber overwrites existing processed h5 files where they exist if True.'''
 
@@ -270,7 +298,7 @@ def process_data(
             ssins_flag_sub_array = ins.mask_to_flags()[:,freq_range_inds,:]
 
             # Block averaging is done in this loop over pols
-            for pol_ind,pol in pol_bidict.items():                                           
+            for pol,pol_ind in pol_dict.items():                                           
 
                 superpixel_eavils.append(
                     block_average(
@@ -384,7 +412,7 @@ def process_data(
         
     pointing_yaml_name = f'{title}_ptng_info.yml'
     pointing_yaml_name = os.path.join(output_sub_directory,pointing_yaml_name)
-    if (not os.path.exists(pointing_yaml_name) or clobber==True):
+    if not os.path.exists(pointing_yaml_name) or clobber==True:
         if instrument_name=='MWA':
             #Generate a pointing info dict to save per obs_id pointing info for MWA data
             pointing_info_dict = mwa_pointing_identification([metafits_folder], obs_id_list = list(filename_dict.keys()))
@@ -590,8 +618,8 @@ def create_data_arrays(processed_data_directory,list_titles,time_dim,freq_dim,sh
     ##########################################################################
 
 
-def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_list_dict,pointing_info_dict):
-    #pol_bidict associates the polarizations with their indices
+def create_data_frame(pol_dict,shape_dict,array_dict,sky_field_dict,source_list_dict,pointing_info_dict):
+    #pol_dict associates the polarizations with their indices
     #shape_dict gives the frequency channels where we expect our DTV type RFI
     #array_dict is the result of the create_array_dict function explicated above
     #sky_field_dict and source_list_dict are similarly explicated above
@@ -600,7 +628,7 @@ def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_lis
     sorted_freq_ranges,sorted_freq_mins = freq_range_sort(shape_dict)
     obs_tag_list = list(array_dict['variance'].keys())
     datafr_dict={'obs_tag':[],'sky_field':[],'t_block_ind':[],'pointing':[],'pol_sub':[],'SSINS_flagged':[],'pointing_flagged':[],'source_list':[]}
-    for pol in pol_bidict.inverse.keys():
+    for pol in pol_dict.keys():
         datafr_dict[f'variance_{pol}']=[]
     for freq_range in sorted_freq_ranges:
         datafr_dict['freq_range']=[]
@@ -617,7 +645,7 @@ def create_data_frame(pol_bidict,shape_dict,array_dict,sky_field_dict,source_lis
             datafr_dict['freq_range']+=[freq_range for i in range(Ntime_blocks)]
             datafr_dict['t_block_ind']+=[i for i in range(Ntime_blocks)]
             
-            for pol_ind,pol in pol_bidict.items():
+            for pol, pol_ind in pol_dict.items():
                 datafr_dict[f'variance_{pol}']+=list(array_dict['variance'][obs_tag][:,freq_range_ind,pol_ind])
     
             
@@ -708,7 +736,7 @@ def create_plots(
     shape_dict,
     sky_field_dict,
     pointing_info_dict,
-    pol_bidict,
+    pol_dict,
     initial_freq_flags,
     suffix_add,
     prelim_mode=True,
@@ -731,7 +759,9 @@ def create_plots(
     time_spacing=120,
     integration_time=2,
     time_free_list=False,
-    additional_labels=None
+    additional_labels=None,
+    for_printing=False,
+    max_obs_per_page_if_printing=8
 ):
     #Creates a long, detailed plot showing much of the data calculated in functions above.
     #This function could use more documentation
@@ -773,12 +803,6 @@ def create_plots(
     )
     
     
-    
-
-    
-
-    
-    
     obs_tag_list = list(filename_dict.keys())
     obs_tag_list = sorted(obs_tag_list)
     if not restricted_list is None:
@@ -798,15 +822,11 @@ def create_plots(
             freq_array = eavils.freq_array
             instrument_name = eavils.telescope.instrument
 
-  
-    
     xticks = eavils_utils.freq_ind_finder(freq_array,sorted_freq_mins)
-    
     
     xticklabels = [
         "%.0f" % (freq_array[tick] * 10 ** (-6)) for tick in xticks
     ]
-    
     
     if plot_instructions is None:
         if prelim_mode:
@@ -856,30 +876,67 @@ def create_plots(
     
         obs_tag_list_split = []
         
-        #if instrument_name=='MWA':
-        #    pointing_change_dict={}
+
         for pointing,sub_list in obs_tag_list_split_dict.items():
-            obs_tag_list_split.append(sub_list)
-        #    pointing_change_dict[pointing] = min(sub_list)
+            if for_printing==True:
+                max_obs_per_page_if_printing
+
+                sub_list
+                total = 0
+                while total<len(sub_list):
+                    sub_sub_list = sub_list[total:total+max_obs_per_page_if_printing]
+                    total+=max_obs_per_page_if_printing
+                    if len(sub_sub_list)>0:
+                        obs_tag_list_split.append(sub_sub_list)
+            else:
+                obs_tag_list_split.append(sub_list)
             
         if split_on_pointings:
             obs_tag_list_collection = obs_tag_list_split
         else:
             obs_tag_list_collection = [obs_tag_list]
-
-    
+    #################################################################
+    # Main plotting loop
+    #################################################################
+    part_count = 0
     for obs_tag_sub_list in obs_tag_list_collection:
-
+        initial_pointing=pointing_info_dict[obs_tag_sub_list[0]]['pointing']
+        
+        if split_on_pointings:
+            pointing_tag=initial_pointing
+        else:
+            pointing_tag='all'
+        
+        pdf_filename = f'{list_title}_{title}{restricted_tag}_ptng_{pointing_tag}_EAVILS'
+        pdf_filename = os.path.join(output_directory,pdf_filename)
+        
+        if for_printing:
+            part_label='_part'
+            try:
+                prev_pdf_filename
+            except NameError:
+                prev_pdf_filename=''
+            if prev_pdf_filename==pdf_filename:
+                part_count+=1
+                
+            else:
+                part_count = 0
+            part_label+=str(part_count)
+        else:
+            part_label=''
 
 
         #This chunk creates a list of positions in figure coordinates determining where to plot each subfigure based on obs_tag number
         if instrument_name=='MWA':
             if time_free_list:
                 positions =  [time_spacing*n for n in range(len(obs_tag_sub_list))]
-                row_count = len(obs_tag_sub_list)+1
+                row_count = len(obs_tag_sub_list)
             else:
                 positions = [int(obs_tag)-int(obs_tag_sub_list[0]) for obs_tag in obs_tag_sub_list]
                 row_count = (int(obs_tag_sub_list[-1])-int(obs_tag_sub_list[0]))/time_spacing
+        print(positions)
+        print(row_count)
+
         full_vertical_length = positions[-1]+time_spacing
         positions.append(full_vertical_length)
 
@@ -905,9 +962,11 @@ def create_plots(
 
         column_width = 1/col_count
         
-        prev_pointing = 0.1 # setting to an arbitrary number that will never be an obs_tag
+        prev_pointing = -.00000000000000000001 # setting to an arbitrary number that will never be an obs_tag
         
         for ind, obs_tag in enumerate(obs_tag_sub_list):
+
+            
             sky_field = sky_field_dict[obs_tag]
             if not time_free_list:
                 current_pointing = pointing_info_dict[obs_tag]['pointing']
@@ -1000,11 +1059,11 @@ def create_plots(
                 bottom = top - height  # convert top position to bottom for `add_axes`
                 
 
-                if pol in pol_bidict.inverse.keys():
-                    pol_ind = pol_bidict.inverse[pol]
+                if pol in pol_dict.keys():
+                    pol_ind = pol_dict[pol]
                 else:
                     polA, polB, = pol.split('-')
-                    pol_ind = pol_bidict.inverse[polA]
+                    pol_ind = pol_dict[polA]
                 #print(data_title)
                 #print(size_factor,Ntime_blocks,full_vertical_length)
 
@@ -1198,12 +1257,12 @@ def create_plots(
                 if col_ind==0:
                     try:
                         local_label = additional_labels[obs_tag]
-                        ax.text(-2.5,1,
-                            local_label, ha='right', va='top',size=text_size*3, transform=ax.get_xaxis_transform()
-                        )
                     except:
-                        pass
-                    if pointing_change_bool and display_pointing_changes:
+                        local_label = ' '
+                    ax.text(-.5,1,
+                        local_label, ha='left', va='top',size=text_size*3)
+                    
+                    if pointing_change_bool and display_pointing_changes and part_count==0:
                         
                         fig.add_artist(
                             lines.Line2D(
@@ -1220,7 +1279,7 @@ def create_plots(
                             f"AZ:{round(pointing_info_dict[obs_tag]['az'],2)}"
                         )
                         ax.text(
-                            1.05,
+                            1.02,
                             top,
                             mini_text,
                             transform=fig.transFigure,
@@ -1247,17 +1306,17 @@ def create_plots(
                 prev_pointing = current_pointing
 
 
-        if split_on_pointings:
-            pointing_tag=current_pointing
-        else:
-            pointing_tag='all'
-        
-        plt.suptitle(f'{list_title}, pointing: {pointing_tag}',y=title_y,fontsize=10*size_factor)
 
-        pdf_filename = f'{list_title}_{title}{restricted_tag}_ptng_{pointing_tag}_EAVILS.pdf'
-        pdf_filename = os.path.join(output_directory,pdf_filename)
-        print(f'saving {pdf_filename}')
-        plt.savefig(pdf_filename, bbox_inches="tight")
+        
+
+        
+
+        plt.suptitle(f'{list_title}, pointing: {pointing_tag} {part_label}',y=title_y,fontsize=10*size_factor)
+        
+        print(f'saving {pdf_filename}{part_label}.pdf')
+        plt.savefig(f'{pdf_filename}{part_label}.pdf', bbox_inches="tight")
+        prev_pdf_filename = pdf_filename
+        
         if show:
             plt.show()
         plt.close()
@@ -1270,7 +1329,7 @@ def create_plots(
 
 
 
-def line_plots(list_file,array_dict,processed_data_directory,time_dim,freq_dim,shape_dict,sky_field_list_association,pointing_info_dict,pol_bidict,threshold=None,estimated_pol_sub_stdv=None,per_pointing_stats=None, output_directory=None, pre_flag_on_SSINS_masks=True,abs_mean_per_obs_id_threshold = 5, abs_mean_per_pt_threshold = 5,integration_time=2,plot_instructions=None,display_pointing_changes=True,split_on_pointings=False,allowed_missing_fraction=0.1,display_stats=True,restricted_list=None, line_plot_freq_ranges = None,raster_num_labels=False,show=False):
+def line_plots(list_file,array_dict,processed_data_directory,time_dim,freq_dim,shape_dict,sky_field_list_association,pointing_info_dict,pol_dict,threshold=None,estimated_pol_sub_stdv=None,per_pointing_stats=None, output_directory=None, pre_flag_on_SSINS_masks=True,abs_mean_per_obs_id_threshold = 5, abs_mean_per_pt_threshold = 5,integration_time=2,plot_instructions=None,display_pointing_changes=True,split_on_pointings=False,allowed_missing_fraction=0.1,display_stats=True,restricted_list=None, line_plot_freq_ranges = None,raster_num_labels=False,show=False):
 
     if line_plot_freq_ranges is not None:
         time_length = time_dim*integration_time
@@ -1287,7 +1346,7 @@ def line_plots(list_file,array_dict,processed_data_directory,time_dim,freq_dim,s
                     continue
             
     
-                pol_ind=pol_bidict.inverse[pol]
+                pol_ind=pol_dict[pol]
                 plot_list = []
                 time_list = []
                 for obs_id in obs_id_list:
