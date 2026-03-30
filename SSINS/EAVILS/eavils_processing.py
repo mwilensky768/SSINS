@@ -13,6 +13,8 @@ import yaml
 from copy import deepcopy
 import pandas as pd
 import astropy.io.fits as fits
+from astropy.time import Time
+from functools import reduce
 
 
 def freq_range_sort(shape_dict):
@@ -159,6 +161,14 @@ def title_gen(time_dim, freq_dim):
     '''Generates the 'title' which references the number of times and frequencies in an averaging block'''
     return f'Tdim{time_dim}_Fdim{freq_dim}'
 
+def complete_suffix_dict(orig_dict,suffix_add=None):
+    if not suffix_add is None:
+        return {
+        key: f'{suffix_add}_{
+            orig_dict[key]}' for key in orig_dict.keys()}
+    else:
+        return orig_dict
+
 
 def process_data(
     list_file,
@@ -209,7 +219,9 @@ def process_data(
         channels and False for unflagged channels. This should have the same
         dimensions as eavils.freq_array or ins.freq_array. For the MWA this can
         be used for the coarse-band line flagging.
-    -suffix_add: used
+    -suffix_add: used to add a consistent string to all suffixes used to search
+        files in a folder. So e.g. if suffix_add is '80khz_cross', the 'EAVILS_data.h5'
+        suffix will become '80khz_cross_EAVILS_data.h5'
     -freq_dim: CURRENTLY NOT WELL SUPPORTED for values other than 1. Can be
         used to define a number of frequencies to be averaged across in blocks.
         As currently implemented, the averaging skips over any initially flagged
@@ -226,10 +238,9 @@ def process_data(
         'EAVILS': 'EAVILS_data.h5',
         'SSINS_data': 'SSINS_data.h5',
         'divisor_storage_array': 'divisor_storage.npy'}
-    suffix_dict = {
-        key: f'{suffix_add}_{
-            suffix_dict[key]}' for key in suffix_dict.keys()}
-
+    
+    suffix_dict = complete_suffix_dict(orig_dict = suffix_dict, suffix_add = suffix_add)
+    
     list_title = list_file.split('/')[-1].split('.')[0]
     output_sub_directory = os.path.join(output_directory, list_title)
     title = title_gen(time_dim, freq_dim)
@@ -908,9 +919,8 @@ def create_plots(
         'EAVILS': 'EAVILS_data.h5',
         'SSINS_data': 'SSINS_data.h5',
         'divisor_storage_array': 'divisor_storage.npy'}
-    suffix_dict = {
-        key: f'{suffix_add}_{
-            suffix_dict[key]}' for key in suffix_dict.keys()}
+   
+    suffix_dict = complete_suffix_dict(orig_dict = suffix_dict, suffix_add = suffix_add)
 
     filename_dict = get_filenames(
         input_directory,
@@ -1505,15 +1515,16 @@ def line_plots(
         time_dim,
         freq_dim,
         shape_dict,
-        sky_field_list_association,
+        sky_field,
         pointing_info_dict,
         pol_dict,
+        line_plot_freq_ranges,
         threshold=None,
         estimated_pol_sub_stdv=None,
         per_pointing_stats=None,
         output_directory=None,
         pre_flag_on_SSINS_masks=True,
-        abs_mean_per_obs_id_threshold=5,
+        abs_mean_per_obs_tag_threshold=5,
         abs_mean_per_pt_threshold=5,
         integration_time=2,
         plot_instructions=None,
@@ -1522,146 +1533,149 @@ def line_plots(
         allowed_missing_fraction=0.1,
         display_stats=True,
         restricted_list=None,
-        line_plot_freq_ranges=None,
         raster_num_labels=False,
         show=False):
 
-    if line_plot_freq_ranges is not None:
-        time_length = time_dim * integration_time
+    
+    sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
+    time_length = time_dim * integration_time
 
-        fig, axes = plt.subplots(2, 1, dpi=400, figsize=(12, 4))
-        plotting_pols = ['XX', 'YY']
-        stretch_factor = 10**2
-        ax = axes[0]
+    fig, axes = plt.subplots(2, 1, dpi=400, figsize=(12, 4))
+    plotting_pols = ['XX', 'YY']
+    stretch_factor = 10**2
+    ax = axes[0]
 
-        for pol in plotting_pols:
-            for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
-
-                if freq_range not in line_plot_freq_ranges:
-                    continue
-
-                pol_ind = pol_dict[pol]
-                plot_list = []
-                time_list = []
-                for obs_id in obs_id_list:
-
-                    values = plot_arrays_dict[obs_id]['variance'][:,
-                                                                  freq_range_ind, pol_ind]
-
-                    plot_list += list(values)
-                    time_list += list(np.arange(int(obs_id),
-                                                int(obs_id) + time_length * len(values),
-                                                time_length))
-
-                line, = ax.plot(
-                    time_list, plot_list, linewidth=.5, label=f'{freq_range}, {pol}')
-                color = line.get_color()
-
-        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
-        ax.ticklabel_format(useOffset=False, style='plain')
-        ax.set_ylabel("Variance", fontsize=10)
-        ax.set_aspect(200)
-        ymax = 5
-        ymin = 0
-        yrange = ymax - ymin
-        ax.set_aspect(stretch_factor * 20 / yrange)
-        ax.set_ylim(ymin, ymax)
-        ax.legend(loc='upper left', prop={'size': 7}, framealpha=0.5)
-
-        for pointing, p_c_obs in pointing_change_dict.items():
-            ax.axvline(
-                (int(p_c_obs)),
-                color='magenta',
-                linewidth=1,
-                alpha=.7,
-                linestyle="dotted")
-            ax.text(
-                int(p_c_obs) + 4 * 60,
-                0,
-                f'ptg: {pointing}',
-                ha='left',
-                va='bottom',
-                transform=ax.get_xaxis_transform(),
-                fontsize=8)
-
-        ax = axes[1]
+    obs_tag_list = sorted(list(array_dict['variance'].keys()))
+    for pol in plotting_pols:
         for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
+
             if freq_range not in line_plot_freq_ranges:
                 continue
+
+            pol_ind = pol_dict[pol]
             plot_list = []
             time_list = []
-            for obs_id in obs_id_list:
+            for obs_tag in obs_tag_list:
 
-                values = ((1 / estimated_pol_sub_stdv[sky_field][freq_range])) * \
-                    plot_arrays_dict[obs_id]['pol_sub'][:, freq_range_ind, 0]
+                values = array_dict['variance'][obs_tag][:,
+                                                              freq_range_ind, pol_ind]
 
                 plot_list += list(values)
-                time_list += list(np.arange(int(obs_id),
-                                            int(obs_id) + time_length * len(values),
+                time_list += list(np.arange(int(obs_tag),
+                                            int(obs_tag) + time_length * len(values),
                                             time_length))
 
-            ax.axhline(
-                y=-threshold,
-                color='black',
-                linewidth=.5,
-                linestyle='--')
-            ax.axhline(y=0, linewidth=.35, color='black')
-            ax.axhline(
-                y=threshold,
-                color='black',
-                linewidth=.5,
-                linestyle='--')
             line, = ax.plot(
-                time_list, plot_list, linewidth=.5, label=freq_range)
+                time_list, plot_list, linewidth=.5, label=f'{freq_range}, {pol}')
             color = line.get_color()
-            ax.fill_between(time_list, 0, plot_list,
-                            facecolor=color, alpha=0.3)
 
-            shading_selection = eavils_utils.pad_by(
-                np.abs(plot_list) >= threshold, 1)[:-1]
-            ax.fill_between(
-                time_list,
-                0,
-                plot_list,
-                facecolor=color,
-                alpha=0.6,
-                where=shading_selection)
+    ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
+    ax.ticklabel_format(useOffset=False, style='plain')
+    ax.set_ylabel("Variance", fontsize=10)
+    ax.set_aspect(200)
+    ymax = 5
+    ymin = 0
+    yrange = ymax - ymin
+    ax.set_aspect(stretch_factor * 20 / yrange)
+    ax.set_ylim(ymin, ymax)
+    ax.legend(loc='upper left', prop={'size': 7}, framealpha=0.5)
 
-        ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
-        ax.ticklabel_format(useOffset=False, style='plain')
-        ax.set_ylabel("Pol. sub. metric", fontsize=10)
-        ax.set_aspect(200)
-        ymax = 10
-        ymin = -10
-        yrange = ymax - ymin
-        ax.set_aspect(stretch_factor * 20 / yrange)
-        ax.set_ylim(ymin, ymax)
-        ax.legend(loc='upper left', framealpha=0.5)
+    for pointing, p_c_obs in pointing_change_dict.items():
+        ax.axvline(
+            (int(p_c_obs)),
+            color='magenta',
+            linewidth=1,
+            alpha=.7,
+            linestyle="dotted")
+        ax.text(
+            int(p_c_obs) + 4 * 60,
+            0,
+            f'ptg: {pointing}',
+            ha='left',
+            va='bottom',
+            transform=ax.get_xaxis_transform(),
+            fontsize=8)
 
-        for pointing, p_c_obs in pointing_change_dict.items():
-            ax.axvline(
-                (int(p_c_obs)),
-                color='magenta',
-                linewidth=1,
-                alpha=.7,
-                linestyle="dotted")
-            ax.text(
-                int(p_c_obs) + 4 * 60,
-                0,
-                f'ptg: {pointing}',
-                ha='left',
-                va='bottom',
-                transform=ax.get_xaxis_transform(),
-                fontsize=8)
+    ax = axes[1]
+    for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
+        if freq_range not in line_plot_freq_ranges:
+            continue
+        plot_list = []
+        time_list = []
+        for obs_tag in obs_tag_list:
 
-        plt.suptitle(f'{list_title}')
-        fig.tight_layout()
-        linePlot_filename = f'{list_title}_{title}{restricted_tag}_linePlot.pdf'
-        linePlot_filename = os.path.join(output_directory, linePlot_filename)
-        plt.savefig(linePlot_filename, bbox_inches="tight")
-        if show:
-            plt.show()
-        plt.close()
+            values = ((1 / estimated_pol_sub_stdv[sky_field][freq_range])) * \
+                array_dict['pol_sub'][obs_tag][:, freq_range_ind, 0]
+
+            plot_list += list(values)
+            time_list += list(np.arange(int(obs_tag),
+                                        int(obs_tag) + time_length * len(values),
+                                        time_length))
+
+        ax.axhline(
+            y=-threshold,
+            color='black',
+            linewidth=.5,
+            linestyle='--')
+        ax.axhline(y=0, linewidth=.35, color='black')
+        ax.axhline(
+            y=threshold,
+            color='black',
+            linewidth=.5,
+            linestyle='--')
+        line, = ax.plot(
+            time_list, plot_list, linewidth=.5, label=freq_range)
+        color = line.get_color()
+        ax.fill_between(time_list, 0, plot_list,
+                        facecolor=color, alpha=0.3)
+
+        shading_selection = eavils_utils.pad_by(
+            np.abs(plot_list) >= threshold, 1)[:-1]
+        ax.fill_between(
+            time_list,
+            0,
+            plot_list,
+            facecolor=color,
+            alpha=0.6,
+            where=shading_selection)
+
+    ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
+    ax.ticklabel_format(useOffset=False, style='plain')
+    ax.set_ylabel("Pol. sub. metric", fontsize=10)
+    ax.set_aspect(200)
+    ymax = 10
+    ymin = -10
+    yrange = ymax - ymin
+    ax.set_aspect(stretch_factor * 20 / yrange)
+    ax.set_ylim(ymin, ymax)
+    ax.legend(loc='upper left', framealpha=0.5)
+
+    
+    
+    for pointing, p_c_obs in pointing_change_dict.items():
+        ax.axvline(
+            (int(p_c_obs)),
+            color='magenta',
+            linewidth=1,
+            alpha=.7,
+            linestyle="dotted")
+        ax.text(
+            int(p_c_obs) + 4 * 60,
+            0,
+            f'ptg: {pointing}',
+            ha='left',
+            va='bottom',
+            transform=ax.get_xaxis_transform(),
+            fontsize=8)
+
+    plt.suptitle(f'{list_title}')
+    fig.tight_layout()
+    linePlot_filename = f'{list_title}_{title}{restricted_tag}_linePlot.pdf'
+    linePlot_filename = os.path.join(output_directory, linePlot_filename)
+    plt.savefig(linePlot_filename, bbox_inches="tight")
+    if show:
+        plt.show()
+    plt.close()
 
 
 def run_ssins(
@@ -1752,3 +1766,212 @@ def flag_expander(
                                     min_freq_ind:max_freq_ind, :] = 1
 
     return expanded_flag_array
+
+
+
+def dotplotter(
+    combined_flags_df,
+    params_list,
+    time_min,
+    time_max,
+    center_y =  0.15,
+    output_name = None,
+    dotrow_spacing = 1,
+    plot_height_multiplier = 2,
+    int_mjd_min = None,
+    int_mjd_max = None,
+    plot_legend = True,
+    marker_size = 150,
+    mark_pointing_changes=False,
+    height_bug_fix = .0075,
+    show_plot = True
+    
+):
+
+    '''
+    Generates a dotplot to visualize flags.
+    
+    Inputs:
+        combined_flags_df:
+            pandas dataframe with the following necessary columns:
+                'mjd' - a time in mjd format used for plotting each flag
+                '<FLAG_TYPE>_<FREQ_RANGE>' - a column for each \'flag\' type (e.g. SSINS flags)
+                    and frequency range (e.g. TV7)
+            optional:
+                'pointing' - an integer number for MWA pointings, used when mark_pointing_changes set to True
+
+        params_list:
+            A list of parameters to be given to the plotting function for each set of flags to be plotted as follows:
+                [
+                ('FLAG_TYPE1','FREQ_RANGE1','COLOR1','MARKER_TYPE1'), 
+                ('FLAG_TYPE2','FREQ_RANGE2','COLOR2','MARKER_TYPE2'), 
+                ...
+                ]
+            Can also pass two flag types seperated with a + in order to only show when both types of flag are present.
+            
+        time_min:
+            Float, minimum hour (0-24) to plot times
+
+        time_max:
+            Float, maximum hour (0-24) to plot times
+
+        center_y:
+            Float, adjustment of height to plot dots in each row.
+
+        output_name:
+            String filename to save out if desired (e.g. <path/to/file.pdf>)
+
+        dotrow_spacing:
+            Float, height difference between dots in each row
+
+        plot_height_multiplier:
+            Float, scale overall plot size
+
+        int_mjd_min:
+            Int, minimum mjd day to be plotted from dataset (only mjds with an integer part equal or greater than this will be plotted)
+
+        int_mjd_max:
+            Int, maximum mjd day to be plotted from dataset (only mjds with an integer part equal or less than this will be plotted)
+
+        plot_legend:
+            Boolean to choose whether to plot the legend
+
+        marker_size:
+            Integer to determine the size of plot markers
+            
+        mark_pointing_changes:
+            Boolean to add vertical lines on MWA pointing changes
+
+        height_bug_fix:
+            Float to adjust height of filled circles to account for slight plotting differences
+
+        show_plot:
+            Boolean to display plot
+
+        
+
+    Returns:
+        Saves plot to location specified by output_name if given an argument, displays plot if show_plot==True
+        
+    
+    '''
+    # Setting up preliminary parameters for plot
+    # Determines time range for plot, from time_min to time_max (in hours)
+    times = [f'{t}:00' for t in range(time_min,time_max+1)]
+    
+
+    mjds = list(combined_flags_df['mjd'])
+    int_mjds = [np.floor(i) for i in mjds]
+    
+
+    sorted_int_mjd_dates = np.sort(np.unique(int_mjds))
+
+    if int_mjd_min is None:
+        int_mjd_min = np.min(sorted_int_mjd_dates)
+    if int_mjd_max is None:
+        int_mjd_max = np.max(sorted_int_mjd_dates)
+    sorted_int_mjd_dates = [int_mjd for int_mjd in sorted_int_mjd_dates if (int_mjd>=int_mjd_min and int_mjd<=int_mjd_max)]
+    days = Time(sorted_int_mjd_dates, format='mjd')
+    
+    ndays = len(sorted_int_mjd_dates)
+    
+    fig, axs = plt.subplots(ndays, 1, layout='tight', figsize=(24, ndays*plot_height_multiplier))
+    if ndays ==1:
+        axs = [axs]
+
+    # Iterating through dates for each row in the plot
+    for i, int_mjd in enumerate(sorted_int_mjd_dates):
+        date_datafr = combined_flags_df.query(f'floor(mjd) == {int_mjd}')
+        
+        if mark_pointing_changes==True:
+            # Determining where pointing changes occur
+            prev_pointing = -100000
+            pointing_change_mjds = []
+            for ii, row in date_datafr.iterrows():  
+                pointing = row['pointing']
+                if prev_pointing!=pointing:
+                    pointing_change_mjds.append(row['mjd'])
+                prev_pointing = pointing
+        
+        
+        
+        date_mjds = date_datafr['mjd']
+
+        # Iterating through each set of dots
+        for dotrow_ind, params in enumerate(params_list):
+            
+            if mark_pointing_changes==True:
+                time_gap = 120/(3600*24) #Typical length of MWA observations to adjust location of pointing change lines
+                line_height_mult = len(params_list)
+                if dotrow_ind==0:
+                    axs[i].vlines(pointing_change_mjds-int_mjd-time_gap/2, ymin=0, ymax=line_height_mult, alpha=.2, color='black')
+            
+            flag_types, freq_range,color,marker_style = params
+            
+            if type(marker_style)==dict:
+                marker_style
+            elif type(marker_style)!=str:
+                raise Exception()
+
+                
+            '''if freq_range=='':
+                sep = ''
+            else:
+                sep = '_'
+            '''
+            flags_list = []
+            
+            for flag_type in flag_types.split('+'):
+                flags_list.append(date_datafr[f'{flag_type}_{freq_range}'])
+            
+            flags = reduce(lambda a, b: a & b, flags_list)
+           
+            
+            kwargs = {'facecolors':'white', 'edgecolors':color}
+
+            all_centers_y = np.full(len(date_mjds),center_y)
+            # Draw open and closed circles in turn for each row
+            for flag_bool in [False,True]:
+                if flag_bool==True:
+                    kwargs['facecolors'] = color
+                    #Accounts for slight difference in plotting height for filled vs open circles
+                    height_adjust = height_bug_fix
+                else:
+                    kwargs['facecolors'] = 'white'
+                    height_adjust =0
+                    
+                axs[i].scatter(
+                    date_mjds[flags==flag_bool] - int_mjd,
+                    all_centers_y[flags==flag_bool]+dotrow_ind*dotrow_spacing+height_adjust,
+                    **kwargs,
+                    marker=marker_style,
+                    s=marker_size,
+                    linewidth=.5
+                ) 
+    
+                
+        axs[i].set_ylim(0, center_y+dotrow_spacing*(len(params_list)+1))
+        axs[i].set_xticks([])
+    
+        axs[i].set_xlim(time_min/24,time_max/24)
+        axs[i].set_yticks([1.25],[np.unique(days.to_value('iso', subfmt='date'))[i]])
+    
+    
+    axs[-1].set_xticks([i/24 for i in range(time_min,time_max+1)], times)
+    plt.xlabel('time (UTC)', fontsize=14)
+    
+    
+    handles = []
+    for params in params_list:
+        flag_type, freq_range,color,marker_style = params
+        handles.append(axs[-1].scatter([], [], color=color, marker='o', label=f'{flag_type} {freq_range}'))
+    handles.reverse()
+    
+    
+    if plot_legend==True:
+        fig.legend(handles=handles, loc=(0.7,0.1), fontsize='20', markerscale=2)
+    if show_plot:
+        plt.show()
+    if output_name is not None:
+        fig.savefig(output_name)
+
