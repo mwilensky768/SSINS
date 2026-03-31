@@ -141,15 +141,13 @@ def get_filenames(
 
         if missing_fraction > allowed_missing_fraction:
             raise Exception(
-                f'Missing files in {input_directory}; expected {
-                    len(observation_check_list)}, ' f'found {
-                    len(filename_dict)}. Missing: {missing_list}')
+                f'Missing files in {input_directory}; expected {len(observation_check_list)}, ', 
+                f'found {len(filename_dict)}. Missing: {missing_list}')
 
         elif allowed_missing_fraction < 1:
             print(
-                f'WARNING: missing files in {input_directory}; expected {
-                    len(observation_check_list)}, ' f'found {
-                    len(filename_dict)}. Missing: {missing_list}')
+                f'WARNING: missing files in {input_directory}; expected {len(observation_check_list)}, ', 
+                f'found {len(filename_dict)}. Missing: {missing_list}')
 
     if return_missing_list:
         return filename_dict, missing_list
@@ -164,8 +162,7 @@ def title_gen(time_dim, freq_dim):
 def complete_suffix_dict(orig_dict,suffix_add=None):
     if not suffix_add is None:
         return {
-        key: f'{suffix_add}_{
-            orig_dict[key]}' for key in orig_dict.keys()}
+        key: f'{suffix_add}_{orig_dict[key]}' for key in orig_dict.keys()}
     else:
         return orig_dict
 
@@ -285,8 +282,7 @@ def process_data(
         else:
             if eavils.telescope.instrument != instrument_name:
                 raise Exception(
-                    f'Data from different instruments, {instrument_name} and {
-                        eavils.telescope.instrument}')
+                    f'Data from different instruments, {instrument_name} and {eavils.telescope.instrument}')
 
         divisor_storage_array = np.load(
             filename_dict[obs_tag]['divisor_storage_array'])
@@ -313,11 +309,7 @@ def process_data(
             range_ind_dict = {}
             if len(freq_array_default) != len(initial_freq_flags):
                 raise Exception(
-                    f'Length of freq_array {
-                        len(freq_array_default)} is not equal to length of the initial_freq_flags array {
-                        len(
-                            initial +
-                            freq_flags)}')
+                    f'Length of freq_array {len(freq_array_default)} is not equal to length of the initial_freq_flags array {len(initial + freq_flags)}')
             for freq_range in sorted_freq_ranges:
 
                 freq_range_inds = eavils_utils.freq_ind_finder(
@@ -416,8 +408,7 @@ def process_data(
 
         if eavils.Nspws > 1:
             raise Exception(
-                f'Nspws of {
-                    eavils.Nspws}. Multiple spectral windows not currently implemented for eavils_processing')
+                f'Nspws of {eavils.Nspws}. Multiple spectral windows not currently implemented for eavils_processing')
         else:
             range_flex_spw_id_array = [
                 0 for f in range(
@@ -817,7 +808,7 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
             for pointing in all_pointings:
                 per_pointing_stats[list_title][freq_range][pointing] = {}
 
-                query_string = f'{'freq_range'} == \'{freq_range}\'&{'pointing'} == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
                 pointing_pol_sub_series = np.array(
                     datafr.query(query_string)['pol_sub'] /
                     datafr.query(query_string)['pol_sub_stdv'])
@@ -826,7 +817,7 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
                     (np.mean(np.abs(pointing_pol_sub_series)) - folded_mean)
                 per_pointing_stats[list_title][freq_range][pointing]['abs_mean'] = abs_mean
 
-                query_string = f'{'freq_range'} == \'{freq_range}\'&{'pointing'} == {pointing}& SSINS_flagged == False & pol_sub_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & pol_sub_flagged == False & source_list == \'{list_title}\''
                 pointing_pol_sub_limited_series = np.array(
                     datafr.query(query_string)['pol_sub'] /
                     datafr.query(query_string)['pol_sub_stdv'])
@@ -835,7 +826,7 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
                     np.mean(np.abs(pointing_pol_sub_limited_series)) - folded_mean)
                 per_pointing_stats[list_title][freq_range][pointing]['abs_mean_limited'] = abs_mean_limited
 
-                query_string = f'{'freq_range'} == \'{freq_range}\'&{'pointing'} == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
                 pointing_pol_sub_flag_series = np.array(
                     datafr.query(query_string)['pol_sub_flagged'])
                 flagged_count = np.sum(pointing_pol_sub_flag_series)
@@ -1449,22 +1440,11 @@ def create_plots(
                             )
                         )
                         mini_text = (
-                            f"PTNG:{
-                                round(
-                                    pointing_info_dict[obs_tag]['pointing'],
-                                    2)},\n" f"RA:{
-                                round(
-                                    pointing_info_dict[obs_tag]['ra'],
-                                    2)},\n" f"DEC:{
-                                round(
-                                    pointing_info_dict[obs_tag]['dec'],
-                                    2)}\n" f"ALT:{
-                                round(
-                                    pointing_info_dict[obs_tag]['alt'],
-                                    2)},\n" f"AZ:{
-                                        round(
-                                            pointing_info_dict[obs_tag]['az'],
-                                            2)}")
+                            f"PTNG:{round(pointing_info_dict[obs_tag]['pointing'],2)},\n", 
+                            f"RA:{round(pointing_info_dict[obs_tag]['ra'], 2)},\n", 
+                            f"DEC:{round(pointing_info_dict[obs_tag]['dec'],2)}\n", 
+                            f"ALT:{round(pointing_info_dict[obs_tag]['alt'],2)},\n", 
+                            f"AZ:{round(pointing_info_dict[obs_tag]['az'],2)}")
                         ax.text(
                             1.02,
                             top,
