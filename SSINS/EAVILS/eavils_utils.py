@@ -102,7 +102,7 @@ def reader(
     
     if len(cut_antennas) > 0:
 
-        keep_antennas = ss.antenna_numbers
+        keep_antennas = ss.telescope.antenna_numbers
         keep_antennas = [ant for ant in keep_antennas if ant not in cut_antennas]
         ss.select(antenna_nums=keep_antennas)
 

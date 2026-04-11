@@ -159,13 +159,6 @@ def title_gen(time_dim, freq_dim):
     '''Generates the 'title' which references the number of times and frequencies in an averaging block'''
     return f'Tdim{time_dim}_Fdim{freq_dim}'
 
-def complete_suffix_dict(orig_dict,suffix_add=None):
-    if not suffix_add is None:
-        return {
-        key: f'{suffix_add}_{orig_dict[key]}' for key in orig_dict.keys()}
-    else:
-        return orig_dict
-
 
 def process_data(
     list_file,
@@ -232,11 +225,10 @@ def process_data(
     # params.
 
     suffix_dict = {
-        'EAVILS': 'EAVILS_data.h5',
-        'SSINS_data': 'SSINS_data.h5',
-        'divisor_storage_array': 'divisor_storage.npy'}
-    
-    suffix_dict = complete_suffix_dict(orig_dict = suffix_dict, suffix_add = suffix_add)
+        'EAVILS': f'{suffix_add}_EAVILS_data.h5',
+        'SSINS_data': f'{suffix_add}_SSINS_data.h5',
+        'divisor_storage_array': f'{suffix_add}_divisor_storage.npy'}
+
     
     list_title = list_file.split('/')[-1].split('.')[0]
     output_sub_directory = os.path.join(output_directory, list_title)
@@ -416,9 +408,9 @@ def process_data(
 
         # Time data for UVFlag
         averaged_lst_array = np.array(
-            [np.mean(eavils.lst_array[i + time_dim]) for i in range(Ntime_blocks)])
+            [np.mean(eavils.lst_array[i * time_dim : (i+1) * time_dim]) for i in range(Ntime_blocks)])
         averaged_time_array = np.array(
-            [np.mean(eavils.time_array[i + time_dim]) for i in range(Ntime_blocks)])
+            [np.mean(eavils.time_array[i * time_dim : (i+1) * time_dim]) for i in range(Ntime_blocks)])
         if np.any(eavils.weights_array != eavils.weights_array[0, 0, 0]):
             raise Exception(
                 'weights_array has at least one non-identical value. This is not currently handled in eavils_processing')
@@ -637,7 +629,7 @@ def create_data_arrays(
     ###################################
     title = title_gen(time_dim, freq_dim)
     sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
-    array_dict = {'variance': {}, 'reshaped_SSINS_mask': {}, 'pol_sub': {}}
+    array_dict = {'variance': {}, 'reshaped_SSINS_mask': {}, 'pol_sub': {}, 'lst':{}}
     dof_ref_dict = {}
 
     sky_field_dict = {}
@@ -684,9 +676,14 @@ def create_data_arrays(
                 pol_sub_array[:, :, pseudo_pol_ind] = var_plot_array[:,
                                                                      :, polA_ind] - var_plot_array[:, :, polB_ind]
 
+            lst_extended = var_info.lst_array
+            #lst_extended = lst_extended[:, None, None]
+            #lst_extended = np.broadcast_to(lst_extended, var_info.metric_array.shape)
+
             array_dict['variance'][obs_tag] = var_plot_array
             array_dict['pol_sub'][obs_tag] = pol_sub_array
             array_dict['reshaped_SSINS_mask'][obs_tag] = reshaped_flags_array
+            array_dict['lst'][obs_tag] = lst_extended
     if add_pointing_dict:
         return array_dict, sky_field_dict, source_list_dict, combined_pointing_info_dict
     else:
@@ -720,7 +717,9 @@ def create_data_frame(
         'pol_sub': [],
         'SSINS_flagged': [],
         'pointing_flagged': [],
-        'source_list': []}
+        'source_list': [],
+        'lst': []
+    }
     for pol in pol_dict.keys():
         datafr_dict[f'variance_{pol}'] = []
     for freq_range in sorted_freq_ranges:
@@ -755,6 +754,7 @@ def create_data_frame(
             datafr_dict['pol_sub'] += list(pol_sub_mini_list)
             datafr_dict['pointing_flagged'] += [
                 False for i in range(Ntime_blocks)]
+            datafr_dict['lst'] += list(array_dict['lst'][obs_tag])
 
     datafr = pd.DataFrame(datafr_dict)
     return datafr
@@ -907,11 +907,9 @@ def create_plots(
         allowed_missing_fraction = 1
 
     suffix_dict = {
-        'EAVILS': 'EAVILS_data.h5',
-        'SSINS_data': 'SSINS_data.h5',
-        'divisor_storage_array': 'divisor_storage.npy'}
-   
-    suffix_dict = complete_suffix_dict(orig_dict = suffix_dict, suffix_add = suffix_add)
+        'EAVILS': f'{suffix_add}_EAVILS_data.h5',
+        'SSINS_data': f'{suffix_add}_SSINS_data.h5',
+        'divisor_storage_array': f'{suffix_add}_divisor_storage.npy'}
 
     filename_dict = get_filenames(
         input_directory,
