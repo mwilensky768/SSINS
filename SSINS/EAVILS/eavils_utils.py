@@ -42,7 +42,8 @@ def reader(
     split_autos=False,
     metafits_ant_check=True,
     detect_time_cuts=True,
-    extension='uvfits'
+    extension='uvfits',
+    additional_bad_ant_names=[]
 ):
 
     time_cuts=None
@@ -73,19 +74,19 @@ def reader(
         ss.select(times=np.unique(ss.time_array)[time_cuts[0]:time_cuts[1]])
 
     
-
+    bad_ant_names = additional_bad_ant_names
     cut_antennas = []
+    
     if metafits_ant_check:
         metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
         metafits = fits.open(metafits_file_name)
-
-        bad_tiles = []
         # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
         for ind in range(len(metafits["TILEDATA"].data.field("flag")) // 2):
             
             if sum(metafits["TILEDATA"].data.field("flag")[(ind * 2):(ind * 2 + 2)]) > 0:
-                bad_tiles.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
+                bad_ant_names.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
 
+    if len(bad_ant_names)>0:
         antenna_names_fix = [
             ant_name.rstrip() for ant_name in ss.telescope.antenna_names
         ]  # Gets rid of unnecessary whitespace
@@ -95,13 +96,13 @@ def reader(
             ant_num = ss.telescope.antenna_numbers[i]
             ant_name_num_dict[name] = ant_num
 
-        for tile in bad_tiles:
-            cut_antennas.append(ant_name_num_dict[tile])
-        print(f"Antennas found bad via {metafits_file_name}:", cut_antennas)
+        for ant_name in bad_ant_names:
+            cut_antennas.append(ant_name_num_dict[ant_name])
+        print(f"Antenna numbers to cut:", cut_antennas)
 
-    
+
     if len(cut_antennas) > 0:
-
+        print(cut_antennas)
         keep_antennas = ss.telescope.antenna_numbers
         keep_antennas = [ant for ant in keep_antennas if ant not in cut_antennas]
         ss.select(antenna_nums=keep_antennas)

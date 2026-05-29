@@ -181,6 +181,7 @@ def vis_plotting(
     skip_autos=True,
     extension='uvfits',
     freq_channel_width=80000
+    additional_bad_ant_names=[]
 ):
 
     
@@ -219,6 +220,7 @@ def vis_plotting(
             obs_id,
             input_folder=input_data_folder,
             split_autos=True,
+            additional_bad_ant_names=additional_bad_ant_names
         )
 
     if not os.path.exists(output_path):
