@@ -180,7 +180,7 @@ def vis_plotting(
     output_check=True,
     skip_autos=True,
     extension='uvfits',
-    freq_channel_width=80000
+    freq_channel_width=80000,
     additional_bad_ant_names=[]
 ):
 
