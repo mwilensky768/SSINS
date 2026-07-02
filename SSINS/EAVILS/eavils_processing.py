@@ -512,7 +512,7 @@ def process_data(
             with open(pointing_yaml_name, 'w') as file:
                 yaml.safe_dump(pointing_info_dict, file, sort_keys=False)
     else:
-        print('Unknown insturment. Pointing information not processed. Proceed with caution."
+        print('Unknown insturment. Pointing information not processed. Proceed with caution.')
 
     print(f'{processed_count} observations processed')
 
@@ -1078,7 +1078,7 @@ def create_plots(
 
         # This chunk creates a list of positions in figure coordinates
         # determining where to plot each subfigure based on obs_tag number
-        if instrument_name == 'MWA':
+        if instrument_name in ['MWA','MWAX']:
             if time_free_list:
                 positions = [
                     time_spacing *
