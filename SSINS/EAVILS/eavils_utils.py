@@ -4,7 +4,7 @@ from astropy import units as u
 import astropy.time as astrotime
 import astropy.io.fits as fits
 import os
-import copy
+from copy import deepcopy
 import ast
 from pyuvdata import UVData
 from SSINS import SS
@@ -120,14 +120,14 @@ def reader(
         return ss, ss_autos
 
 
-def get_shape_dict(shape_name, add_subTV=False):
-    if shape_name == "MWA_high":
-        with open(
-            f"{SSINS_data.DATA_PATH}/MWA_EoR_Highband_shape_dict.yml", "r"
-        ) as shape_file:
-            shape_dict = yaml.safe_load(shape_file)
-            if add_subTV:
-                shape_dict["subTV"] = [167075000.0, 174000000.0]
+def get_shape_dict(shape_name, add_MWA_subTV=False):
+    
+    with open(
+        f"{SSINS_data.DATA_PATH}/{shape_name}", "r"
+    ) as shape_file:
+        shape_dict = yaml.safe_load(shape_file)
+        if add_MWA_subTV:
+            shape_dict["subTV"] = [167075000.0, 174000000.0]
     return shape_dict
 
 
@@ -217,49 +217,6 @@ def freq_ind_finder(freqs, ranges, strict=False):
     return indices
 
 
-def make_freq_mask(freqs, ranges, strict=True, return_list=False, shape_dict=None):
-    if shape_dict is None:
-        print("No shape_dict given, defaulting to the MWA shape_dict")
-        shape_dict = "MWA_high"
-    shape_dict = get_shape_dict(shape_dict)
-
-
-    for item in ranges:
-        if isinstance(item, list):
-            for subitem in item:
-                if not isinstance(subitem, type(1 * u.Hz)):
-                    print(
-                        "Warning: please ensure the ranges arguments of make_freq_mask contains "
-                        "frequencies or pairs of frequencies and not indices"
-                    )
-                    break
-        elif not isinstance(item, type(1 * u.Hz)):
-            print(
-                "Warning: please ensure the ranges arguments of make_freq_mask contains frequencies or pairs of \
-frequencies and not indices"
-            )
-            break
-
-    if isinstance(ranges, str):
-        if ranges == "all":
-            ranges = [[np.min(freqs), np.max(freqs)]]
-        elif ranges in shape_dict.keys():
-            ranges = [shape_dict[ranges]]
-        else:
-            print("There is no key in the shapes dict matching the input:", ranges)
-            raise ValueError()
-
-    freq_mask = np.zeros(len(freqs), dtype=bool)
-    indices = freq_ind_finder(freqs, ranges, strict)
-
-    for index in indices:
-        freq_mask[index] = 1
-
-    if return_list:
-        freq_list = freqs[freq_mask]
-        return freq_mask, freq_list
-    else:
-        return freq_mask
 
 
 def coarse_band_flagging(

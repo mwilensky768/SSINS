@@ -61,7 +61,7 @@ class EAVILS(INS):
             description=(
                 "An array containing the initial flags for EAVILS "+
                 "(frequencies that should be flagged regardless of "+
-                " SSINS, e.g. coarse band lines in the MWA)."
+                " SSINS, e.g. coarse band lines in the Phase 1 & 2 MWA)."
             ),
             form=("Ntimes", "Nfreqs", "Npols"),
             expected_type=bool,
