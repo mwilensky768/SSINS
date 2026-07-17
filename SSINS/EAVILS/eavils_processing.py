@@ -201,6 +201,10 @@ def process_data(
     return_output=False,
     allowed_missing_fraction=0,
     ssins_sig_thresh=None,
+    tb_aggro=0.4,
+    broadcast_streak=True,
+    time_broadcast=True,
+    freq_broadcast=False,
     remove_edges_of_ranges=True
 ):
     '''Processes individual observation EAVILS h5 files into a larger set.
@@ -329,10 +333,16 @@ def process_data(
 
         ins = run_ssins(
             ssins_filename=filename_dict[obs_tag]['SSINS_data'],
-            initial_freq_flags=initial_freq_flags,
             shape_dict=shape_dict,
-            ssins_sig_thresh=ssins_sig_thresh
+            ssins_sig_thresh=ssins_sig_thresh,
+            initial_freq_flags=initial_freq_flags,
+            tb_aggro=tb_aggro,
+            broadcast_streak=broadcast_streak,
+            time_broadcast=time_broadcast,
+            freq_broadcast=freq_broadcast
+            
         )
+
 
         if pre_flag_on_SSINS_masks:
             eavils.build_div_and_spectrum(
@@ -966,6 +976,10 @@ def create_plots(
     raster_num_labels=False,
     show=False,
     ssins_sig_thresh=None,
+    tb_aggro=0.4,
+    broadcast_streak=True,
+    time_broadcast=True,
+    freq_broadcast=False,
     time_spacing=120,
     integration_time=2,
     time_free_list=False,
@@ -1243,17 +1257,23 @@ def create_plots(
                 filename_dict[obs_tag]['divisor_storage_array'])
             ins = INS(filename_dict[obs_tag]['SSINS_data'])
             current_arrays_dict['SSINS'] = ins.metric_ms
-            flagged_ins = run_ssins(
+
+            
+            flagged_ins = ins = run_ssins(
                 ssins_filename=filename_dict[obs_tag]['SSINS_data'],
-                initial_freq_flags=initial_freq_flags,
                 shape_dict=shape_dict,
-                ssins_sig_thresh=ssins_sig_thresh
+                ssins_sig_thresh=ssins_sig_thresh,
+                initial_freq_flags=initial_freq_flags,
+                tb_aggro=tb_aggro,
+                broadcast_streak=broadcast_streak,
+                time_broadcast=time_broadcast,
+                freq_broadcast=freq_broadcast
+                
             )
 
             current_arrays_dict['SSINS_flags'] = flagged_ins.mask_to_flags()
 
             if pre_flag_on_SSINS_masks:
-                # Eli note: shouldn't this be flagged_ins.mask_to_flags()?
                 eavils.build_div_and_spectrum(
                     divisor_storage_array, ssins_flags=flagged_ins.mask_to_flags())
             else:
