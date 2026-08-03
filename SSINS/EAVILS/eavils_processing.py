@@ -50,6 +50,8 @@ def obs_file_read(file):
     ]
     return observation_check_list
 
+def mwa_names():
+    return ['MWA','MWAX']
 
 def get_filenames(
     input_directory,
@@ -58,7 +60,8 @@ def get_filenames(
     allowed_missing_fraction=0,
     return_missing_list=False,
     keep_missing_in_dict=False,
-    suppress_warnings=False
+    suppress_warnings=False,
+    tutorial_mode_bool=False
 ):
     """
     Generate a dictionary mapping observation tags to their associated filenames.
@@ -96,7 +99,7 @@ def get_filenames(
     # If the input directory is set to its value from the tutorial, 
     # activate tutorial mode to suppress some warnings and errors that we'd
     # normally want active.
-    tutorial_mode_bool=(input_directory =='<path/to/h5/input/directory>')
+    
 
     if not tutorial_mode_bool:
         full_file_list = os.listdir(input_directory)
@@ -205,7 +208,8 @@ def process_data(
     broadcast_streak=True,
     time_broadcast=True,
     freq_broadcast=False,
-    remove_edges_of_ranges=True
+    remove_edges_of_ranges=True,
+    tutorial_mode_bool=False
 ):
     '''Processes individual observation EAVILS h5 files into a larger set.
 
@@ -256,7 +260,7 @@ def process_data(
     # If the input directory is set to its value from the tutorial, 
     # activate tutorial mode to suppress some warnings and errors that we'd
     # normally want active.
-    tutorial_mode_bool=(input_directory =='<path/to/h5/input/directory>')
+
     if tutorial_mode_bool:
         print('Tutorial mode active. Suppressing some warnings & errors')
         
@@ -295,7 +299,8 @@ def process_data(
         list_or_file=list_file,
         allowed_missing_fraction=allowed_missing_fraction,
         keep_missing_in_dict=True,
-        suppress_warnings=tutorial_mode_bool
+        suppress_warnings=tutorial_mode_bool,
+        tutorial_mode_bool=tutorial_mode_bool
     )
 
     first_iteration_bool = True
@@ -544,7 +549,7 @@ def process_data(
     pointing_yaml_name = os.path.join(output_sub_directory, pointing_yaml_name)
 
 
-    if instrument_name in ['MWA','MWAX']:
+    if instrument_name in mwa_names():
 
 
         ptng_info_eq_bool = True
@@ -723,7 +728,7 @@ def create_data_arrays(
     # an array_dict, which contains the following (each with dimensions of time block, frequency channel, and, in the first two, polarization):
     #     variance, SSINS mask (True if any flagged data in block), pol_sub values (the variance differenced between polarizations), lst
     # a sky_field_dict which associates each obs_id with its sky_field
-    # a source_list_dict which associates each obs_id with its source_list
+    # a obs_list_dict which associates each obs_id with its obs_list
     ###################################
     title = title_gen(time_dim, freq_dim=freq_dim)
     sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
@@ -731,7 +736,7 @@ def create_data_arrays(
 
 
     sky_field_dict = {}
-    source_list_dict = {}
+    obs_list_dict = {}
     if add_pointing_dict:
         combined_pointing_info_dict = {}
     else:
@@ -761,7 +766,7 @@ def create_data_arrays(
         for obs_tag in filename_dict.keys():
     
             sky_field_dict[obs_tag] = sky_field
-            source_list_dict[obs_tag] = list_title
+            obs_list_dict[obs_tag] = list_title
 
             var_info = UVFlag()
             var_info.read(filename_dict[obs_tag]['var'])
@@ -792,7 +797,7 @@ def create_data_arrays(
             array_dict['lst'][obs_tag] = lst_array
             array_dict['time'][obs_tag] = time_array
 
-    return array_dict, sky_field_dict, source_list_dict, combined_pointing_info_dict
+    return array_dict, sky_field_dict, obs_list_dict, combined_pointing_info_dict
 
 
     ##########################################################################
@@ -803,12 +808,12 @@ def create_data_frame(
         shape_dict,
         array_dict,
         sky_field_dict,
-        source_list_dict,
+        obs_list_dict,
         pointing_info_dict=None):
     # pol_dict associates the polarizations with their indices
     # shape_dict gives the frequency channels where we expect our DTV type RFI
     # array_dict is the result of the create_array_dict function
-    # sky_field_dict and source_list_dict are similarly explicated above
+    # sky_field_dict and obs_list_dict are similarly explicated above
 
     # Returns a pandas dataframe which collects the important data for each
     # measurement into a single pandas dataframe. In other words, for each
@@ -823,7 +828,7 @@ def create_data_frame(
         'pol_sub': [],
         'SSINS_flagged': [],
         'pointing_flagged': [],
-        'source_list': [],
+        'obs_list': [],
         'lst': []
     }
     for pol in pol_dict.keys():
@@ -835,10 +840,10 @@ def create_data_frame(
         Ntime_blocks, _, _ = array_dict['variance'][obs_tag].shape
         for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
             sky_field = sky_field_dict[obs_tag]
-            source_list = source_list_dict[obs_tag]
+            obs_list = obs_list_dict[obs_tag]
             datafr_dict['obs_tag'] += [obs_tag for i in range(Ntime_blocks)]
             datafr_dict['sky_field'] += [sky_field for i in range(Ntime_blocks)]
-            datafr_dict['source_list'] += [source_list for i in range(Ntime_blocks)]
+            datafr_dict['obs_list'] += [obs_list for i in range(Ntime_blocks)]
             
             if not pointing_info_dict is None:
                 datafr_dict['pointing'] += [
@@ -895,7 +900,7 @@ def add_pol_sub_stdv(datafr, estimated_pol_sub_stdv, threshold):
     return datafr
 
 
-def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
+def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold,print_stats=True):
     # This calculates per pointing stats for each list_title, including how
     # many pol_sub measurements crossed the thrshold set, as well as the
     # scaled absolute mean (scaled according to the expected mean and variance
@@ -916,7 +921,7 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
             for pointing in all_pointings:
                 per_pointing_stats[list_title][freq_range][pointing] = {}
 
-                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & obs_list == \'{list_title}\''
                 pointing_pol_sub_series = np.array(
                     datafr.query(query_string)['pol_sub'] /
                     datafr.query(query_string)['pol_sub_stdv'])
@@ -925,7 +930,7 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
                     (np.mean(np.abs(pointing_pol_sub_series)) - folded_mean)
                 per_pointing_stats[list_title][freq_range][pointing]['abs_mean'] = abs_mean
 
-                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & pol_sub_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & pol_sub_flagged == False & obs_list == \'{list_title}\''
                 pointing_pol_sub_limited_series = np.array(
                     datafr.query(query_string)['pol_sub'] /
                     datafr.query(query_string)['pol_sub_stdv'])
@@ -934,14 +939,23 @@ def find_per_pointing_stats(datafr, shape_dict, list_titles, threshold):
                     np.mean(np.abs(pointing_pol_sub_limited_series)) - folded_mean)
                 per_pointing_stats[list_title][freq_range][pointing]['abs_mean_limited'] = abs_mean_limited
 
-                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & source_list == \'{list_title}\''
+                query_string = f'freq_range == \'{freq_range}\'& pointing == {pointing}& SSINS_flagged == False & obs_list == \'{list_title}\''
                 pointing_pol_sub_flag_series = np.array(
                     datafr.query(query_string)['pol_sub_flagged'])
                 flagged_count = np.sum(pointing_pol_sub_flag_series)
                 total_count = len(pointing_pol_sub_flag_series)
                 per_pointing_stats[list_title][freq_range][pointing]['flagged_count'] = flagged_count
                 per_pointing_stats[list_title][freq_range][pointing]['total_count'] = total_count
-
+    if print_stats:
+        for list_title in per_pointing_stats.keys():
+            print(list_title,'===============================')
+            
+            for pointing in per_pointing_stats[list_title]['subTV'].keys():
+                print('               ',pointing,'____________')
+                for freq_range in sorted_freq_ranges:
+                    local_flagged_count = per_pointing_stats[list_title][freq_range][pointing]['flagged_count']
+                    if local_flagged_count>0:
+                        print('                   ',freq_range,':',local_flagged_count)
     return per_pointing_stats
     ###################################
 
@@ -955,7 +969,6 @@ def create_plots(
     time_dim=None,
     freq_dim=1,
     array_dict=None,
-    processed_data_directory=None,
     sky_field_dict=None,
     pointing_info_dict=None,
     initial_freq_flags=None,
@@ -986,7 +999,8 @@ def create_plots(
     additional_labels=None,
     for_printing=False,
     max_obs_per_page_if_printing=8,
-    output_type='pdf'
+    output_type='pdf',
+    output_tagging=''
 ):
     # Creates a long, detailed plot showing much of the data calculated in functions above.
     # This function could use more documentation
@@ -1014,7 +1028,7 @@ def create_plots(
     sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
     if prelim_mode:
         pre_flag_on_SSINS_masks=False
-        title=''
+        title='prelim'
     
     else:
         if threshold is None:
@@ -1026,9 +1040,6 @@ def create_plots(
         if array_dict is None:
             raise Exception(
                 'When not run in preliminary mode create_plots expects an argument for array_dict.')
-        if processed_data_directory is None:
-            raise Exception(
-                'When not run in preliminary mode create_plots expects an argument for processed_data_directory.')
         if sky_field_dict is None:
             raise Exception(
                 'When not run in preliminary mode create_plots expects an argument for sky_field_dict.')
@@ -1043,7 +1054,7 @@ def create_plots(
 
     if output_directory is None:
 
-        output_directory = os.path.join(processed_data_directory, list_title)
+        output_directory = os.getcwd()
         print(f'No output_directory set, setting to {output_directory}')
     if restricted_list is not None:
         allowed_missing_fraction = 1
@@ -1062,7 +1073,7 @@ def create_plots(
         list_or_file=input_obs_list,
         allowed_missing_fraction=allowed_missing_fraction
     )
-
+    
     obs_tag_list = list(filename_dict.keys())
     obs_tag_list = sorted(obs_tag_list)
     if restricted_list is not None:
@@ -1104,14 +1115,12 @@ def create_plots(
                                  ]
         else:
             plot_instructions = [
-                ('variance', 'XX', 'raster', 1),
                 ('SSINS', 'XX', 'raster', 1),
                 ('EAVILS', 'XX', 'raster', 1),
                 ('pol_sub', 'XX-YY', 'line_plot', 2),
                 ('SSINS_flags', 'XX', 'raster', 1),
                 ('EAVILS', 'YY', 'raster', 1),
-                ('SSINS', 'YY', 'raster', 1),
-                ('variance', 'YY', 'raster', 1)
+                ('SSINS', 'YY', 'raster', 1)
             ]
 
         print(f'Using default plot_instructions:{plot_instructions}')
@@ -1163,7 +1172,9 @@ def create_plots(
     # Main plotting loop
     #################################################################
     part_count = 0
+
     for obs_tag_sub_list in obs_tag_list_collection:
+
         if use_pointing_info_dict:
             initial_pointing = pointing_info_dict[obs_tag_sub_list[0]]['pointing']
 
@@ -1172,7 +1183,7 @@ def create_plots(
         else:
             pointing_tag = 'all'
 
-        image_filename = f'{list_title}_{title}{restricted_tag}_ptng_{pointing_tag}_EAVILS'
+        image_filename = f'{list_title}_{title}_{restricted_tag}_ptng_{pointing_tag}_EAVILS{output_tagging}'
         image_filename = os.path.join(output_directory, image_filename)
 
         if for_printing:
@@ -1192,7 +1203,7 @@ def create_plots(
 
         # This chunk creates a list of positions in figure coordinates
         # determining where to plot each subfigure based on obs_tag number
-        if instrument_name in ['MWA','MWAX']:
+        if instrument_name in mwa_names():
             if time_free_list:
                 positions = [
                     time_spacing *
@@ -1252,14 +1263,14 @@ def create_plots(
 
             # This block reads in data from files and sets up data objects
             eavils = wtrf.EAVILS(filename_dict[obs_tag]['EAVILS'])
-
+            
             divisor_storage_array = np.load(
                 filename_dict[obs_tag]['divisor_storage_array'])
             ins = INS(filename_dict[obs_tag]['SSINS_data'])
             current_arrays_dict['SSINS'] = ins.metric_ms
 
             
-            flagged_ins = ins = run_ssins(
+            flagged_ins = run_ssins(
                 ssins_filename=filename_dict[obs_tag]['SSINS_data'],
                 shape_dict=shape_dict,
                 ssins_sig_thresh=ssins_sig_thresh,
@@ -1879,7 +1890,7 @@ def run_ssins(
 
 
 def make_condensed_flag_array(datafr, obs_tag, sorted_freq_ranges):
-    # Generates a flag array for each dimension of the
+    # Generates a flag array
     minifr = deepcopy(datafr.query(f'obs_tag==\'{obs_tag}\''))
     Ntime_blocks = np.max(minifr.t_block_ind) + 1
     Nfreq_ranges = len(sorted_freq_ranges)
@@ -1906,7 +1917,7 @@ def flag_expander(
         Npols):
     # Casts flags to the original array shape
 
-    sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
+    sorted_freq_ranges, _ = freq_range_sort(shape_dict)
     condensed_flag_array = make_condensed_flag_array(
         datafr, obs_tag, sorted_freq_ranges)
 

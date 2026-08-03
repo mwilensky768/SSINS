@@ -9,7 +9,6 @@ from SSINS import INS
 from pyuvdata.parameter import UVParameter
 
 import matplotlib.pyplot as plt
-
 #############################################################################################
 
 
@@ -93,7 +92,7 @@ class EAVILS(INS):
             use eavils to identify new types of RFI in frequency 
             channels where SSINS has already detected something.
         '''
-
+        
         if self.initial_flags is None:
             self.initial_flags = np.zeros(self.metric_array.shape,dtype=bool)
             
@@ -111,11 +110,11 @@ class EAVILS(INS):
         )
         # Dividing by the square root of number of baselines that contribute to each element of the metric array
         self.divisor=self.divisor/np.sqrt(self.weights_array)
-
+        
         masked_metric = np.ma.masked_array(data=self.metric_array,mask=combined_mask)
-
         self.spectrum=(self.metric_array - np.mean(masked_metric,axis=0))/self.divisor
         self.spectrum.mask = self.initial_flags
+        
     def write(self,prefix,clobber=True,data_compression='lzf',output_type='data',sep='_'):
         filename = '%s%sEAVILS%s%s.h5' % (prefix, sep, sep, output_type)
         if output_type == 'data':
@@ -176,6 +175,8 @@ def construct_divisor(
     Outputs:
     -divisor_output; the divisor array, i.e. sqrt( < Var[ V(t,b,f,p) ]_t >_b )
     """
+    
+    np.seterr(divide='ignore', invalid='ignore') #disabling pesky warning
     Ntimes, Ntimes_check, Nfreqs, Npols = divisor_storage_array.shape
     if Ntimes != Ntimes_check:
         raise Exception(
@@ -223,19 +224,22 @@ def construct_divisor(
 
 
 
-def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
+def plot_maker(eavils,pols,ins=None,output_path=None,name_prefix='',bl_type_tag='cross',eavils_spectrum_only=False,show_plots=False,save_output=True):
     '''
     Plotting function for an individual observation
     
     Inputs:
     -eavils; an EAVILS object as defined in this module
-    -ins; a SSINS INS object for comparison with EAVILS
     -pols; the labels of each polarization, should be in same order as
      the arrays in the EAVILS/INS objects
+    -ins; a SSINS INS object for comparison with EAVILS
     -output_path; the folder to save the output pdf to
     -name_prefix; the prefix for the plot, useful to put some identifying information
         about the source observation 
     -bl_type_tag; the type of baselines (cross or auto) that were used, useful for labelling
+    -eavils_spectrum_only; boolean for outputting only eavils specttrum plots
+    -show_plots; boolean for displaying plots
+    -save_output; boolean for saving outputs to pdf
 
     Outputs:
     -saves out a pdf file in output_path
@@ -243,36 +247,65 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
     
     # For each section of the plot, there are a few parameters we need,
     # which we save as lists to allow some modularity.
-    
-    # The datasets deals with the actual data we want to plot for each section
-    datasets = [
-        eavils.metric_array,
-        eavils.spectrum*eavils.divisor,
-        eavils.spectrum,
-        eavils.divisor,
-        eavils.spectrum,
-        ins.metric_ms
-    ]
-    
-    # Titles just gives titles to each section
-    titles = [
-        "<|V|;bl>",
-        "<|V|;bl> - <<|V|;bl>;t>",
-        "spectrum",
-        "divisor",
-        "spectrum histogram",
-        "SSINS"
-    ]
-    
-    # cmaps gives color schemes for relevant plots, otherwise just leaves blank as ''
-    cmaps = ["viridis", "coolwarm", "coolwarm", "", "","coolwarm"]
-    
-    # Vlims deals with defined limits for plot scale when desired
-    vlims = [None, None, (-5, 5), None, None, (-5, 5)]
-    
-    # This is just the plot types. ALlowed options are 'im' for image plot,
-    # 'line' for a simple line plot, and 'hist' for histogram plots
-    plot_types = ["im", "im", "im", "line", "hist", "im"]
+    if output_path is None:
+        save_output=False
+        print('No output path set, outputs will not be saved')
+    if save_output and name_prefix=='':
+        raise Exception('No name_prefix set, needed to save outputs')
+        
+    if not eavils_spectrum_only:
+        if ins is None:
+            raise Exception('ins argument expected for SSINS plots')
+        
+        # The datasets deals with the actual data we want to plot for each section
+        datasets = [
+            eavils.metric_array,
+            eavils.spectrum*eavils.divisor,
+            eavils.spectrum,
+            eavils.divisor,
+            eavils.spectrum,
+            ins.metric_ms
+        ]
+        
+        # Titles just gives titles to each section
+        titles = [
+            "raw",
+            "mean subtracted",
+            "eavils spectrum",
+            "divisor",
+            "spectrum histogram",
+            "SSINS"
+        ]
+        
+        # cmaps gives color schemes for relevant plots, otherwise just leaves blank as ''
+        cmaps = ["viridis", "coolwarm", "coolwarm", "", "","coolwarm"]
+        
+        # Vlims deals with defined limits for plot scale when desired
+        vlims = [None, None, (-5, 5), None, None, (-5, 5)]
+        
+        # This is just the plot types. ALlowed options are 'im' for image plot,
+        # 'line' for a simple line plot, and 'hist' for histogram plots
+        plot_types = ["im", "im", "im", "line", "hist", "im"]
+    else:
+        datasets = [
+            eavils.spectrum
+        ]
+        
+        # Titles just gives titles to each section
+        titles = [
+            "eavils spectrum"
+            
+        ]
+        
+        # cmaps gives color schemes for relevant plots, otherwise just leaves blank as ''
+        cmaps = ["coolwarm"]
+        
+        # Vlims deals with defined limits for plot scale when desired
+        vlims = [(-5, 5)]
+        
+        # This is just the plot types. ALlowed options are 'im' for image plot,
+        # 'line' for a simple line plot, and 'hist' for histogram plots
+        plot_types = [ "im"]
 
     # Builds figure
     row_count = len(datasets)
@@ -292,7 +325,10 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
     # Loops through each polarization and row as defined by the datasets list, adding subplots
     for pol_ind in range(len(pols)):
         for ind in range(row_count):
-            ax = axs[ind, pol_ind]
+            if len(datasets)>1:
+                ax = axs[ind, pol_ind]
+            else:
+                ax = axs[pol_ind]
             data_index = ind
             values = datasets[data_index][:, :, pol_ind]
 
@@ -382,12 +418,15 @@ def plot_maker(eavils,ins,pols,output_path,name_prefix,bl_type_tag):
 
             ax.set_title(f"{pols[pol_ind]}, {titles[ind]}", fontsize=8)
 
-    save_name = os.path.join(
-        output_path, f"{name_prefix}_output_spectra_{bl_type_tag}.pdf"
-    )
-
-    print(f"saving {save_name}")
-    fig.savefig(save_name)
+    
+    if show_plots:
+        plt.show()
+    if save_output:
+        save_name = os.path.join(
+            output_path, f"{name_prefix}_output_spectra_{bl_type_tag}.pdf"
+        )
+        print(f"saving {save_name}")
+        fig.savefig(save_name)
     plt.close("all")
 
 

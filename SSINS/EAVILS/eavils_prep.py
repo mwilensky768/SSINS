@@ -96,54 +96,9 @@ def spectra_maker(
         
         ins.write(prefix,clobber=clobber)
 
-        '''
-        #Ensuring frequencies and times which are fully flagged will be applied to ins
-        reshaped_initial_flags = np.broadcast_to(initial_flags[ None,:, None], (ins.Ntimes,initial_flags.shape[0], ins.Npols))
-        
-        initial_ss_flags = reshaped_initial_flags[:,np.newaxis,:,:]
-        
-        initial_ss_flags = np.ones(
-            (
-                ss.Ntimes,
-                ss.Nbls,
-                ss.Nfreqs,
-                ss.Npols)
-            ,dtype=bool
-        )*initial_ss_flags
-        
-        initial_ss_flags = np.reshape(initial_ss_flags,(ss.Ntimes*ss.Nbls,ss.Nfreqs,ss.Npols))
 
         
-        ss.apply_flags(flag_choice="custom", custom=initial_ss_flags)
-
-        
-        ins_copy = INS(ss,spectrum_type=bl_type_tag,order=ssins_order)
-
-        
-        if ssins_sig_thresh is None:
-            sig_thresh = {shape: 5 for shape in shape_dict}
-            sig_thresh["narrow"] = 5
-            sig_thresh["streak"] = 10
-        else:
-            sig_thresh=ssins_sig_thresh
-            
-        mf = MF(
-            ins_copy.freq_array,
-            sig_thresh,
-            shape_dict=shape_dict,
-            tb_aggro=0.4,
-            broadcast_streak=True,
-        )
-
-        mf.apply_match_test(
-            ins_copy, event_record=True, time_broadcast=True, freq_broadcast=False
-        )
-    
-        
-        ins_copy.write(prefix, output_type='mask', clobber=True)'''
-
-        
-        eavils_waterfalls.plot_maker(eavils=eavils,ins=ins,pols=pols,output_path=spectra_path,name_prefix=str(obs_id),bl_type_tag=bl_type_tag)
+        eavils_waterfalls.plot_maker(eavils=eavils,pols=pols,ins=ins,output_path=spectra_path,name_prefix=str(obs_id),bl_type_tag=bl_type_tag)
 
 
     local_dict = locals()
@@ -271,7 +226,6 @@ def prep(
         obs_id=obs_id,
         input_data_folder=input_data_folder,
         output_path=output_path,
-        shape_dict=shape_dict,
         freq_channel_width=freq_channel_width,
         ss_cross=ss_cross,
         ss_autos=ss_autos_input,

@@ -16,6 +16,7 @@ import csv
 def mwa_pointings(az, alt, tolerance=0.01):
     # Order is Az, Alt
     pting_trans = {
+        -4: (90, 61.691),
         -3: (90, 69.1655),
         -2: (90, 76.2838),
         -1: (90, 83.1912),
@@ -23,6 +24,7 @@ def mwa_pointings(az, alt, tolerance=0.01):
         1: (270, 83.1912),
         2: (270, 76.2838),
         3: (270, 69.1655),
+        4: (270, 61.691)
     }
 
     for pting in pting_trans.keys():
