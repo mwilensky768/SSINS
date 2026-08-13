@@ -117,7 +117,6 @@ def reader(
             ss_autos = ss.copy()
             ss_autos.select(ant_str="auto")
             ss.select(ant_str="cross")
-            
             return ss, ss_autos
         else:
             ss.select(ant_str="cross")

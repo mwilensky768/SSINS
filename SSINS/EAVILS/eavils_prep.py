@@ -188,7 +188,8 @@ def prep(
             input_folder=input_data_folder,
             split_autos=True,
             additional_bad_ant_names=additional_bad_ant_names,
-            extension=extension
+            extension=extension,
+            keep_autos=skip_autos # When keep_autos is set to False, ss_autos will just be None
         )
 
     if not os.path.exists(output_path):
