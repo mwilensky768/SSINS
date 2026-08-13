@@ -15,6 +15,10 @@ import pandas as pd
 import astropy.io.fits as fits
 from astropy.time import Time
 from functools import reduce
+from astropy.coordinates import Angle
+import astropy.units as u
+
+
 
 
 def freq_range_sort(shape_dict):
@@ -52,6 +56,20 @@ def obs_file_read(file):
 
 def mwa_names():
     return ['MWA','MWAX']
+
+class all_suffix_dicts:
+    def prep_data(suffix_add):
+        return {
+            'EAVILS': f'{suffix_add}_EAVILS_data.h5',
+            'SSINS_data': f'{suffix_add}_SSINS_data.h5',
+            'divisor_storage_array': f'{suffix_add}_divisor_storage.npy'}
+    def proc_data(title):
+        return {
+            'var': f'{title}_EAVILS_variance.h5',
+            'flag': f'{title}_merged_SSINS_flags.h5'}
+    
+        
+        
 
 def get_filenames(
     input_directory,
@@ -264,10 +282,8 @@ def process_data(
     if tutorial_mode_bool:
         print('Tutorial mode active. Suppressing some warnings & errors')
         
-    suffix_dict = {
-        'EAVILS': f'{suffix_add}_EAVILS_data.h5',
-        'SSINS_data': f'{suffix_add}_SSINS_data.h5',
-        'divisor_storage_array': f'{suffix_add}_divisor_storage.npy'}
+    suffix_dict = all_suffix_dicts.prep_data(suffix_add)
+
 
     
     list_title = list_file.split('/')[-1].split('.')[0]
@@ -282,9 +298,7 @@ def process_data(
     instrument_name = None
     already_existing_output_files_dict = get_filenames(
         output_sub_directory,
-        suffix_dict={
-            'var': f'{title}_EAVILS_variance.h5',
-            'flag': f'{title}_merged_SSINS_flags.h5'},
+        suffix_dict=all_suffix_dicts.proc_data(title),
         list_or_file=list_file,
         allowed_missing_fraction=1,
         suppress_warnings=True
@@ -535,9 +549,7 @@ def process_data(
         
     after_processing_output_files_dict = get_filenames(
         output_sub_directory,
-        suffix_dict={
-            'var': f'{title}_EAVILS_variance.h5',
-            'flag': f'{title}_merged_SSINS_flags.h5'},
+        suffix_dict=all_suffix_dicts.proc_data(title),
         list_or_file=list_file,
         allowed_missing_fraction=1,
         suppress_warnings=tutorial_mode_bool
@@ -758,9 +770,7 @@ def create_data_arrays(
 
         filename_dict = get_filenames(
             processed_file_sub_directory,
-            suffix_dict={
-                'var': f'{title}_EAVILS_variance.h5',
-                'flag': f'{title}_merged_SSINS_flags.h5'},
+            suffix_dict=all_suffix_dicts.proc_data(title),
             allowed_missing_fraction=0)
 
         for obs_tag in filename_dict.keys():
@@ -993,6 +1003,733 @@ def create_plots(
     broadcast_streak=True,
     time_broadcast=True,
     freq_broadcast=False,
+    time_spacing=None,
+    integration_time=2,
+    time_free_list=False,
+    additional_labels=None,
+    for_printing=False,
+    max_obs_per_page_if_printing=8,
+    output_type='pdf',
+    output_tagging=''
+):
+    # Creates a long, detailed plot showing much of the data calculated in functions above.
+    # This function could use more documentation
+
+    if time_free_list:
+        if split_on_pointings:
+            split_on_pointings = False
+            print(
+                'split_on_pointings = True incompatible with time_free_list, setting to False')
+        use_pointing_info_dict=False
+
+    if per_pointing_stats is None:
+        display_per_pointing_stats = False
+        
+    if split_on_pointings==False and display_pointing_changes==False and display_per_pointing_stats==False:
+        use_pointing_info_dict=False
+    else:
+        use_pointing_info_dict=True
+        
+    if use_pointing_info_dict and pointing_info_dict is None:
+        raise Exception(
+                f'Settings require a pointing_info_dict but none was supplied. split_on_pointings=={split_on_pointings}, display_pointing_changes=='+
+                f'{display_pointing_changes}, display_per_pointing_stats=={display_per_pointing_stats}')
+        
+    sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
+    if prelim_mode:
+        pre_flag_on_SSINS_masks=False
+        title='prelim'
+    
+    else:
+        if threshold is None:
+            raise Exception(
+                'When not run in preliminary mode create_plots expects an argument for threshold.')
+        if estimated_pol_sub_stdv is None:
+            raise Exception(
+                'When not run in preliminary mode create_plots expects an argument for estimated_pol_sub_stdv.')
+        if array_dict is None:
+            raise Exception(
+                'When not run in preliminary mode create_plots expects an argument for array_dict.')
+        if sky_field_dict is None:
+            raise Exception(
+                'When not run in preliminary mode create_plots expects an argument for sky_field_dict.')
+        if time_dim is None:
+            raise Exception(
+                'When not run in preliminary mode create_plots expects an argument for time_dim.')
+
+        title = title_gen(time_dim, freq_dim=freq_dim)
+        
+    
+    list_title = list_file.split('/')[-1].split('.')[0]
+
+    if output_directory is None:
+
+        output_directory = os.getcwd()
+        print(f'No output_directory set, setting to {output_directory}')
+    if restricted_list is not None:
+        allowed_missing_fraction = 1
+        input_obs_list = restricted_list
+    else:
+        input_obs_list = list_file
+
+    suffix_dict = all_suffix_dicts.prep_data(suffix_add)
+
+    filename_dict = get_filenames(
+        input_directory,
+        suffix_dict=suffix_dict,
+        list_or_file=input_obs_list,
+        allowed_missing_fraction=allowed_missing_fraction
+    )
+    
+    obs_tag_list = list(filename_dict.keys())
+    obs_tag_list = sorted(obs_tag_list)
+    if restricted_list is not None:
+        obs_tag_list = [
+            obs_tag for obs_tag in obs_tag_list if obs_tag in restricted_list]
+        restricted_tag = 'restricted'
+    else:
+        restricted_tag = ''
+
+    # Just pulling telescope name, freq_array and typical time dimensions.
+    # Also caching the EAVILS objects here so we don't need to re-read
+    # each file later (used both for auto time_spacing and in the main loop).
+
+    eavils_dict = {}
+
+    for obs_tag in filename_dict.keys():
+
+        eavils = wtrf.EAVILS(filename_dict[obs_tag]['EAVILS'])
+        eavils_dict[obs_tag] = eavils
+
+        if obs_tag == list(filename_dict.keys())[0]:
+            freq_array = eavils.freq_array
+            instrument_name = eavils.telescope.instrument
+
+        else:
+            if not np.array_equal(eavils.freq_array,freq_array):
+                raise Exception(f'freq_array for observation {obs_tag} different from that for {list(filename_dict.keys())[0]}.')
+            if eavils.telescope.instrument!=instrument_name:
+                raise Exception(f'instrument for observation {obs_tag} is {eavils.telescope.instrument}, different from that for {list(filename_dict.keys())[0]} which is {instrument_name}.')
+
+    xticks = eavils_utils.freq_ind_finder(freq_array, sorted_freq_mins)
+
+    xticklabels = [
+        "%.0f" % (freq_array[tick] * 10 ** (-6)) for tick in xticks
+    ]
+
+    # Auto-determine time_spacing (typical spacing between observations, in
+    # seconds) if not manually supplied. Uses the minimum gap between
+    # observation start times across the full obs_tag_list, so it's robust
+    # even if a given sub-list (e.g. after splitting on pointings) only
+    # contains a couple of observations.
+    if time_spacing is None:
+        first_jds_all = np.sort(np.array(
+            [eavils_dict[obs_tag].time_array[0] for obs_tag in obs_tag_list]
+        ))
+        diffs_sec = np.diff(first_jds_all) * 86400.0
+
+        if len(diffs_sec) == 0:
+            raise Exception(
+                'Cannot auto-determine time_spacing with only one observation; '
+                'please supply time_spacing manually.')
+
+        time_spacing = np.min(diffs_sec)
+        print(f'Auto-determined time_spacing = {time_spacing:.3f} s '
+              f'(minimum gap between observation start times)')
+
+    if plot_instructions is None:
+        if prelim_mode:
+            plot_instructions = [('EAVILS', 'XX', 'raster', 1),
+                                 ('SSINS', 'XX', 'raster', 1),
+                                 ('EAVILS', 'YY', 'raster', 1),
+                                 ('SSINS', 'YY', 'raster', 1),
+                                 ('SSINS_flags', 'XX', 'raster', 1)
+                                 ]
+        else:
+            plot_instructions = [
+                ('SSINS', 'XX', 'raster', 1),
+                ('EAVILS', 'XX', 'raster', 1),
+                ('pol_sub', 'XX-YY', 'line_plot', 2),
+                ('SSINS_flags', 'XX', 'raster', 1),
+                ('EAVILS', 'YY', 'raster', 1),
+                ('SSINS', 'YY', 'raster', 1)
+            ]
+
+        print(f'Using default plot_instructions:{plot_instructions}')
+
+    col_width_multipliers = [entry[3] for entry in plot_instructions]
+
+    color_dict = {'EAVILS': 'coolwarm', 'SSINS': 'coolwarm',
+                  'variance': 'coolwarm',
+                  'SSINS_flags': 'Greens', 'pol_sub': 'coolwarm'}
+
+    vlims_dict = {'EAVILS': (-5, 5), 'SSINS': (-5, 5),
+                  'variance': (0, 2 * .95 * 1.4),
+                  'SSINS_flags': (0, 1), 'pol_sub': (-5, 5)}
+
+    if time_free_list:
+        obs_tag_list_collection = [obs_tag_list]
+    else:
+        
+        if split_on_pointings:
+            obs_tag_list_split_dict = {}
+       
+            for obs_tag in obs_tag_list:
+                pointing = pointing_info_dict[obs_tag]['pointing']
+                try:
+                    obs_tag_list_split_dict[pointing].append(obs_tag)
+                except KeyError:
+                    obs_tag_list_split_dict[pointing] = [obs_tag]
+    
+            obs_tag_list_split = []
+            
+            for pointing, sub_list in obs_tag_list_split_dict.items():
+                if for_printing:
+                    max_obs_per_page_if_printing = 8
+    
+    
+                    total = 0
+                    while total < len(sub_list):
+                        sub_sub_list = sub_list[total:total +
+                                                max_obs_per_page_if_printing]
+                        total += max_obs_per_page_if_printing
+                        if len(sub_sub_list) > 0:
+                            obs_tag_list_split.append(sub_sub_list)
+                else:
+                    obs_tag_list_split.append(sub_list)
+            obs_tag_list_collection = obs_tag_list_split
+        else:
+            obs_tag_list_collection = [obs_tag_list]
+    #################################################################
+    # Main plotting loop
+    #################################################################
+    part_count = 0
+
+    for obs_tag_sub_list in obs_tag_list_collection:
+
+        if use_pointing_info_dict:
+            initial_pointing = pointing_info_dict[obs_tag_sub_list[0]]['pointing']
+
+        if split_on_pointings:
+            pointing_tag = initial_pointing
+        else:
+            pointing_tag = 'all'
+
+        image_filename = f'{list_title}_{title}_{restricted_tag}_ptng_{pointing_tag}_EAVILS{output_tagging}'
+        image_filename = os.path.join(output_directory, image_filename)
+
+        if for_printing:
+            part_label = '_part'
+            try:
+                prev_image_filename
+            except NameError:
+                prev_image_filename = ''
+            if prev_image_filename == image_filename:
+                part_count += 1
+
+            else:
+                part_count = 0
+            part_label += str(part_count)
+        else:
+            part_label = ''
+
+        # This chunk creates a list of positions in figure coordinates
+        # determining where to plot each subfigure, based on each obs's
+        # start time in time_array (converted from JD to seconds), rather
+        # than parsing obs_tag directly. This keeps things general across
+        # instruments rather than assuming GPS-second obs_tags.
+        if time_free_list:
+            positions = [
+                time_spacing *
+                n for n in range(
+                    len(obs_tag_sub_list))]
+            row_count = len(obs_tag_sub_list)
+        else:
+            first_jds = np.array([
+                eavils_dict[obs_tag].time_array[0]
+                for obs_tag in obs_tag_sub_list
+            ])
+            positions = (first_jds - first_jds[0]) * 86400.0
+            row_count = positions[-1] / time_spacing
+
+
+        full_vertical_length = positions[-1] + time_spacing
+        positions = np.append(positions, full_vertical_length)
+
+        positions = 1 - np.array(positions) / full_vertical_length
+
+        goal_aspect = .65
+        text_size = 7
+        col_count = sum(col_width_multipliers)
+        size_factor = 2
+        fig_height = row_count * size_factor
+        fig_width = col_count * size_factor / goal_aspect
+        # fig_height = row_count
+        # fig_width = col_count/goal_aspect
+
+        fig = plt.figure(
+            figsize=(
+                fig_width,
+                fig_height), dpi=300)
+
+        fig_width, fig_height = fig.get_size_inches()
+        title_y = 1 + (0.7 / fig_height)
+
+        column_width = 1 / col_count
+        if use_pointing_info_dict:
+            # setting to an arbitrary number that will never be a pointing
+            prev_pointing = -.00000000000000000001
+
+        for ind, obs_tag in enumerate(obs_tag_sub_list):
+            if not prelim_mode:
+                sky_field = sky_field_dict[obs_tag]
+            if use_pointing_info_dict:
+                current_pointing = pointing_info_dict[obs_tag]['pointing']
+                if current_pointing != prev_pointing:
+                    print(f'pointing = {current_pointing}')
+                    pointing_change_bool = True
+                else:
+                    pointing_change_bool = False
+            else:
+                pointing_change_bool = False
+
+            print('processing', obs_tag)
+
+            current_arrays_dict = {}
+
+            # This block reads in data from files and sets up data objects
+            eavils = eavils_dict[obs_tag]
+            
+            divisor_storage_array = np.load(
+                filename_dict[obs_tag]['divisor_storage_array'])
+            ins = INS(filename_dict[obs_tag]['SSINS_data'])
+            current_arrays_dict['SSINS'] = ins.metric_ms
+
+            
+            flagged_ins = run_ssins(
+                ssins_filename=filename_dict[obs_tag]['SSINS_data'],
+                shape_dict=shape_dict,
+                ssins_sig_thresh=ssins_sig_thresh,
+                initial_freq_flags=initial_freq_flags,
+                tb_aggro=tb_aggro,
+                broadcast_streak=broadcast_streak,
+                time_broadcast=time_broadcast,
+                freq_broadcast=freq_broadcast
+                
+            )
+
+            current_arrays_dict['SSINS_flags'] = flagged_ins.mask_to_flags()
+
+            if pre_flag_on_SSINS_masks:
+                eavils.build_div_and_spectrum(
+                    divisor_storage_array, ssins_flags=flagged_ins.mask_to_flags())
+            else:
+                eavils.build_div_and_spectrum(divisor_storage_array)
+
+            current_arrays_dict['EAVILS'] = eavils.spectrum
+
+            if not prelim_mode:
+                for stat_type in array_dict.keys():
+                    current_arrays_dict[stat_type] = array_dict[stat_type][obs_tag]
+
+                current_arrays_dict['variance'] = np.ma.masked_array(
+                    data=current_arrays_dict['variance'],
+                    mask=current_arrays_dict['reshaped_SSINS_mask'])
+
+                pol_sub = array_dict['pol_sub'][obs_tag]
+                current_arrays_dict['pol_sub'] = np.ma.masked_array(
+                    data=pol_sub, mask=current_arrays_dict['reshaped_SSINS_mask'])
+
+            # col_ind = 0
+            for col_ind, (data_title, pol, plot_type,
+                          col_width_multiplier) in enumerate(plot_instructions):
+
+                current_array = current_arrays_dict[data_title]
+
+                Ntime_blocks, Nfreq_ranges, Npols = current_array.shape
+                if data_title in ['variance', 'pol_sub']:
+                    blocked_bool = True
+                    aspect_multiplier = Ntime_blocks * \
+                        integration_time / (time_spacing / time_dim)
+                elif data_title in ['SSINS', 'EAVILS', 'SSINS_flags']:
+                    blocked_bool = False
+                    aspect_multiplier = Ntime_blocks * \
+                        integration_time / (time_spacing)
+
+                else:
+                    raise Exception(f'Unrecognized data title{data_title}')
+
+                if blocked_bool:
+                    height = size_factor * Ntime_blocks * time_dim / full_vertical_length
+                else:
+                    height = size_factor * Ntime_blocks / full_vertical_length
+                    if data_title != 'SSINS_flags':
+                        if not initial_freq_flags is None: 
+                            initial_flags_extended = initial_freq_flags[np.newaxis,
+                                                                        :, np.newaxis]
+                            initial_flags_extended = initial_flags_extended * \
+                                np.ones(current_array.shape)
+                            current_array = np.ma.array(
+                                current_array,
+                                mask=initial_flags_extended
+                            )
+
+                top = positions[ind]
+
+                bottom = top - height  # convert top position to bottom for `add_axes`
+
+                if pol in pol_dict.keys():
+                    pol_ind = pol_dict[pol]
+                else:
+                    polA, polB, = pol.split('-')
+                    pol_ind = pol_dict[polA]
+                # print(data_title)
+                # print(size_factor,Ntime_blocks,full_vertical_length)
+
+                # print(top,height,bottom)
+                # print(column_width*np.sum(col_width_multipliers[:col_ind]), bottom, column_width*col_width_multiplier, height)
+
+                ax = fig.add_axes([column_width *
+                                   np.sum(col_width_multipliers[:col_ind]), bottom, column_width *
+                                   col_width_multiplier, height])  # [left, bottom, width, height]
+                default_aspect = Ntime_blocks / Nfreq_ranges
+
+                aspect = aspect_multiplier * goal_aspect / \
+                    (col_width_multiplier * default_aspect)
+
+                if isinstance(color_dict[data_title], str):
+                    if 'use' in color_dict[data_title]:
+                        color_data_title = color_dict[data_title].split(
+                            '_')[-1]
+                    else:
+                        color_data_title = data_title
+                else:
+                    color_data_title = data_title
+
+                cmap = color_dict[color_data_title]
+
+                vmin, vmax = vlims_dict[color_data_title]
+                if color_data_title == data_title:
+                    color_array = deepcopy(current_array)
+                else:
+                    color_array = deepcopy(
+                        current_arrays_dict[color_data_title])
+
+                # Deals with infs in color array
+                color_array[color_array >= vmax] = vmax
+                color_array[color_array <= vmin] = vmin
+                if blocked_bool:
+                    color_array = color_array.data
+                if plot_type == 'raster':
+                    ax.imshow(color_array[:, :, pol_ind], cmap=cmap,
+                              vmin=vmin, vmax=vmax, aspect=aspect)
+                    if blocked_bool and raster_num_labels:
+                        for (i, j), z in np.ndenumerate(
+                                current_array[:, :, pol_ind]):
+                            ax.text(
+                                j,
+                                i,
+                                '{:0.1f}'.format(z),
+                                ha='center',
+                                va='center',
+                                size=6 *
+                                size_factor)
+
+                elif plot_type == 'line_plot':
+                    max_range = 7.5
+
+                    offsets = []
+
+                    for f_range_ind, freq_range in enumerate(
+                            sorted_freq_ranges):
+
+                        if data_title == 'pol_sub':
+
+                            values = (
+                                (1 / estimated_pol_sub_stdv[sky_field][freq_range])) * current_array[:, f_range_ind, pol_ind].data
+
+                            values = np.ma.masked_array(
+                                data=values, mask=current_array[:, f_range_ind, pol_ind].mask)
+
+                        else:
+                            raise Exception(
+                                f'{data_title} incompatible with {plot_type}')
+
+                        plot_values = values.data
+                        plot_values = np.append(plot_values, plot_values[-1])
+
+                        offset = f_range_ind * max_range * 2
+                        offsets.append(offset)
+                        t_spots = np.arange(Ntime_blocks + 1, 0, -1)
+                        # ax.set_aspect(2)
+                        ax.axvline(
+                            x=offset - threshold,
+                            color='black',
+                            linewidth=.5,
+                            linestyle='--')
+                        ax.axvline(x=offset, linewidth=.35, color='black')
+                        ax.axvline(
+                            x=offset + threshold,
+                            color='black',
+                            linewidth=.5,
+                            linestyle='--')
+
+                        line, = ax.plot(-plot_values + offset,
+                                        t_spots, linewidth=2, drawstyle="steps")
+                        color = line.get_color()
+                        ax.fill_betweenx(t_spots, offset, -plot_values + offset,
+                                         step="post", facecolor=color, alpha=0.15)
+
+                        '''shading_selection = np.abs(plot_values)>=threshold
+                        ax.fill_betweenx(t_spots, offset, -plot_values+offset,
+                            step="post",facecolor=color, alpha=0.6,where=shading_selection)'''
+
+                        for i in range(len(values)):
+                            if np.abs(values.data[i]) > threshold:
+                                ax.fill_betweenx(
+                                    [t_spots[i], t_spots[i + 1]],
+                                    [-plot_values[i] + offset, -plot_values[i] + offset],
+                                    [offset, offset],
+                                    step='post',
+                                    facecolor=color,
+                                    alpha=0.4
+                                )
+
+                        for i in range(len(values)):
+
+                            if values.mask[i]:
+                                ax.fill_betweenx(
+                                    [t_spots[i], t_spots[i + 1]],
+                                    [-threshold + offset, -threshold + offset],
+                                    [threshold + offset, threshold + offset],
+                                    step='post',
+                                    facecolor='gray',
+                                    alpha=0.5
+                                )
+
+                        meas_count = np.sum(~values.mask)
+                        folded_mean = np.sqrt(2 / np.pi)
+                        folded_var = 1 - 2 / np.pi
+                        abs_mean = np.sqrt(
+                            meas_count / folded_var) * (np.mean(np.abs(values)) - folded_mean)
+                        height_adjustment = .08
+                        if display_per_pointing_stats:
+
+                            if abs_mean >= abs_mean_per_obs_threshold:
+                                obs_tag_text_box_color = 'red'
+                            else:
+                                obs_tag_text_box_color = 'white'
+
+                            ax.text(
+                                offset,
+                                0,
+                                '' + '{:0.1f}'.format(abs_mean),
+                                ha='center',
+                                va='bottom',
+                                size=text_size,
+                                transform=ax.get_xaxis_transform(),
+                                bbox=dict(
+                                    alpha=.6,
+                                    color=obs_tag_text_box_color,
+                                    mutation_aspect=0.5))
+
+                            text_height = 1 - height_adjustment
+
+                            if pointing_change_bool and use_pointing_info_dict:
+
+                                abs_mean_value_per_pt = per_pointing_stats[list_title][
+                                    freq_range][current_pointing]['abs_mean']
+                                abs_mean_value_per_pt_limited = per_pointing_stats[list_title][
+                                    freq_range][current_pointing]['abs_mean_limited']
+                                flag_count = per_pointing_stats[list_title][freq_range][current_pointing]['flagged_count']
+                                total_count = per_pointing_stats[list_title][freq_range][current_pointing]['total_count']
+
+                                if abs_mean_value_per_pt >= abs_mean_per_pt_threshold:
+                                    text_box_color = 'red'
+                                else:
+                                    text_box_color = 'white'
+
+                                if abs_mean_value_per_pt_limited >= abs_mean_per_pt_threshold:
+                                    text_box_color_limited = 'red'
+                                else:
+                                    text_box_color_limited = 'white'
+
+                                ax.text(
+                                    offset,
+                                    text_height,
+                                    f'frc: {flag_count}/{total_count}',
+                                    ha='center',
+                                    va='bottom',
+                                    size=text_size,
+                                    transform=ax.get_xaxis_transform(),
+                                    bbox=dict(
+                                        alpha=.6,
+                                        color='white',
+                                        mutation_aspect=0.5))
+                                ax.text(
+                                    offset,
+                                    text_height -
+                                    height_adjustment,
+                                    'abs: ' +
+                                    '{:0.1f}'.format(abs_mean_value_per_pt),
+                                    ha='center',
+                                    va='bottom',
+                                    size=text_size,
+                                    transform=ax.get_xaxis_transform(),
+                                    bbox=dict(
+                                        alpha=.6,
+                                        color=text_box_color,
+                                        mutation_aspect=0.5))
+                                ax.text(
+                                    offset,
+                                    text_height -
+                                    2 *
+                                    height_adjustment,
+                                    'abs_l: ' +
+                                    '{:0.1f}'.format(abs_mean_value_per_pt_limited),
+                                    ha='center',
+                                    va='bottom',
+                                    size=text_size,
+                                    transform=ax.get_xaxis_transform(),
+                                    bbox=dict(
+                                        alpha=.6,
+                                        color=text_box_color_limited,
+                                        mutation_aspect=0.5))
+
+                    ax.set_xlim(
+                        min(offsets) - max_range,
+                        max(offsets) + max_range)
+                    ax.set_ylim(min(t_spots), max(t_spots))
+                else:
+                    raise Exception(f'{plot_type} not recognized')
+
+                if obs_tag == obs_tag_sub_list[-1]:
+                    if plot_type == 'raster':
+                        if blocked_bool:
+                            ax.set_xticks(
+                                np.arange(
+                                    len(sorted_freq_ranges)),
+                                sorted_freq_ranges,
+                                rotation=90,
+                                size=10 * size_factor)
+                        else:
+
+                            ax.set_xticks(xticks)
+
+                            ax.set_xlabel(
+                                "freq (MHz)", fontsize=10 * size_factor)
+                            ax.set_xticklabels(
+                                xticklabels, fontsize=8 * size_factor)
+
+                    elif plot_type == 'line_plot':
+                        ax.set_xticks(
+                            offsets, sorted_freq_ranges, size=16 * size_factor)
+                else:
+                    ax.set_xticks([])
+
+                if col_ind == 0:
+                    try:
+                        local_label = additional_labels[obs_tag]
+                    except BaseException:
+                        local_label = ' '
+                    ax.text(-.5, 1, local_label, ha='left',
+                            va='top', size=text_size * 3)
+
+                    if pointing_change_bool and display_pointing_changes and part_count == 0:
+
+                        fig.add_artist(
+                            lines.Line2D(
+                                [0, 1],
+                                [top, top],
+                                color="magenta",
+                            )
+                        )
+                        mini_text = (
+                            f"PTNG:{round(pointing_info_dict[obs_tag]['pointing'],2)},\n"+ 
+                            f"RA:{round(pointing_info_dict[obs_tag]['ra'], 2)},\n"+
+                            f"DEC:{round(pointing_info_dict[obs_tag]['dec'],2)}\n"+ 
+                            f"ALT:{round(pointing_info_dict[obs_tag]['alt'],2)},\n"+ 
+                            f"AZ:{round(pointing_info_dict[obs_tag]['az'],2)}")
+                        ax.text(
+                            1.02,
+                            top,
+                            mini_text,
+                            transform=fig.transFigure,
+                            fontsize=6 * size_factor,
+                            verticalalignment="top",
+                            bbox=dict(alpha=0.1, color="magenta"),
+                        )
+                if obs_tag == obs_tag_sub_list[0]:
+                    if data_title == 'pol_sub':
+                        data_nice_title = 'Pol. sub.'
+                    else:
+                        data_nice_title = data_title
+                    ax.set_title(
+                        f'{data_nice_title}, {pol}',
+                        fontsize=14 * size_factor)
+                if col_ind == 0:
+                    ax.set_yticks([0])
+                    ax.set_yticklabels([obs_tag], fontsize=7.5 * size_factor)
+                    ax.tick_params(axis="y", labelrotation=90)
+
+                else:
+                    ax.set_yticks([])
+
+                # col_ind+=1
+            if use_pointing_info_dict:
+                prev_pointing = current_pointing
+        if use_pointing_info_dict:
+            pointing_string =f', pointing: {pointing_tag} '
+        else:
+            pointing_string=''
+        plt.suptitle(
+            f'{list_title}{pointing_string}{part_label}',
+            y=title_y,
+            fontsize=10 * size_factor)
+
+        print(f'saving {image_filename}{part_label}.{output_type}')
+        plt.savefig(f'{image_filename}{part_label}.{output_type}', bbox_inches="tight")
+        prev_image_filename = image_filename
+
+        if show:
+            plt.show()
+        plt.close()
+
+
+
+def create_plots_old(
+    list_file,
+    input_directory,
+    shape_dict,
+    pol_dict,
+    suffix_add,
+    time_dim=None,
+    freq_dim=1,
+    array_dict=None,
+    sky_field_dict=None,
+    pointing_info_dict=None,
+    initial_freq_flags=None,
+    prelim_mode=True,
+    threshold=None,
+    estimated_pol_sub_stdv=None,
+    per_pointing_stats=None,
+    output_directory=None,
+    pre_flag_on_SSINS_masks=True,
+    abs_mean_per_obs_threshold=5,
+    abs_mean_per_pt_threshold=5,
+    plot_instructions=None,
+    display_pointing_changes=True,
+    split_on_pointings=False,
+    allowed_missing_fraction=0.1,
+    display_per_pointing_stats=False,
+    restricted_list=None,
+    raster_num_labels=False,
+    show=False,
+    ssins_sig_thresh=None,
+    tb_aggro=0.4,
+    broadcast_streak=True,
+    time_broadcast=True,
+    freq_broadcast=False,
     time_spacing=120,
     integration_time=2,
     time_free_list=False,
@@ -1062,10 +1799,7 @@ def create_plots(
     else:
         input_obs_list = list_file
 
-    suffix_dict = {
-        'EAVILS': f'{suffix_add}_EAVILS_data.h5',
-        'SSINS_data': f'{suffix_add}_SSINS_data.h5',
-        'divisor_storage_array': f'{suffix_add}_divisor_storage.npy'}
+    suffix_dict = all_suffix_dicts.prep_data(suffix_add)
 
     filename_dict = get_filenames(
         input_directory,
@@ -1660,49 +2394,95 @@ def create_plots(
         plt.close()
 
 
+
+
 def line_plots(
         list_file,
         array_dict,
-        processed_data_directory,
         shape_dict,
         sky_field,
-        pointing_info_dict,
         pol_dict,
         line_plot_freq_ranges,
         time_dim,
-        threshold=None,
+        plotting_pols,
+        threshold,
+        pointing_info_dict=None,
         estimated_pol_sub_stdv=None,
         per_pointing_stats=None,
         output_directory=None,
-        pre_flag_on_SSINS_masks=True,
-        abs_mean_per_obs_tag_threshold=5,
-        abs_mean_per_pt_threshold=5,
-        integration_time=2,
-        plot_instructions=None,
         display_pointing_changes=True,
-        split_on_pointings=False,
-        allowed_missing_fraction=0.1,
-        display_per_pointing_stats=True,
-        restricted_list=None,
-        raster_num_labels=False,
+        lst_tick_interval_minutes=20,
         show=False):
 
+    if display_pointing_changes and pointing_info_dict is None:
+        raise Exception('display_pointing_changes set to True but no pointing_info_dict provided!')
+        
+
+    
     list_title = list_file.split('/')[-1].split('.')[0]
 
     observation_check_list = obs_file_read(list_file)
-    print(observation_check_list)
     sorted_freq_ranges, sorted_freq_mins = freq_range_sort(shape_dict)
-    time_length = time_dim * integration_time
+
 
     fig, axes = plt.subplots(2, 1, dpi=400, figsize=(12, 4))
-    plotting_pols = ['XX', 'YY']
-    stretch_factor = 10**2
-    ax = axes[0]
+
 
     obs_tag_list = sorted(list(array_dict['variance'].keys()))
+
+    # Single pass over the observation list. Builds the filtered obs_tag
+    # order used by every line below, the master time/LST arrays (shared
+    # by every line, since time and LST don't depend on pol or
+    # freq_range), and the pointing-change locations for the vertical
+    # marker lines.
+    filtered_obs_tags = []
+    master_time_list = []
+    master_lst_list = []
+    obs_tag_time_len = {}
     pointing_change_dict = {}
-    if display_pointing_changes:
-        prev_pointing = -999999999999999
+    prev_pointing = -999999999999999
+    for obs_tag in obs_tag_list:
+        if obs_tag not in observation_check_list:
+            continue
+        filtered_obs_tags.append(obs_tag)
+        times = array_dict['time'][obs_tag]
+        obs_tag_time_len[obs_tag] = len(times) # Just included for error checking
+        master_time_list += list(times)
+        master_lst_list += list(array_dict['lst'][obs_tag])
+        if display_pointing_changes:
+            pointing = pointing_info_dict[obs_tag]['pointing']
+            if pointing != prev_pointing:
+                pointing_change_dict[pointing] = times[0]
+                
+
+            prev_pointing = pointing
+    
+    # LST advances almost linearly with time (sidereal rate), so regular
+    # LST tick marks (e.g. every :00, :20, :40) are found by unwrapping
+    # LST past its 24h wrap into a monotonically increasing sequence, then
+    # interpolating the time at which each target LST value occurs.
+    # Ticks are placed by time (the plotted coordinate) but labeled by LST.
+    time_sorted_ind = np.argsort(master_time_list)
+    time_sorted = np.asarray(master_time_list, dtype=float)[time_sorted_ind]
+    lst_sorted = np.asarray(master_lst_list, dtype=float)[time_sorted_ind]
+
+    tick_times, tick_labels = [], []
+    if len(time_sorted) >= 2:
+        lst_hours = Angle(lst_sorted, unit=u.rad).wrap_at('24h').hourangle
+        wraps = np.cumsum(np.where(np.diff(lst_hours) < -12, 24.0, 0.0))
+        lst_hours_unwrapped = lst_hours.copy()
+        lst_hours_unwrapped[1:] += wraps
+
+        interval_hours = lst_tick_interval_minutes / 60.0
+        start = np.ceil(lst_hours_unwrapped[0] / interval_hours) * interval_hours
+        targets = np.arange(start, lst_hours_unwrapped[-1], interval_hours)
+
+        tick_times = np.interp(targets, lst_hours_unwrapped, time_sorted)
+        tick_labels = [
+            Angle(t % 24.0, unit=u.hourangle).to_string(sep=':', fields=2, pad=True)
+            for t in targets]
+
+    ax = axes[0]
     for pol in plotting_pols:
         for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
 
@@ -1710,80 +2490,63 @@ def line_plots(
                 continue
 
             pol_ind = pol_dict[pol]
-            plot_list = []
-            time_list = []
-            for obs_tag in obs_tag_list:
-                if obs_tag in observation_check_list:
-                    if display_pointing_changes:
-                        pointing = pointing_info_dict[obs_tag]['pointing']
-                        if pointing != prev_pointing:
-                            pointing_change_dict[pointing] = obs_tag
-                    values = array_dict['variance'][obs_tag][:, freq_range_ind, pol_ind]
-                    
-                    times = array_dict['lst'][obs_tag]
-                   
-                    plot_list += list(values)
-                    '''time_list += list(np.arange(int(obs_tag),
-                                                int(obs_tag) + time_length * len(values),
-                                                time_length))'''
-                    time_list += list(times)
-                    if display_pointing_changes:
-                        prev_pointing = pointing
+            value_list = []
+            for obs_tag in filtered_obs_tags:
+                values = array_dict['variance'][obs_tag][:, freq_range_ind, pol_ind]
+                if len(values) != obs_tag_time_len[obs_tag]:
+                    raise ValueError(
+                        f"variance/time length mismatch for obs_tag {obs_tag} "
+                        f"(pol={pol}, freq_range={freq_range}): "
+                        f"{len(values)} variance points vs {obs_tag_time_len[obs_tag]} time points")
+                value_list += list(values)
 
-            line, = ax.plot(
-                time_list, plot_list, linewidth=.5, label=f'{freq_range}, {pol}')
-
-            color = line.get_color()
-            
+            ax.plot(
+                master_time_list, value_list, linewidth=.5, label=f'{freq_range}, {pol}')
 
     ymax = 5
     ymin = 0
-    yrange = ymax - ymin
-
     ax.set_ylim(ymin, ymax)
-    print(time_list)
 
-    ax.set_aspect(stretch_factor * 20 / yrange)
-    ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
-    ax.ticklabel_format(useOffset=False, style='plain')
+    ax.set_xlabel("LST", fontsize=10)
+    ax.set_xticks(tick_times)
+    ax.set_xticklabels(tick_labels, fontsize=8, rotation=0, ha='right')
     ax.set_ylabel("Variance", fontsize=10)
-    ax.set_aspect(200)
 
     ax.legend(prop={'size': 7}, framealpha=0.5, bbox_to_anchor=(1.01, 0.75), loc="upper left", borderaxespad=0.)
 
-    
     if display_pointing_changes:
-        for pointing, p_c_obs in pointing_change_dict.items():
+        for pointing, p_c_time in pointing_change_dict.items():
+
             ax.axvline(
-                (int(p_c_obs)),
+                (float(p_c_time)),
                 color='magenta',
                 linewidth=1,
                 alpha=.7,
                 linestyle="dotted")
             ax.text(
-                int(p_c_obs) + 4 * 60,
-                0,
+                float(p_c_time),
+                ymax*1.05,
                 f'ptg: {pointing}',
                 ha='left',
                 va='bottom',
-                transform=ax.get_xaxis_transform(),
+                transform=ax.transData,
                 fontsize=8)
 
     ax = axes[1]
     for freq_range_ind, freq_range in enumerate(sorted_freq_ranges):
         if freq_range not in line_plot_freq_ranges:
             continue
-        plot_list = []
-        time_list = []
-        for obs_tag in obs_tag_list:
-            if obs_tag in observation_check_list:
-                values = ((1 / estimated_pol_sub_stdv[sky_field][freq_range])) * \
-                    array_dict['pol_sub'][obs_tag][:, freq_range_ind, 0]
-    
-                plot_list += list(values)
-                time_list += list(np.arange(int(obs_tag),
-                                            int(obs_tag) + time_length * len(values),
-                                            time_length))
+        value_list = []
+
+        for obs_tag in filtered_obs_tags:
+            values = ((1 / estimated_pol_sub_stdv[sky_field][freq_range])) * \
+                array_dict['pol_sub'][obs_tag][:, freq_range_ind, 0]
+            if len(values) != obs_tag_time_len[obs_tag]:
+                raise ValueError(
+                    f"pol_sub/time length mismatch for obs_tag {obs_tag} "
+                    f"(freq_range={freq_range}): "
+                    f"{len(values)} pol_sub points vs {obs_tag_time_len[obs_tag]} time points")
+            value_list += list(values)
 
         ax.axhline(
             y=-threshold,
@@ -1796,49 +2559,41 @@ def line_plots(
             color='black',
             linewidth=.5,
             linestyle='--')
+
         line, = ax.plot(
-            time_list, plot_list, linewidth=.5, label=freq_range)
+            master_time_list, value_list, linewidth=.5, label=freq_range)
         color = line.get_color()
-        ax.fill_between(time_list, 0, plot_list,
+        ax.fill_between(master_time_list, 0, value_list,
                         facecolor=color, alpha=0.3)
 
         shading_selection = eavils_utils.pad_by(
-            np.abs(plot_list) >= threshold, 1)[:-1]
+            np.abs(value_list) >= threshold, 1)[:-1]
         ax.fill_between(
-            time_list,
+            master_time_list,
             0,
-            plot_list,
+            value_list,
             facecolor=color,
             alpha=0.6,
             where=shading_selection)
 
-    ax.set_xlabel("OBS ID (GPS seconds)", fontsize=10)
-    ax.ticklabel_format(useOffset=False, style='plain')
+    ax.set_xlabel("LST", fontsize=10)
+    ax.set_xticks(tick_times)
+    ax.set_xticklabels(tick_labels, fontsize=8, rotation=0, ha='right')
     ax.set_ylabel("Pol. sub. metric", fontsize=10)
-    #ax.set_aspect(200)
     ymax = 10
     ymin = -10
-    yrange = ymax - ymin
-    #ax.set_aspect(stretch_factor * 20 / yrange)
     ax.set_ylim(ymin, ymax)
-    ax.legend( framealpha=0.5, bbox_to_anchor=(1.01, 0.75), loc="upper left", borderaxespad=0.)
+    ax.legend(framealpha=0.5, bbox_to_anchor=(1.01, 0.75), loc="upper left", borderaxespad=0.)
 
     if display_pointing_changes:
-        for pointing, p_c_obs in pointing_change_dict.items():
+        for pointing, p_c_time in pointing_change_dict.items():
+
             ax.axvline(
-                (int(p_c_obs)),
+                (float(p_c_time)),
                 color='magenta',
                 linewidth=1,
                 alpha=.7,
                 linestyle="dotted")
-            ax.text(
-                int(p_c_obs) + 4 * 60,
-                0,
-                f'ptg: {pointing}',
-                ha='left',
-                va='bottom',
-                transform=ax.get_xaxis_transform(),
-                fontsize=8)
 
     plt.suptitle(f'{list_title}')
     fig.tight_layout()
@@ -1848,7 +2603,6 @@ def line_plots(
     if show:
         plt.show()
     plt.close()
-
 
 def run_ssins(
     ssins_filename,

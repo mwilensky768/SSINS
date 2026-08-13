@@ -45,7 +45,8 @@ def reader(
     metafits_ant_check=True,
     detect_time_cuts=True,
     extension='uvfits',
-    additional_bad_ant_names=[]
+    additional_bad_ant_names=[],
+    keep_autos=False
 ):
 
     time_cuts=None
@@ -112,14 +113,18 @@ def reader(
     if not split_autos:
         return ss
     else:
-
-        ss_autos = ss.copy()
-        ss_autos.select(ant_str="auto")
-        ss.select(ant_str="cross")
+        if keep_autos:
+            ss_autos = ss.copy()
+            ss_autos.select(ant_str="auto")
+            ss.select(ant_str="cross")
+            
+            return ss, ss_autos
+        else:
+            ss.select(ant_str="cross")
+            return ss, None
 
         
 
-        return ss, ss_autos
 
 
 def get_shape_dict(shape_name, add_MWA_subTV=False):
