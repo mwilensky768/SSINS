@@ -10,8 +10,9 @@ import eavils_waterfalls
 
 from SSINS import INS
 
-from pyuvdata.parameter import UVParameter
 
+import time
+from datetime import timedelta
 
 
 
@@ -23,7 +24,6 @@ def spectra_maker(
     pols,
     ss_cross=None,
     ss_autos=None,
-    extension='uvfits',
     ssins_order=0,
     clobber=False
 ):
@@ -39,7 +39,7 @@ def spectra_maker(
 
     if ss_cross is None and ss_autos is None:
         raise Exception('No input data')
-    print("Preparing data")
+    
 
 
 
@@ -77,28 +77,48 @@ def spectra_maker(
         
 
         prefix = os.path.join(h5_path, f"{str(obs_id)}_{freq_channel_width_str(freq_channel_width)}_{bl_type_tag}")
-        
+        print("Processing data for EAVILS")
+        t0 = time.time()
         eavils = eavils_waterfalls.EAVILS(ss,spectrum_type=bl_type_tag)
         eavils.write(prefix,clobber=clobber)
+        t1 = time.time()
+        time_diff=t1-t0
+        print(f'Time to baseline average, mean subtract and save: {timedelta(seconds=time_diff)}')
+        
 
+        t2 = time.time()
         #Creates and saves an EAVILS divisor storage array
         divisor_storage_array = eavils_waterfalls.build_divisor_storage_array(ss,prefix)
+        t3 = time.time()
+        time_diff=t3-t2
+        print(f'Time to create EAVILS divisor and save: {timedelta(seconds=time_diff)}')
         
+
+
+        
+        print('Applying diff (sky subtraction) for use in SSINS')
+        t4 = time.time()
+        ss.diff()
+        t5 = time.time()
+        time_diff=t5-t4
+        print(f'Time to diff ss object: {timedelta(seconds=time_diff)}')
+
+        print("Processing data for SSINS")
+        t6 = time.time()
+        ins = INS(ss,spectrum_type=bl_type_tag,order=ssins_order)
+       
+        ins.write(prefix,clobber=clobber)
+        t7 = time.time()
+        time_diff=t7-t6
+        print(f'Time to create and save ins object: {timedelta(seconds=time_diff)}')
+
+        t8 = time.time()
         #We don't want to pre-flag our EAVILS plots with SSINS data, so we give ssins_flags=None
         eavils.build_div_and_spectrum(divisor_storage_array,ssins_flags=None)
-
-        
-        #Applying diff (sky subtraction) for use in ssins
-        ss.diff()
-
-        ins = INS(ss,spectrum_type=bl_type_tag,order=ssins_order)
-        
-        
-        ins.write(prefix,clobber=clobber)
-
-
-        
         eavils_waterfalls.plot_maker(eavils=eavils,pols=pols,ins=ins,output_path=spectra_path,name_prefix=str(obs_id),bl_type_tag=bl_type_tag)
+        t9 = time.time()
+        time_diff=t9-t8
+        print(f'Time to create EAVILS waterfall and save plots: {timedelta(seconds=time_diff)}')
 
 
     local_dict = locals()
@@ -171,8 +191,7 @@ def prep(
     obs_id = str(obs_id)
 
     
-    
-    # This will cause the positions of the visibilities to all be in the same half of the uv-plane along some dividing line. SLow and unnecessary for EAVILS so disabled.
+
 
 
     

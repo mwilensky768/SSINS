@@ -11,6 +11,8 @@ from SSINS import SS
 from SSINS import data as SSINS_data
 import yaml
 import csv
+import time
+from datetime import timedelta
 
 
 def mwa_pointings(az, alt, tolerance=0.01):
@@ -56,10 +58,19 @@ def reader(
 
     
     print("Reading in ", read_file," as an undiffed SSINS ss object")
+    t0 = time.time()
+    
     ss = SS()
     ss.read(read_file, diff=False,flag_init=True)
-        
+    #UVData.read(data_array_dtype=np.complex64
+    
+    t1 = time.time()
+    time_diff=t1-t0
+    print(f'Time to read in data: {timedelta(seconds=time_diff)}')
+    
+    t2 = time.time()
     if detect_time_cuts:
+        
         #Detects times flagged as bad. Will error if these are not the beginning and/or end times
         flag_reshaped = ss.flag_array.reshape((ss.Ntimes,ss.Nbls,ss.Nfreqs,ss.Npols))
         bad_time_flags = np.all(flag_reshaped,axis=(1,2,3))
@@ -69,18 +80,20 @@ def reader(
             raise Exception(f'Unreliable time flags found for {read_file}. Expecting only beginning and ending times to be flagged, not middle times. Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}')
         else:
             print(f'Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}. time_cuts set to {time_cuts}')
-
+        
         
     if time_cuts is not None:
+        
         print(f"trimming times to include indices between: {time_cuts}")
         # fmt: off
         ss.select(times=np.unique(ss.time_array)[time_cuts[0]:time_cuts[1]])
+        
 
-    
     bad_ant_names = additional_bad_ant_names
     cut_antennas = []
     
     if metafits_ant_check:
+
         metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
         metafits = fits.open(metafits_file_name)
         # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
@@ -102,13 +115,17 @@ def reader(
         for ant_name in bad_ant_names:
             cut_antennas.append(ant_name_num_dict[ant_name])
         print(f"Antenna numbers to cut:", cut_antennas)
-
+        
 
     if len(cut_antennas) > 0:
-        print(cut_antennas)
+        
         keep_antennas = ss.telescope.antenna_numbers
         keep_antennas = [ant for ant in keep_antennas if ant not in cut_antennas]
         ss.select(antenna_nums=keep_antennas)
+
+    t3 = time.time()
+    time_diff = t3-t2
+    print(f'Time to select data: {timedelta(seconds=time_diff)}')
 
     if not split_autos:
         return ss
@@ -332,3 +349,18 @@ def pad_by(bool_array,pad_by_count,axis=0,pad_beginning_bool=True,spread_flags_c
                 bool_array = np.pad(bool_array, pad_width=end_pad, 
                             mode='edge')
     return bool_array
+
+def pretty_time_delta(seconds):
+    sign_string = '-' if seconds < 0 else ''
+    seconds = abs(int(seconds))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%s%dd%dh%dm%ds' % (sign_string, days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%s%dh%dm%ds' % (sign_string, hours, minutes, seconds)
+    elif minutes > 0:
+        return '%s%dm%ds' % (sign_string, minutes, seconds)
+    else:
+        return '%s%ds' % (sign_string, seconds)
