@@ -39,94 +39,126 @@ def mwa_pointings(az, alt, tolerance=0.01):
 
 
 
-
 def reader(
-    obs_id,
+    obs_id=None,
     input_folder="",
     split_autos=False,
     metafits_ant_check=True,
     detect_time_cuts=True,
     extension='uvfits',
     additional_bad_ant_names=[],
-    keep_autos=False
+    keep_autos=False,
+    file_list=None,
+    use_file_list=None,
+    flag_init=None,
+    **read_kwargs
 ):
+    time_cuts = None
 
-    time_cuts=None
-    obs_id = str(obs_id)
-    fits_file = obs_id + "."+extension
-    read_file = os.path.join(input_folder, fits_file)
+    # Decide whether we're doing the old single-uvfits-file read, or the
+    # more general "list of files" read (used by mwa_corr_fits and others).
+    if use_file_list is None:
+        use_file_list = (extension != 'uvfits')
 
-    
-    print("Reading in ", read_file," as an undiffed SSINS ss object")
+    if use_file_list:
+        if file_list is None:
+            raise Exception(
+                "use_file_list is True (or extension != 'uvfits'), but no "
+                "file_list was provided. Pass file_list=[...] explicitly."
+            )
+        read_file = file_list
+        default_flag_init = False
+        if obs_id is not None:
+            obs_id = str(obs_id)
+    else:
+        if obs_id is None:
+            raise Exception(
+                "obs_id must be provided when reading a single file "
+                "(extension='uvfits' / use_file_list=False)."
+            )
+        obs_id = str(obs_id)
+        fits_file = obs_id + "." + extension
+        read_file = os.path.join(input_folder, fits_file)
+        default_flag_init = True
+
+    if flag_init is None:
+        flag_init = default_flag_init
+
+    print("Reading in ", read_file, " as an undiffed SSINS ss object")
     t0 = time.time()
-    
+
     ss = SS()
-    ss.read(read_file, diff=False,flag_init=True)
-    #UVData.read(data_array_dtype=np.complex64
-    
+    ss.read(read_file, diff=False, flag_init=flag_init, **read_kwargs)
+
     t1 = time.time()
-    time_diff=t1-t0
+    time_diff = t1 - t0
     print(f'Time to read in data: {timedelta(seconds=time_diff)}')
-    
+
     t2 = time.time()
     if detect_time_cuts:
-        
-        #Detects times flagged as bad. Will error if these are not the beginning and/or end times
-        flag_reshaped = ss.flag_array.reshape((ss.Ntimes,ss.Nbls,ss.Nfreqs,ss.Npols))
-        bad_time_flags = np.all(flag_reshaped,axis=(1,2,3))
+
+        # Detects times flagged as bad. Will error if these are not the beginning and/or end times
+        flag_reshaped = ss.flag_array.reshape((ss.Ntimes, ss.Nbls, ss.Nfreqs, ss.Npols))
+        bad_time_flags = np.all(flag_reshaped, axis=(1, 2, 3))
         good_times = np.arange(len(bad_time_flags))[~bad_time_flags]
-        time_cuts = (min(good_times),max(good_times+1))
-        if not time_cuts[1]-time_cuts[0] ==len(good_times):
+        time_cuts = (min(good_times), max(good_times + 1))
+        if not time_cuts[1] - time_cuts[0] == len(good_times):
             raise Exception(f'Unreliable time flags found for {read_file}. Expecting only beginning and ending times to be flagged, not middle times. Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}')
         else:
             print(f'Total number of time indices: {ss.Ntimes}. Flagged time indices: {np.arange(len(bad_time_flags))[bad_time_flags]}. time_cuts set to {time_cuts}')
-        
-        
+
     if time_cuts is not None:
-        
+
         print(f"trimming times to include indices between: {time_cuts}")
         # fmt: off
         ss.select(times=np.unique(ss.time_array)[time_cuts[0]:time_cuts[1]])
-        
 
     bad_ant_names = additional_bad_ant_names
     cut_antennas = []
-    
-    if metafits_ant_check:
 
-        metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
+    if metafits_ant_check:
+        if obs_id is not None:
+            metafits_file_name = os.path.join(input_folder, f"{obs_id}.metafits")
+        elif file_list is not None:
+            metafits_candidates = [f for f in file_list if str(f).endswith('.metafits')]
+            if len(metafits_candidates) != 1:
+                raise Exception(
+                    f"metafits_ant_check=True needs exactly one '.metafits' file in "
+                    f"file_list to identify antenna flags; found {metafits_candidates}."
+                )
+            metafits_file_name = metafits_candidates[0]
+        else:
+            raise Exception(
+                "metafits_ant_check=True requires either obs_id or a file_list "
+                "containing a '.metafits' file."
+            )
+
         metafits = fits.open(metafits_file_name)
         # Metafits files save flags, TileNames etc in pairs of polarizations, so we index across pairs here
         for ind in range(len(metafits["TILEDATA"].data.field("flag")) // 2):
-            
+
             if sum(metafits["TILEDATA"].data.field("flag")[(ind * 2):(ind * 2 + 2)]) > 0:
                 bad_ant_names.append(metafits["TILEDATA"].data.field("TileName")[ind * 2])
-
-    if len(bad_ant_names)>0:
+    if len(bad_ant_names) > 0:
         antenna_names_fix = [
             ant_name.rstrip() for ant_name in ss.telescope.antenna_names
         ]  # Gets rid of unnecessary whitespace
-
         ant_name_num_dict = {}
         for i, name in enumerate(antenna_names_fix):
             ant_num = ss.telescope.antenna_numbers[i]
             ant_name_num_dict[name] = ant_num
-
         for ant_name in bad_ant_names:
             cut_antennas.append(ant_name_num_dict[ant_name])
         print(f"Antenna numbers to cut:", cut_antennas)
-        
 
     if len(cut_antennas) > 0:
-        
+
         keep_antennas = ss.telescope.antenna_numbers
         keep_antennas = [ant for ant in keep_antennas if ant not in cut_antennas]
         ss.select(antenna_nums=keep_antennas)
-
     t3 = time.time()
-    time_diff = t3-t2
+    time_diff = t3 - t2
     print(f'Time to select data: {timedelta(seconds=time_diff)}')
-
     if not split_autos:
         return ss
     else:
@@ -138,7 +170,6 @@ def reader(
         else:
             ss.select(ant_str="cross")
             return ss, None
-
         
 
 

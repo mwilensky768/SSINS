@@ -138,7 +138,6 @@ def spectra_maker(
 def freq_channel_width_str(freq_channel_width):
     return f'{int(freq_channel_width/1000)}khz'
 
-
 def prep(
     obs_id,
     input_data_folder,
@@ -153,32 +152,33 @@ def prep(
     additional_bad_ant_names=[],
     ssins_order=0,
     return_pol_dict=False,
-    clobber=False
+    clobber=False,
+    file_list=None,
+    use_file_list=None,
+    flag_init=None,
+    **read_kwargs
 ):
 
-    
     if skip_autos:
         bl_type_tag_list = ['cross']
     else:
-        bl_type_tag_list = ['cross','auto']
-        
+        bl_type_tag_list = ['cross', 'auto']
+
     if output_check:
         missing_bool = False
-        #for data_type in ['EAVILS_data.h5','divisor_storage.npy','SSINS_data.h5','SSINS_mask.h5']:
-        for data_type in ['EAVILS_data.h5','divisor_storage.npy','SSINS_data.h5']:
+        for data_type in ['EAVILS_data.h5', 'divisor_storage.npy', 'SSINS_data.h5']:
             for bl_type_tag in bl_type_tag_list:
                 check_path = os.path.join(output_path, "h5_files")
-                
-                
+
                 check_path = os.path.join(check_path, f'{obs_id}_{freq_channel_width_str(freq_channel_width)}_{bl_type_tag}_{data_type}')
                 if os.path.isfile(check_path):
-                    
+
                     print(
                         f"OUTPUT CHECKING; found {check_path}"
                     )
                 else:
                     missing_bool = True
-                   
+
         if not missing_bool:
             if not clobber:
                 print(f'All output files found, skipping. Set clobber=True to overwrite instead.')
@@ -186,17 +186,8 @@ def prep(
             else:
                 print(f'All output files found. clobber is set to True, overwriting existing files.')
 
-
-
     obs_id = str(obs_id)
 
-    
-
-
-
-    
-    
-    
     # Reads in the object. Note that data reads in as an undiffed ss object,
     # which functions in the same way as a uvdata object but allows for SSINS to be run without reloading.
     # eavils_utils.reader will attempt to find a metafits file in the same folder
@@ -208,40 +199,37 @@ def prep(
             split_autos=True,
             additional_bad_ant_names=additional_bad_ant_names,
             extension=extension,
-            keep_autos=skip_autos # When keep_autos is set to False, ss_autos will just be None
+            keep_autos=skip_autos,  # When keep_autos is set to False, ss_autos will just be None
+            file_list=file_list,
+            use_file_list=use_file_list,
+            flag_init=flag_init,
+            **read_kwargs
         )
 
     if not os.path.exists(output_path):
         os.makedirs(output_path, mode=0o777)
 
-    
     if pol_convention_dict is None:
-        pol_dict_from_file = {pols:index for index,pols in enumerate(ss_cross.get_pols())}
+        pol_dict_from_file = {pols: index for index, pols in enumerate(ss_cross.get_pols())}
     else:
-        pol_dict_from_file = {''.join([pol_convention_dict[pol] for pol in pols]):index for index,pols in enumerate(ss_cross.get_pols())}
-        
+        pol_dict_from_file = {''.join([pol_convention_dict[pol] for pol in pols]): index for index, pols in enumerate(ss_cross.get_pols())}
+
     if pol_dict is None:
-        pol_dict=pol_dict_from_file
+        pol_dict = pol_dict_from_file
         print(f'pol_dict inferred from file: {pol_dict}')
-    elif pol_dict!=pol_dict_from_file:
+    elif pol_dict != pol_dict_from_file:
         raise Exception(f'input pol_dict is {pol_dict}, while the file\'s ordering is {pol_dict_from_file}, derived from ss_cross.get_pols()={ss_cross.get_pols()}, using pol_convention_dict={pol_convention_dict}. Please ensure the input pol_dict is consistent with this. Use the pol_convention_dict argument if different naming conventions are used.')
-    
+
     pols = list(pol_dict.keys())
 
-
-    if ss_cross.channel_width[0]!=freq_channel_width:
+    if ss_cross.channel_width[0] != freq_channel_width:
         raise Exception(f'Frequency width is {ss.channel_width[0]}, not {freq_channel_width} as expected.')
 
-    
-    # This chunk runs the spectra_maker function which generates SSINS and EAVILS outputs
-    ################################################
-    
-
     if skip_autos:
-        ss_autos_input=None
+        ss_autos_input = None
     else:
-        ss_autos_input=ss_autos
-        
+        ss_autos_input = ss_autos
+
     spectra_maker(
         obs_id=obs_id,
         input_data_folder=input_data_folder,
@@ -253,11 +241,8 @@ def prep(
         pols=pols,
         clobber=clobber
     )
-    ################################################
 
-    #Being careful with memory hygiene
     del ss_cross
     del ss_autos
     if return_pol_dict:
         return pol_dict
-    
